@@ -1,0 +1,6 @@
+{
+  "name": "JANUZEN Enterprise Portal",
+  "description": "Full-stack enterprise website for JANUZEN, featuring Nuthan Medicals and JA Stationery divisions with real-time shop, basket, checkout, and admin dashboard.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

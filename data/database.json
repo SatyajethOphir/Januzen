@@ -1,0 +1,509 @@
+{
+  "users": [
+    {
+      "id": "u1_admin",
+      "name": "Enterprise Admin",
+      "email": "admin@januzen.com",
+      "phone": "+91 9988776655",
+      "role": "admin",
+      "address": "JANUZEN HQ Tower, Suite 402, Bengaluru, IN"
+    },
+    {
+      "id": "u2_customer",
+      "name": "Satyajeeth Ophir",
+      "email": "satyajeeth.ophir@gmail.com",
+      "phone": "+91 9443322110",
+      "role": "customer",
+      "address": "Flat 12, Royal Meadows, Chennai, TN"
+    },
+    {
+      "id": "u_1780232727993",
+      "name": "Satyajeeth Ophir Peruka",
+      "email": "deveoper.sop111@gmail.com",
+      "phone": "1234567891",
+      "address": "Maryland, Chicago, USA",
+      "role": "customer"
+    },
+    {
+      "id": "u_1780234704935",
+      "name": "Satyajeeth osmania Account",
+      "email": "satyajeethophirp.be28@uceou.edu",
+      "phone": "9441435410",
+      "address": "Maryland, Chicago, USA",
+      "role": "customer"
+    }
+  ],
+  "passwords": {
+    "u1_admin": "$2b$12$UO9nSAhgKLbY60uPkw39GeqSOiRY3Yh8kGYZZuY.EykYLXXNgGa0K",
+    "u2_customer": "$2b$12$UO9nSAhgKLbY60uPkw39GeWiSDjWxFw1bxi8p7uP0HtMKNqfJSU7m",
+    "u_1780232727993": "$2b$12$xBwUsLQ5UJ1rdUSLECYKIua170bq4KJ4SOYX0HT/VbIR7v9n7GKB6",
+    "u_1780234704935": "$2b$12$E.jLR.EIikU.1ZFGTpa3h.LIuGEVsJN.ezv5F4NrSmTqvl3lxzajK"
+  },
+  "products": [
+    {
+      "id": "m1",
+      "name": "Amoxicillin 500mg Capsules",
+      "description": "Broad-spectrum antibiotic used to treat bacterial infections. Prescription required. Store below 25°C in a dry place.",
+      "price": 18.5,
+      "category": "Prescriptions",
+      "shop": "medicals",
+      "stock": 45,
+      "image": "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=600&auto=format&fit=crop",
+      "tags": [
+        "Antibiotic",
+        "Infection",
+        "Essential Handhelds"
+      ],
+      "featured": true,
+      "isActive": false
+    },
+    {
+      "id": "m2",
+      "name": "Metformin 850mg Tablets",
+      "description": "Oral anti-diabetic drug indicated for type-2 diabetes mellitus management. Aids in blood sugar regulation.",
+      "price": 12.9,
+      "category": "Prescriptions",
+      "shop": "medicals",
+      "stock": 60,
+      "image": "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=600&auto=format&fit=crop",
+      "tags": [
+        "Diabetes",
+        "Sugar Control",
+        "Maintenance"
+      ],
+      "featured": false,
+      "isActive": false
+    },
+    {
+      "id": "m3",
+      "name": "Ibuprofen 400mg Rapid Relief",
+      "description": "Anti-inflammatory and pain reliever. Effective against headaches, muscle pain, fever, and dental discomfort.",
+      "price": 6.25,
+      "category": "Over-the-Counter",
+      "shop": "medicals",
+      "stock": 120,
+      "image": "https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=600&auto=format&fit=crop",
+      "tags": [
+        "Fast Pain Relief",
+        "Fever reducer",
+        "Anti-inflammatory"
+      ],
+      "featured": true,
+      "isActive": false
+    },
+    {
+      "id": "m4",
+      "name": "Cetirizine 10mg Allergy Shield",
+      "description": "24-hour non-drowsy antihistamine for quick relief from running nose, sneezing, itchy eyes, and seasonal pollen allergies.",
+      "price": 8.99,
+      "category": "Over-the-Counter",
+      "shop": "medicals",
+      "stock": 79,
+      "image": "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=600&auto=format&fit=crop",
+      "tags": [
+        "Histamine Blocker",
+        "Allergies",
+        "Seasonal Relief"
+      ],
+      "featured": false,
+      "isActive": true
+    },
+    {
+      "id": "m5",
+      "name": "Digital Upper Arm Blood Pressure Monitor",
+      "description": "Fully automatic, clinical accuracy blood pressure monitor with dynamic cuff size 22-42cm, heart rate tracker, and 90 records memory.",
+      "price": 49.5,
+      "category": "Medical Devices",
+      "shop": "medicals",
+      "stock": 15,
+      "image": "https://images.unsplash.com/photo-1603398938378-e54eab446dde?w=600&auto=format&fit=crop",
+      "tags": [
+        "Cardio Health",
+        "Home Monitor",
+        "Accurate Diagnostics"
+      ],
+      "featured": true,
+      "isActive": true
+    },
+    {
+      "id": "m6",
+      "name": "Fingertip Pulse Oximeter",
+      "description": "Dual-color OLED reader checking oxygen saturation level (SpO2) and pulse rate quickly and accurately. Perfect for home wellness care.",
+      "price": 24.95,
+      "category": "Medical Devices",
+      "shop": "medicals",
+      "stock": 99,
+      "image": "https://images.unsplash.com/photo-1628151015664-7a7442749ec3?w=600&auto=format&fit=crop",
+      "tags": [
+        "Oxygen Tracker",
+        "Compact Health",
+        "Pulse Reader"
+      ],
+      "featured": false,
+      "isActive": true
+    },
+    {
+      "id": "m7",
+      "name": "Premium Multi-size Adhesive Bandages Pack",
+      "description": "Assorted flexible, waterproof fabric bandages with sterile non-stick wound pads to protect cuts and minor abrasions.",
+      "price": 5.5,
+      "category": "First Aid",
+      "shop": "medicals",
+      "stock": 140,
+      "image": "https://images.unsplash.com/photo-1603398938378-e54eab446dde?w=600&auto=format&fit=crop",
+      "tags": [
+        "Waterproof Protection",
+        "Sterile Cuts",
+        "Wound Care"
+      ],
+      "featured": false,
+      "isActive": true
+    },
+    {
+      "id": "m8",
+      "name": "Complete Emergency First Aid Kit",
+      "description": "Compact nylon zip container featuring 120 pieces premium sterile and antiseptic components for minor household and driving emergency management.",
+      "price": 34.99,
+      "category": "First Aid",
+      "shop": "medicals",
+      "stock": 22,
+      "image": "https://images.unsplash.com/photo-1607613009820-a2debfb1f7d5?w=600&auto=format&fit=crop",
+      "tags": [
+        "Survival",
+        "Home Emergency",
+        "Comprehensive Kit"
+      ],
+      "featured": true,
+      "isActive": true
+    },
+    {
+      "id": "m9",
+      "name": "Multivitamin A-Z Daily Immune Boost",
+      "description": "Premium micronutrient support formulated with Vitamin C, D3, Zinc, Ginseng, and iron to improve persistent cell energy and robust daily immunity.",
+      "price": 19.99,
+      "category": "Wellness & Vitamins",
+      "shop": "medicals",
+      "stock": 95,
+      "image": "https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=600&auto=format&fit=crop",
+      "tags": [
+        "Immunity Booster",
+        "Zinc Minerals",
+        "Daily Wellness"
+      ],
+      "featured": true,
+      "isActive": true
+    },
+    {
+      "id": "m10",
+      "name": "High Pure Omega-3 Fish Oil 1000mg",
+      "description": "Triple-strength softgels packed with EPA and DHA values supporting natural cardiovascular rhythms, mental clarity, and visual precision.",
+      "price": 22.5,
+      "category": "Wellness & Vitamins",
+      "shop": "medicals",
+      "stock": 65,
+      "image": "https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=600&auto=format&fit=crop",
+      "tags": [
+        "Heart Helper",
+        "Brain Booster",
+        "Omega Fatty Acids"
+      ],
+      "featured": false,
+      "isActive": true
+    },
+    {
+      "id": "s1",
+      "name": "Double A A4 Copy Paper 80gsm",
+      "description": "Premium smooth copy sheets engineered for high-speed printer execution. Smear-resistant, high brightness level, superb opacity.",
+      "price": 7.95,
+      "category": "Office Paper",
+      "shop": "stationery",
+      "stock": 250,
+      "image": "https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=600&auto=format&fit=crop",
+      "tags": [
+        "Printer Grade",
+        "A4 Premium",
+        "Anti-jam Fibres"
+      ],
+      "featured": true,
+      "isActive": true
+    },
+    {
+      "id": "s2",
+      "name": "Luxurious Matte Black Fountain Pen",
+      "description": "Full metal chassis, classic nib, and ink converter kit. Elegantly weighted barrel ensuring fatigue-free journaling cycles.",
+      "price": 38,
+      "category": "Writing Instruments",
+      "shop": "stationery",
+      "stock": 18,
+      "image": "https://images.unsplash.com/photo-1583485088034-697b5bc54ccd?w=600&auto=format&fit=crop",
+      "tags": [
+        "Luxury Writing",
+        "Elegance Pen",
+        "Refillable Nib"
+      ],
+      "featured": true,
+      "isActive": true
+    },
+    {
+      "id": "s3",
+      "name": "Retractable Gel Ink Pens (12 Color Set)",
+      "description": "Vibrant gel dye colors, 0.5mm extra fine tips, smearless fast drying fluid ink. Soft cushioned visual grip sections.",
+      "price": 14.5,
+      "category": "Writing Instruments",
+      "shop": "stationery",
+      "stock": 90,
+      "image": "https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=600&auto=format&fit=crop",
+      "tags": [
+        "Smear Free",
+        "Fine point",
+        "Journaling Colors"
+      ],
+      "featured": false,
+      "isActive": true
+    },
+    {
+      "id": "s4",
+      "name": "Classic Hardcover Dot Grid Journal",
+      "description": "Thick 120gsm inkproof paper, expandible back folder, flat ribbon marker, elastic binding strap. Sturdy elegant leatherette.",
+      "price": 16.9,
+      "category": "Notebooks & Diaries",
+      "shop": "stationery",
+      "stock": 75,
+      "image": "https://images.unsplash.com/photo-1517842645767-c639042777db?w=600&auto=format&fit=crop",
+      "tags": [
+        "Dot Grid",
+        "Journaling Ink",
+        "Threadbound Flat"
+      ],
+      "featured": true,
+      "isActive": true
+    },
+    {
+      "id": "s5",
+      "name": "Leatherbound Executive Weekly Planner",
+      "description": "Premium diary detailing weekly slots, monthly goal spreads, project logs, and reference tracking, with luxury gold-edged sheets.",
+      "price": 29.99,
+      "category": "Notebooks & Diaries",
+      "shop": "stationery",
+      "stock": 40,
+      "image": "https://images.unsplash.com/photo-1517842645767-c639042777db?w=600&auto=format&fit=crop",
+      "tags": [
+        "Executive",
+        "Agenda",
+        "Organized Life"
+      ],
+      "featured": false,
+      "isActive": true
+    },
+    {
+      "id": "s6",
+      "name": "Expanding Document Accordion Wallet",
+      "description": "13 tab separate internal pockets, colored divider bookmarks, elastic file clasp. Safe heavy-duty poly construction.",
+      "price": 11.2,
+      "category": "Organizers & Files",
+      "shop": "stationery",
+      "stock": 80,
+      "image": "https://images.unsplash.com/photo-1531346878377-a5be20888e57?w=600&auto=format&fit=crop",
+      "tags": [
+        "Tax Folder",
+        "Filing Systems",
+        "Accordion Poly"
+      ],
+      "featured": false,
+      "isActive": true
+    },
+    {
+      "id": "s7",
+      "name": "All-in-one Wire Mesh Desk Organizer Suite",
+      "description": "Includes letter sorting slots, pencil cups, paper clip bowls, dynamic memo box, and utility drawers in durable black finish.",
+      "price": 21.5,
+      "category": "Organizers & Files",
+      "shop": "stationery",
+      "stock": 100,
+      "image": "https://images.unsplash.com/photo-1517842645767-c639042777db?w=600&auto=format&fit=crop",
+      "tags": [
+        "Tidy Desk",
+        "Workspace Mesh",
+        "Pencil Sorting"
+      ],
+      "featured": true,
+      "isActive": true
+    },
+    {
+      "id": "s8",
+      "name": "Premium Professional Watercolor Paint Set",
+      "description": "36 deeply saturated half pans, metal palette case, blending brush, luxury canvas mixing zones. Pure intense organic pigments.",
+      "price": 45,
+      "category": "Art Supplies",
+      "shop": "stationery",
+      "stock": 15,
+      "image": "https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=600&auto=format&fit=crop",
+      "tags": [
+        "Artist Grade",
+        "Watercolors",
+        "Travel Paint Case"
+      ],
+      "featured": true,
+      "isActive": true
+    },
+    {
+      "id": "p_1780233365433",
+      "name": "Paracetamol",
+      "description": "Fever Tablet",
+      "price": 10,
+      "category": "Prescription",
+      "shop": "medicals",
+      "stock": 97,
+      "image": "https://plus.unsplash.com/premium_photo-1668487826871-2f2cac23ad56?q=80&w=1112&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+      "tags": [
+        "Fever Removal"
+      ],
+      "featured": true,
+      "isActive": true
+    },
+    {
+      "id": "p_1780234114347",
+      "name": "XO pens",
+      "description": "Hauser (Made in Germany)",
+      "price": 10,
+      "category": "Pens",
+      "shop": "medicals",
+      "stock": 100,
+      "image": "https://m.media-amazon.com/images/I/61q7gG2ytgL.jpg",
+      "tags": [
+        "Best Selling"
+      ],
+      "featured": true,
+      "isActive": true
+    },
+    {
+      "id": "p_1780234562148",
+      "name": "XO Pens",
+      "description": "Made in Germany",
+      "price": 10,
+      "category": "Pens",
+      "shop": "stationery",
+      "stock": 100,
+      "image": "https://m.media-amazon.com/images/I/61q7gG2ytgL.jpg",
+      "tags": [
+        "Waterproof"
+      ],
+      "featured": true,
+      "isActive": true
+    }
+  ],
+  "orders": [
+    {
+      "id": "o_1780234783744",
+      "orderId": "JAN-20260531-5005",
+      "userId": "u_1780234704935",
+      "userName": "Satyajeeth osmania Account",
+      "userEmail": "satyajeethophirp.be28@uceou.edu",
+      "items": [
+        {
+          "productId": "p_1780233365433",
+          "name": "Paracetamol",
+          "price": 10,
+          "quantity": 3,
+          "image": "https://plus.unsplash.com/premium_photo-1668487826871-2f2cac23ad56?q=80&w=1112&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+          "shop": "medicals"
+        }
+      ],
+      "shippingAddress": {
+        "fullName": "Satyajeeth osmania Account",
+        "addressLine": "Maryland, Chicago, USA",
+        "city": "Chennai ",
+        "postalCode": "402003",
+        "phone": "9441435410"
+      },
+      "totals": {
+        "subtotal": 30,
+        "shipping": 4.99,
+        "tax": 1.5,
+        "total": 36.49
+      },
+      "status": "Dispatched",
+      "paymentMethod": "Cash on Delivery",
+      "createdAt": "2026-05-31T13:39:43.744Z"
+    },
+    {
+      "id": "o_1780233080279",
+      "orderId": "JAN-20260531-2588",
+      "userId": "u_1780232727993",
+      "userName": "Satyajeeth Ophir Peruka",
+      "userEmail": "deveoper.sop111@gmail.com",
+      "items": [
+        {
+          "productId": "m4",
+          "name": "Cetirizine 10mg Allergy Shield",
+          "price": 8.99,
+          "quantity": 1,
+          "image": "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=600&auto=format&fit=crop",
+          "shop": "medicals"
+        }
+      ],
+      "shippingAddress": {
+        "fullName": "Satyajeeth Ophir Peruka",
+        "addressLine": "Maryland, Chicago, USA",
+        "city": "OLD BOWENPALLY, SECUNDERABAD",
+        "postalCode": "500011",
+        "phone": "1234567891"
+      },
+      "totals": {
+        "subtotal": 8.99,
+        "shipping": 4.99,
+        "tax": 0.45,
+        "total": 14.43
+      },
+      "status": "Delivered",
+      "paymentMethod": "Cash on Delivery",
+      "createdAt": "2026-05-31T13:11:20.279Z"
+    },
+    {
+      "id": "o1",
+      "orderId": "JAN-20260531-1002",
+      "userId": "u2_customer",
+      "userName": "Satyajeeth Ophir",
+      "userEmail": "satyajeeth.ophir@gmail.com",
+      "items": [
+        {
+          "productId": "m3",
+          "name": "Ibuprofen 400mg Rapid Relief",
+          "price": 6.25,
+          "quantity": 2,
+          "image": "https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=600&auto=format&fit=crop",
+          "shop": "medicals"
+        },
+        {
+          "productId": "s4",
+          "name": "Classic Hardcover Dot Grid Journal",
+          "price": 16.9,
+          "quantity": 1,
+          "image": "https://images.unsplash.com/photo-1517842645767-c639042777db?w=600&auto=format&fit=crop",
+          "shop": "stationery"
+        }
+      ],
+      "shippingAddress": {
+        "fullName": "Satyajeeth Ophir",
+        "addressLine": "Flat 12, Royal Meadows",
+        "city": "Chennai",
+        "postalCode": "600001",
+        "phone": "+91 9443322110"
+      },
+      "totals": {
+        "subtotal": 29.4,
+        "shipping": 4.99,
+        "tax": 1.47,
+        "total": 35.86
+      },
+      "status": "Delivered",
+      "paymentMethod": "Credit Card",
+      "createdAt": "2026-05-28T14:22:00Z"
+    }
+  ],
+  "messages": [],
+  "newsletter": [
+    "satyajeeth.ophir@gmail.com",
+    "hello@januzen.com"
+  ]
+}
