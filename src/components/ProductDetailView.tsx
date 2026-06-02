@@ -1,5 +1,5 @@
 import React from "react";
-import { ChevronLeft, ShoppingBag, Truck, ShieldCheck, Heart, Share2, Plus, Minus, Tag } from "lucide-react";
+import { ChevronLeft, ShoppingBag, Truck, ShieldCheck, Heart, Share2, Plus, Minus, Tag, Star } from "lucide-react";
 import { Product } from "../types";
 
 interface ProductDetailViewProps {
@@ -13,7 +13,80 @@ export default function ProductDetailView({ productId, onNavigate, onAddToBag }:
   const [related, setRelated] = React.useState<Product[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [quantity, setQuantity] = React.useState(1);
-  const [activeTab, setActiveTab] = React.useState<"overview" | "specs">("overview");
+  const [activeTab, setActiveTab] = React.useState<"overview" | "specs" | "reviews">("overview");
+
+  const [reviews, setReviews] = React.useState<any[]>([]);
+  const [reviewRating, setReviewRating] = React.useState(5);
+  const [reviewComment, setReviewComment] = React.useState("");
+  const [reviewSubmitting, setReviewSubmitting] = React.useState(false);
+
+  const loadReviews = React.useCallback(async () => {
+    try {
+      const res = await fetch(`/api/products/${productId}/reviews`);
+      if (res.ok) {
+        const data = await res.json();
+        setReviews(data.reviews || []);
+      }
+    } catch (e) {
+      console.error("Failed to load product reviews:", e);
+    }
+  }, [productId]);
+
+  React.useEffect(() => {
+    if (productId) {
+      loadReviews();
+    }
+  }, [productId, loadReviews]);
+
+  const loggedInUser = React.useMemo(() => {
+    try {
+      const uStr = localStorage.getItem("januzen_user") || sessionStorage.getItem("januzen_user");
+      return uStr ? JSON.parse(uStr) : null;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const handlePostReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reviewComment.trim()) {
+      alert("Please enter a review comment.");
+      return;
+    }
+    const jwtToken = localStorage.getItem("januzen_token") || sessionStorage.getItem("januzen_token");
+    if (!jwtToken) {
+      alert("You must be signed in to post a product review!");
+      return;
+    }
+    setReviewSubmitting(true);
+    try {
+      const res = await fetch(`/api/products/${productId}/reviews`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${jwtToken}`
+        },
+        body: JSON.stringify({
+          rating: reviewRating,
+          comment: reviewComment.trim()
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setReviewComment("");
+        setReviewRating(5);
+        setReviews(prev => [data.review, ...prev]);
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to submit review.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Network discrepancy occurred trying to register your review.");
+    } finally {
+      setReviewSubmitting(false);
+    }
+  };
 
   React.useEffect(() => {
     async function loadProduct() {
@@ -115,7 +188,7 @@ export default function ProductDetailView({ productId, onNavigate, onAddToBag }:
             
             {/* Price section and active Stock badge */}
             <div className="flex items-center gap-4 py-2 border-y border-gray-100">
-              <span className="font-mono text-2xl font-black text-slate-900">${product.price.toFixed(2)}</span>
+              <span className="font-mono text-2xl font-black text-slate-900">₹{product.price.toFixed(2)}</span>
               {isOutOfStock ? (
                 <span className="bg-red-50 text-red-800 border border-red-200 text-xs font-bold px-3 py-1 rounded-full">
                   Currently Out of Stock
@@ -194,7 +267,7 @@ export default function ProductDetailView({ productId, onNavigate, onAddToBag }:
 
       {/* Tabs list (specs/description) */}
       <div className="mt-12 bg-white border border-gray-100 rounded-2xl p-6 sm:p-8 shadow-sm">
-        <div className="flex gap-6 border-b border-gray-100 pb-3">
+        <div className="flex gap-6 border-b border-gray-100 pb-3 overflow-x-auto">
           <button
             onClick={() => setActiveTab("overview")}
             className={`font-serif text-base pb-3 border-b-2 font-bold cursor-pointer transition-all ${
@@ -211,11 +284,19 @@ export default function ProductDetailView({ productId, onNavigate, onAddToBag }:
           >
             Regulatory & Specifications
           </button>
+          <button
+            onClick={() => setActiveTab("reviews")}
+            className={`font-serif text-base pb-3 border-b-2 font-bold cursor-pointer transition-all ${
+              activeTab === "reviews" ? "border-slate-900 text-slate-900" : "border-transparent text-gray-400"
+            }`}
+          >
+            Customer Reviews ({reviews.length})
+          </button>
         </div>
 
         <div className="mt-6 text-sm text-gray-600 leading-relaxed">
-          {activeTab === "overview" ? (
-            <div className="space-y-4">
+          {activeTab === "overview" && (
+            <div className="space-y-4 font-sans text-gray-600">
               <p>
                 This {isMed ? "medical pharmaceutical formulation" : "high-end business school workstation accessory"} represents JANUZEN's commitment to materials absolute compliance. Every unit is selected from batch-audited lines, verified clean of structural discrepancies, and packaged in a clean dynamic humidity-shielded facility.
               </p>
@@ -223,7 +304,9 @@ export default function ProductDetailView({ productId, onNavigate, onAddToBag }:
                 Designed for both domestic household purposes or demanding professional workspace layouts, it ensures dependable durability and pristine operational capability in its domain.
               </p>
             </div>
-          ) : (
+          )}
+
+          {activeTab === "specs" && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 font-mono text-xs">
               <div className="p-3 bg-slate-50/50 rounded-lg">
                 <span className="text-gray-400">Inventory SKU identifier</span>
@@ -240,6 +323,132 @@ export default function ProductDetailView({ productId, onNavigate, onAddToBag }:
               <div className="p-3 bg-slate-50/50 rounded-lg">
                 <span className="text-gray-400">License Reference No.</span>
                 <p className="font-semibold text-gray-900">JAN-BU-{isMed ? "MED-849PL" : "STT-244CL"}</p>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "reviews" && (
+            <div className="space-y-8 font-sans">
+              {/* Product Review Entry */}
+              <div className="bg-slate-50 border border-gray-150/60 rounded-xl p-5">
+                {loggedInUser ? (
+                  <form onSubmit={handlePostReview} className="space-y-4">
+                    <div>
+                      <h4 className="font-serif text-[#0D1B2A] font-bold text-sm">Write an Honest Evaluation</h4>
+                      <p className="text-[11px] text-gray-400">Your review will be instantly synchronized onto this product's catalogue page.</p>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-mono font-bold uppercase tracking-wider text-gray-400">Set Rating Score:</span>
+                      <div className="flex gap-1">
+                        {[1, 2, 3, 4, 5].map((index) => (
+                          <button
+                            key={index}
+                            type="button"
+                            onClick={() => setReviewRating(index)}
+                            className="p-1 cursor-pointer transition-transform hover:scale-110"
+                          >
+                            <Star
+                              className={`h-5 w-5 ${
+                                index <= reviewRating ? "text-amber-400 fill-amber-400" : "text-gray-300"
+                              }`}
+                            />
+                          </button>
+                        ))}
+                      </div>
+                      <span className="text-xs font-bold text-gray-800">
+                        {reviewRating === 5 && "5/5 - Outstanding!"}
+                        {reviewRating === 4 && "4/5 - Great Experiences"}
+                        {reviewRating === 3 && "3/5 - Good / Average"}
+                        {reviewRating === 2 && "2/5 - Fairly Disappointing"}
+                        {reviewRating === 1 && "1/5 - Unsatisfactory/Poor"}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <textarea
+                        required
+                        placeholder="Share your personal experience with the features, materials quality, delivery state, as well as general logistics speed..."
+                        rows={3}
+                        value={reviewComment}
+                        onChange={(e) => setReviewComment(e.target.value)}
+                        className="w-full bg-white border border-gray-200 p-2.5 rounded-lg text-xs font-sans text-gray-800 focus:outline-none focus:ring-1 focus:ring-[#0D1B2A]"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={reviewSubmitting}
+                      className="inline-flex items-center gap-2 bg-[#0D1B2A] hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider px-5 py-2.5 rounded-lg shadow-sm transition-all cursor-pointer"
+                    >
+                      {reviewSubmitting ? "Submitting..." : "Submit Review"}
+                    </button>
+                  </form>
+                ) : (
+                  <div className="text-center py-4 space-y-2">
+                    <p className="text-xs text-gray-500 font-serif font-bold">Want to evaluate this catalogue option?</p>
+                    <p className="text-[11px] text-gray-400 font-sans">You must access your account to post reviews.</p>
+                    <button
+                      onClick={() => onNavigate("login")}
+                      className="px-4 py-2 border border-[#0D1B2A] text-[#0D1B2A] hover:bg-slate-50 text-xs font-bold font-mono tracking-wider uppercase rounded-md cursor-pointer mt-1"
+                    >
+                      Authenticate Account
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Reviews List Rendering */}
+              <div className="space-y-4">
+                <h4 className="font-serif text-[#0D1B2A] font-bold text-base border-b border-gray-100 pb-2">Verified Customer Experiences</h4>
+                {reviews.length === 0 ? (
+                  <div className="text-center py-8 text-gray-400">
+                    <p className="font-serif text-sm italic">No reviews logged for this product.</p>
+                    <p className="text-[11px] mt-1 font-sans">Be the first to evaluate this supply item!</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {reviews.map((rev) => (
+                      <div key={rev.id} className="p-4 border border-gray-100 rounded-xl bg-white space-y-2.5 shadow-xs">
+                        <div className="flex justify-between items-start gap-2">
+                          <div className="flex items-center gap-2">
+                            {rev.userImage ? (
+                              <img
+                                src={rev.userImage}
+                                alt={rev.userName}
+                                referrerPolicy="no-referrer"
+                                className="h-7 w-7 rounded-full border border-gray-200 object-cover"
+                              />
+                            ) : (
+                              <div className="h-7 w-7 rounded-full bg-slate-200 text-[#0f1b2a] flex items-center justify-center font-bold font-mono text-[10px]">
+                                {rev.userName.substring(0, 2).toUpperCase()}
+                              </div>
+                            )}
+                            <div>
+                              <span className="font-serif font-bold text-xs text-gray-900 block">{rev.userName}</span>
+                              <span className="text-[9px] text-gray-400 font-mono block">
+                                {new Date(rev.createdAt).toLocaleDateString([], { year: "numeric", month: "short", day: "numeric" })}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          {/* Star Score representation */}
+                          <div className="flex gap-0.5 shrink-0">
+                            {[1, 2, 3, 4, 5].map((sIndex) => (
+                              <Star
+                                key={sIndex}
+                                className={`h-3 w-3 ${
+                                  sIndex <= rev.rating ? "text-amber-400 fill-amber-400" : "text-gray-200"
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        <p className="text-xs text-gray-600 font-sans leading-relaxed pl-1 whitespace-pre-wrap">{rev.comment}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -267,7 +476,7 @@ export default function ProductDetailView({ productId, onNavigate, onAddToBag }:
                 <div className="p-4">
                   <span className="text-[10px] font-mono font-bold text-gray-400 block uppercase">{p.category}</span>
                   <h3 className="font-serif text-sm font-bold text-gray-900 truncate mt-1">{p.name}</h3>
-                  <span className="text-xs font-mono font-extrabold text-[#0D1B2A] block mt-2">${p.price.toFixed(2)}</span>
+                  <span className="text-xs font-mono font-extrabold text-[#0D1B2A] block mt-2">₹{p.price.toFixed(2)}</span>
                 </div>
               </div>
             ))}

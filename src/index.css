@@ -1,18 +1,17 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:ital,wght@0,200..850;1,200..850&family=JetBrains+Mono:wght@300;400;500;700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "Playfair Display", ui-serif, Cambria, Georgia, serif;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Cormorant Garamond", ui-serif, Georgia, serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
-/* Base custom styles to ensure nice rendering */
+/* Global transitions and custom styles */
 body {
   font-family: var(--font-sans);
-  background-color: #fcfdfd;
-  color: #1e293b;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.5s cubic-bezier(0.16, 1, 0.3, 1), color 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .font-serif {
@@ -21,5 +20,292 @@ body {
 
 .font-mono {
   font-family: var(--font-mono);
+}
+
+/* --- THEMATIC MODES OVERRIDES (Extremely High-End Editorial Palettes) --- */
+.mode-light {
+  background-color: #FAFAF9;
+  color: #1C1917;
+  --color-bg-base: #FAFAF9;
+  --color-card-base: #FFFFFF;
+  --color-border-base: #E7E5E4;
+  --color-text-title: #0D1B2A;
+  --color-text-sub: #57534E;
+}
+.mode-light .bg-card-theme {
+  background-color: #FFFFFF;
+  border-color: #E7E5E4;
+}
+
+.mode-dark {
+  background-color: #0A0E1A !important;
+  color: #F1F5F9 !important;
+  --color-bg-base: #0A0E1A;
+  --color-card-base: #131E35;
+  --color-border-base: #1E293B;
+  --color-text-title: #F1F5F9;
+  --color-text-sub: #94A3B8;
+}
+.mode-dark .bg-card-theme {
+  background-color: #131E35 !important;
+  border-color: #1E293B !important;
+}
+.mode-dark .bg-white {
+  background-color: #131E35 !important;
+  color: #F1F5F9 !important;
+  border-color: #1E293B !important;
+}
+.mode-dark .bg-slate-50,
+.mode-dark .bg-slate-50\/50,
+.mode-dark .bg-slate-50\/60,
+.mode-dark .bg-gray-50,
+.mode-dark .bg-slate-100,
+.mode-dark .bg-gray-100 {
+  background-color: #1E293B !important;
+  color: #F1F5F9 !important;
+  border-color: #334155 !important;
+}
+.mode-dark .bg-teal-50 {
+  background-color: rgba(15, 155, 142, 0.15) !important;
+  color: #2DD4BF !important;
+  border-color: rgba(15, 155, 142, 0.3) !important;
+}
+.mode-dark .bg-amber-50 {
+  background-color: rgba(212, 130, 10, 0.15) !important;
+  color: #FBBF24 !important;
+  border-color: rgba(212, 130, 10, 0.3) !important;
+}
+
+/* Light text rules for dark mode elements */
+.mode-dark .text-gray-950,
+.mode-dark .text-slate-950,
+.mode-dark .text-gray-900,
+.mode-dark .text-slate-900,
+.mode-dark .text-\[\#0D1B2A\],
+.mode-dark .text-slate-850,
+.mode-dark .text-slate-800,
+.mode-dark .text-gray-800,
+.mode-dark .text-slate-700,
+.mode-dark .text-gray-700 {
+  color: #F1F5F9 !important;
+}
+.mode-dark .text-gray-600,
+.mode-dark .text-slate-600,
+.mode-dark .text-gray-500,
+.mode-dark .text-slate-500,
+.mode-dark .text-gray-400,
+.mode-dark .text-slate-400 {
+  color: #94A3B8 !important;
+}
+.mode-dark .text-teal-800,
+.mode-dark .text-[#0c7f74] {
+  color: #2DD4BF !important;
+}
+.mode-dark .text-amber-800 {
+  color: #FBBF24 !important;
+}
+
+/* Border overrides for dark mode */
+.mode-dark .border-gray-100,
+.mode-dark .border-gray-150,
+.mode-dark .border-gray-200,
+.mode-dark .border-gray-250,
+.mode-dark .border-gray-300,
+.mode-dark .border-slate-100,
+.mode-dark .border-slate-200,
+.mode-dark .border-slate-250,
+.mode-dark .divide-gray-100 > *,
+.mode-dark .divide-gray-150 > *,
+.mode-dark .divide-gray-200 > *,
+.mode-dark .divide-slate-200 > * {
+  border-color: #1E293B !important;
+}
+
+/* Controls style overhauls in dark mode */
+.mode-dark input,
+.mode-dark textarea,
+.mode-dark select {
+  background-color: #1E293B !important;
+  color: #F1F5F9 !important;
+  border-color: #334155 !important;
+}
+.mode-dark select option {
+  background-color: #0A0E1A !important;
+  color: #F1F5F9 !important;
+}
+
+/* --- EMERALD CLINICAL PALETTE OVERRIDES --- */
+.mode-emerald {
+  background-color: #F0F8F6 !important;
+  color: #064E3B !important;
+  --color-bg-base: #F0F8F6;
+  --color-card-base: #FFFFFF;
+  --color-border-base: #D1FAE5;
+  --color-text-title: #064E3B;
+  --color-text-sub: #0D9488;
+}
+.mode-emerald .bg-card-theme {
+  background-color: #FFFFFF !important;
+  border-color: #D1FAE5 !important;
+}
+.mode-emerald .bg-white {
+  background-color: #FFFFFF !important;
+  color: #064E3B !important;
+  border-color: #D1FAE5 !important;
+}
+.mode-emerald .bg-slate-50,
+.mode-emerald .bg-slate-50\/50,
+.mode-emerald .bg-slate-50\/60,
+.mode-emerald .bg-gray-50,
+.mode-emerald .bg-slate-100,
+.mode-emerald .bg-gray-100 {
+  background-color: #E6F4F1 !important;
+  color: #064E3B !important;
+  border-color: #A7F3D0 !important;
+}
+
+/* Natural clinical text overrides */
+.mode-emerald .text-gray-950,
+.mode-emerald .text-slate-950,
+.mode-emerald .text-gray-900,
+.mode-emerald .text-slate-900,
+.mode-emerald .text-\[\#0D1B2A\],
+.mode-emerald .text-slate-850,
+.mode-emerald .text-slate-800,
+.mode-emerald .text-gray-800,
+.mode-emerald .text-slate-700,
+.mode-emerald .text-gray-700 {
+  color: #064E3B !important;
+}
+.mode-emerald .text-gray-600,
+.mode-emerald .text-slate-600,
+.mode-emerald .text-gray-500,
+.mode-emerald .text-slate-500,
+.mode-emerald .text-gray-400,
+.mode-emerald .text-slate-400 {
+  color: #0F766E !important;
+}
+
+/* Border overrides for emerald mode */
+.mode-emerald .border-gray-100,
+.mode-emerald .border-gray-150,
+.mode-emerald .border-gray-200,
+.mode-emerald .border-gray-250,
+.mode-emerald .border-gray-300,
+.mode-emerald .border-slate-100,
+.mode-emerald .border-slate-200,
+.mode-emerald .border-slate-250,
+.mode-emerald .divide-gray-100 > *,
+.mode-emerald .divide-gray-150 > *,
+.mode-emerald .divide-gray-200 > *,
+.mode-emerald .divide-slate-200 > * {
+  border-color: #D1FAE5 !important;
+}
+
+/* Controls overrides for emerald mode */
+.mode-emerald input,
+.mode-emerald textarea,
+.mode-emerald select {
+  background-color: #FFFFFF !important;
+  color: #064E3B !important;
+  border-color: #A7F3D0 !important;
+}
+
+/* --- AMBER STATIONERY SEPIA PALETTE OVERRIDES --- */
+.mode-amber {
+  background-color: #FCF8F0 !important;
+  color: #451A03 !important;
+  --color-bg-base: #FCF8F0;
+  --color-card-base: #FAF5E8;
+  --color-border-base: #FEF3C7;
+  --color-text-title: #451A03;
+  --color-text-sub: #D4820A;
+}
+.mode-amber .bg-card-theme {
+  background-color: #FAF5E8 !important;
+  border-color: #FEF3C7 !important;
+}
+.mode-amber .bg-white {
+  background-color: #FAF5E8 !important;
+  color: #451A03 !important;
+  border-color: #FEF3C7 !important;
+}
+.mode-amber .bg-slate-50,
+.mode-amber .bg-slate-50\/50,
+.mode-amber .bg-slate-50\/60,
+.mode-amber .bg-gray-50,
+.mode-amber .bg-slate-100,
+.mode-amber .bg-gray-100 {
+  background-color: #F3EBD6 !important;
+  color: #451A03 !important;
+  border-color: #FDE68A !important;
+}
+
+/* Rich warm sepia text overrides */
+.mode-amber .text-gray-950,
+.mode-amber .text-slate-950,
+.mode-amber .text-gray-900,
+.mode-amber .text-slate-900,
+.mode-amber .text-\[\#0D1B2A\],
+.mode-amber .text-slate-850,
+.mode-amber .text-slate-800,
+.mode-amber .text-gray-800,
+.mode-amber .text-slate-700,
+.mode-amber .text-gray-700 {
+  color: #451A03 !important;
+}
+.mode-amber .text-gray-600,
+.mode-amber .text-slate-600,
+.mode-amber .text-gray-500,
+.mode-amber .text-slate-500,
+.mode-amber .text-gray-400,
+.mode-amber .text-slate-400 {
+  color: #B45309 !important;
+}
+
+/* Border overrides for amber mode */
+.mode-amber .border-gray-100,
+.mode-amber .border-gray-150,
+.mode-amber .border-gray-200,
+.mode-amber .border-gray-250,
+.mode-amber .border-gray-300,
+.mode-amber .border-slate-100,
+.mode-amber .border-slate-200,
+.mode-amber .border-slate-250,
+.mode-amber .divide-gray-100 > *,
+.mode-amber .divide-gray-150 > *,
+.mode-amber .divide-gray-200 > *,
+.mode-amber .divide-slate-200 > * {
+  border-color: #FEF3C7 !important;
+}
+
+/* Controls overrides for amber mode */
+.mode-amber input,
+.mode-amber textarea,
+.mode-amber select {
+  background-color: #FFFFFF !important;
+  color: #451A03 !important;
+  border-color: #FDE68A !important;
+}
+
+/* Luxury visual styling accents */
+.text-glow {
+  text-shadow: 0 0 24px rgba(255,255,255,0.15);
+}
+
+/* Custom scrollbars for a premium editorial vibe */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(120, 113, 108, 0.2);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(120, 113, 108, 0.4);
 }
 

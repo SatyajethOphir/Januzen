@@ -1,4 +1,5 @@
 import React from "react";
+import { gsap } from "gsap";
 import { Search, Filter, RotateCcw, AlertCircle, ShoppingBag, Grid, ChevronLeft, ChevronRight } from "lucide-react";
 import { Product } from "../types";
 
@@ -83,6 +84,16 @@ export default function ShopView({ division, onNavigate, onAddToBag }: ShopViewP
   React.useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
+
+  React.useEffect(() => {
+    if (!loading && products.length > 0) {
+      gsap.fromTo(
+        ".gsap-shop-card",
+        { opacity: 0, y: 20 },
+        { opacity: 1, y: 0, duration: 0.5, stagger: 0.05, ease: "power2.out" }
+      );
+    }
+  }, [products, loading]);
 
   const handleResetFilters = () => {
     setSearch("");
@@ -257,7 +268,7 @@ export default function ShopView({ division, onNavigate, onAddToBag }: ShopViewP
                 return (
                   <div
                     key={p.id}
-                    className="group bg-white border border-gray-200/60 rounded-xl overflow-hidden hover:shadow-lg transition-all flex flex-col justify-between"
+                    className="gsap-shop-card group bg-white border border-gray-200/60 rounded-xl overflow-hidden hover:shadow-lg transition-all flex flex-col justify-between"
                   >
                     <div className="relative">
                       <img
@@ -299,7 +310,7 @@ export default function ShopView({ division, onNavigate, onAddToBag }: ShopViewP
                       </div>
 
                       <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
-                        <span className="font-mono text-base font-extrabold text-gray-950">${p.price.toFixed(2)}</span>
+                        <span className="font-mono text-base font-extrabold text-gray-950">₹{p.price.toFixed(2)}</span>
                         
                         <button
                           onClick={() => onAddToBag(p)}

@@ -5,6 +5,9 @@ export interface User {
   phone?: string;
   role: 'customer' | 'admin';
   address?: string;
+  image?: string;
+  securityQuestion?: string;
+  securityAnswer?: string;
 }
 
 export interface Product {
@@ -69,3 +72,33 @@ export interface Message {
   isRead: boolean;
   createdAt: string;
 }
+
+export interface Coupon {
+  id: string;
+  code: string;
+  discountType: 'percentage' | 'fixed';
+  discountValue: number;
+  minBasketValue: number;
+  isActive: boolean;
+}
+
+export interface Review {
+  id: string;
+  productId: string;
+  userId: string;
+  userName: string;
+  userImage?: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+}
+
+export interface Notification {
+  id: string;
+  userId: string;
+  title: string;
+  content: string;
+  isRead: boolean;
+  createdAt: string;
+}
+

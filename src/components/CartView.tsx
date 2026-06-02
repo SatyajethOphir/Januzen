@@ -17,9 +17,9 @@ interface CartViewProps {
 export default function CartView({ cartItems, onUpdateQty, onRemoveItem, onNavigate }: CartViewProps) {
   
   const subtotal = cartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-  const tax = Math.round((subtotal * 0.05) * 100) / 100; // 5% tax scale
-  const shipping = subtotal > 35 || subtotal === 0 ? 0 : 4.99; // Free shipping over $35
-  const total = Math.round((subtotal + tax + shipping) * 150) / 150; // Fine numeric rounding
+  const tax = Math.round((subtotal * 0.05) * 100) / 100; // 5% GST scale in India
+  const shipping = subtotal >= 1000 || subtotal === 0 ? 0 : 150; // Free shipping above ₹1000, else ₹150
+  const total = Math.round((subtotal + tax + shipping) * 100) / 100; // Standard rounding
 
   const emptyCart = cartItems.length === 0;
 
@@ -99,7 +99,7 @@ export default function CartView({ cartItems, onUpdateQty, onRemoveItem, onNavig
                       {/* Unit pricing detail */}
                       <div className="col-span-1 sm:col-span-2 text-center sm:block flex justify-between items-center bg-slate-50/50 sm:bg-transparent p-2 sm:p-0 rounded">
                         <span className="sm:hidden text-xs text-gray-400 uppercase font-mono">Price:</span>
-                        <span className="font-mono text-sm font-bold text-gray-700">${p.price.toFixed(2)}</span>
+                        <span className="font-mono text-sm font-bold text-gray-700">₹{p.price.toFixed(2)}</span>
                       </div>
 
                       {/* Quantity stepper controller */}
@@ -127,7 +127,7 @@ export default function CartView({ cartItems, onUpdateQty, onRemoveItem, onNavig
                       {/* Total Item subtotal column */}
                       <div className="col-span-1 sm:col-span-2 text-right sm:block flex justify-between items-center bg-slate-50/50 sm:bg-transparent p-2 sm:p-0 rounded">
                         <span className="sm:hidden text-xs text-gray-400 uppercase font-mono">Subtotal:</span>
-                        <span className="font-mono text-sm font-extrabold text-gray-900">${itemSub.toFixed(2)}</span>
+                        <span className="font-mono text-sm font-extrabold text-gray-900">₹{itemSub.toFixed(2)}</span>
                       </div>
 
                     </div>
@@ -153,29 +153,29 @@ export default function CartView({ cartItems, onUpdateQty, onRemoveItem, onNavig
               <div className="space-y-3 font-mono text-xs text-gray-500">
                 <div className="flex justify-between">
                   <span>Basket Subtotal</span>
-                  <span className="font-bold text-gray-900">${subtotal.toFixed(2)}</span>
+                  <span className="font-bold text-gray-900">₹{subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>CGST & Utilities (5%)</span>
-                  <span className="font-bold text-gray-900">${tax.toFixed(2)}</span>
+                  <span className="font-bold text-gray-900">₹{tax.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Shipping Freight</span>
                   <span className="font-bold text-gray-900">
-                    {shipping === 0 ? "FREE" : `$${shipping.toFixed(2)}`}
+                    {shipping === 0 ? "FREE" : `₹${shipping.toFixed(2)}`}
                   </span>
                 </div>
                 
                 {shipping > 0 && (
                   <div className="bg-[#0F9B8E]/5 border border-[#0F9B8E]/10 p-2.5 rounded text-[11px] font-sans text-[#0c7f74] leading-normal font-medium">
-                    Add <span className="font-bold">${(35 - subtotal).toFixed(2)}</span> more in supplies to unlock **FREE SECURED FREIGHT SHIPPING**!
+                    Add <span className="font-bold">₹{(1000 - subtotal).toFixed(2)}</span> more in supplies to unlock **FREE SECURED FREIGHT SHIPPING**!
                   </div>
                 )}
               </div>
 
               <div className="border-t border-gray-100 pt-4 flex justify-between items-baseline">
                 <span className="text-sm font-bold text-[#0D1B2A]">Invoice Total</span>
-                <span className="font-mono text-xl font-black text-slate-950">${total.toFixed(2)}</span>
+                <span className="font-mono text-xl font-black text-slate-950">₹{total.toFixed(2)}</span>
               </div>
 
               <button

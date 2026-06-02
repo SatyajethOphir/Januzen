@@ -24,11 +24,70 @@ export default function CheckoutView({ cartItems, currentUser, onNavigate, onCle
   const [phone, setPhone] = React.useState(currentUser?.phone || "");
   const [paymentMethod, setPaymentMethod] = React.useState("Cash on Delivery");
 
+  // Coupon states
+  const [couponInput, setCouponInput] = React.useState("");
+  const [discountAmount, setDiscountAmount] = React.useState(0);
+  const [appliedCoupon, setAppliedCoupon] = React.useState<string | null>(null);
+  const [couponError, setCouponError] = React.useState("");
+  const [couponSuccess, setCouponSuccess] = React.useState("");
+  const [isValidatingCoupon, setIsValidatingCoupon] = React.useState(false);
+
+  // Razorpay Overlay States
+  const [showRazorpay, setShowRazorpay] = React.useState(false);
+  const [razorpayMethod, setRazorpayMethod] = React.useState<"card" | "upi" | "netbanking">("card");
+  const [razorpayCardNo, setRazorpayCardNo] = React.useState("");
+  const [razorpayExpiry, setRazorpayExpiry] = React.useState("");
+  const [razorpayCvv, setRazorpayCvv] = React.useState("");
+  const [razorpayUpiId, setRazorpayUpiId] = React.useState("");
+  const [razorpayBank, setRazorpayBank] = React.useState("State Bank of India");
+  const [razorpayStage, setRazorpayStage] = React.useState<"input" | "processing" | "success">("input");
+
   // Sum calculations
   const subtotal = cartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-  const tax = Math.round((subtotal * 0.05) * 100) / 100;
-  const shipping = subtotal > 35 ? 0 : 4.99;
-  const total = Math.round((subtotal + tax + shipping) * 100) / 100;
+  const shipping = subtotal >= 1000 || subtotal === 0 ? 0 : 150; // free standard delivery above ₹1000 inside India, else ₹150 freight fee
+  const postDiscountSubtotal = Math.max(0, subtotal - discountAmount);
+  const tax = Math.round((postDiscountSubtotal * 0.05) * 100) / 100; // 5% CGST
+  const total = Math.round((postDiscountSubtotal + tax + shipping) * 100) / 100;
+
+  const handleValidateCoupon = async () => {
+    if (!couponInput) {
+      setCouponError("Please type a valid coupon code.");
+      return;
+    }
+    setIsValidatingCoupon(true);
+    setCouponError("");
+    setCouponSuccess("");
+    try {
+      const res = await fetch("/api/public/coupons/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: couponInput, basketValue: subtotal })
+      });
+      const data = await res.json();
+      if (res.ok && data.valid) {
+        setDiscountAmount(data.discountAmount);
+        setAppliedCoupon(couponInput.toUpperCase().trim());
+        setCouponSuccess(data.message);
+      } else {
+        setCouponError(data.message || "Invalid or inactive discount coupon.");
+        setDiscountAmount(0);
+        setAppliedCoupon(null);
+      }
+    } catch (err) {
+      console.error(err);
+      setCouponError("Unable to validate coupon on host ledger.");
+    } finally {
+      setIsValidatingCoupon(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setCouponInput("");
+    setDiscountAmount(0);
+    setAppliedCoupon(null);
+    setCouponError("");
+    setCouponSuccess("");
+  };
 
   if (!currentUser) {
     return (
@@ -72,6 +131,15 @@ export default function CheckoutView({ cartItems, currentUser, onNavigate, onCle
   };
 
   const handlePlaceOrder = async () => {
+    if (paymentMethod !== "Cash on Delivery") {
+      setShowRazorpay(true);
+      setRazorpayStage("input");
+      return;
+    }
+    await executeSubmission("Cash on Delivery");
+  };
+
+  const executeSubmission = async (resolvedMethod: string) => {
     setLoading(true);
     setErrorMessage("");
 
@@ -99,7 +167,8 @@ export default function CheckoutView({ cartItems, currentUser, onNavigate, onCle
         body: JSON.stringify({
           items: orderedItems,
           shippingAddress,
-          paymentMethod
+          paymentMethod: resolvedMethod,
+          couponCode: appliedCoupon
         })
       });
 
@@ -116,6 +185,11 @@ export default function CheckoutView({ cartItems, currentUser, onNavigate, onCle
     } finally {
       setLoading(false);
     }
+  };
+
+  const executeRazorpaySuccess = async (billingPayload: string) => {
+    setShowRazorpay(false);
+    await executeSubmission("Razorpay Gateway (" + billingPayload + ")");
   };
 
   return (
@@ -187,7 +261,7 @@ export default function CheckoutView({ cartItems, currentUser, onNavigate, onCle
               <input
                 type="text"
                 required
-                placeholder="Chennai, Bengaluru, etc."
+                placeholder="Hyderabad, Secunderabad, etc."
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
                 className="w-full bg-slate-50 border border-gray-200 p-2.5 rounded-lg text-sm text-gray-800 focus:outline-none focus:border-slate-800"
@@ -199,7 +273,7 @@ export default function CheckoutView({ cartItems, currentUser, onNavigate, onCle
               <input
                 type="text"
                 required
-                placeholder="600001, 560001"
+                placeholder="500117, 500090, etc."
                 value={postalCode}
                 onChange={(e) => setPostalCode(e.target.value)}
                 className="w-full bg-slate-50 border border-gray-200 p-2.5 rounded-lg text-sm text-gray-800 focus:outline-none focus:border-slate-800"
@@ -271,8 +345,8 @@ export default function CheckoutView({ cartItems, currentUser, onNavigate, onCle
               <div className="space-y-1">
                 <span className="text-gray-400 uppercase tracking-widest font-mono block">Billing Code</span>
                 <p className="font-bold text-slate-850">{paymentMethod}</p>
-                <p className="text-[11px] text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-100 inline-block font-mono font-semibold mt-2">
-                  🔒 SECURED CORRESPONDENCE ACTIVE
+                <p className="text-[11px] text-[#0A5C36] bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-100 inline-block font-mono font-semibold mt-2">
+                  🔒 SECURED INDEPENDENT GATEWAY ACTIVE
                 </p>
               </div>
             </div>
@@ -284,29 +358,76 @@ export default function CheckoutView({ cartItems, currentUser, onNavigate, onCle
                 {cartItems.map(item => (
                   <div key={item.product.id} className="flex justify-between items-center py-2.5 text-xs text-slate-700">
                     <span className="truncate max-w-sm font-medium">{item.product.name} (x{item.quantity})</span>
-                    <span className="font-mono font-bold">${(item.product.price * item.quantity).toFixed(2)}</span>
+                    <span className="font-mono font-bold">₹{(item.product.price * item.quantity).toFixed(2)}</span>
                   </div>
                 ))}
               </div>
+            </div>
+
+            {/* Apply Promo Coupon input */}
+            <div className="border-t border-gray-100 pt-4 space-y-3">
+              <span className="text-gray-400 uppercase tracking-widest font-mono text-[10px] block">Apply Promo Coupon</span>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="e.g. JANUZEN10"
+                  value={couponInput}
+                  onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                  disabled={appliedCoupon !== null}
+                  className="bg-slate-50 border border-slate-200 px-3 py-2 rounded-lg text-xs font-mono text-gray-800 uppercase focus:outline-none focus:border-slate-800 flex-1 disabled:opacity-50"
+                />
+                {appliedCoupon ? (
+                  <button
+                    type="button"
+                    onClick={handleRemoveCoupon}
+                    className="bg-red-50 hover:bg-red-100 text-red-600 font-bold font-mono text-[11px] px-3 py-2 rounded-lg cursor-pointer transition-colors"
+                  >
+                    Remove
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleValidateCoupon}
+                    disabled={isValidatingCoupon || !couponInput}
+                    className="bg-[#0f9b8e] hover:bg-[#0c7f74] text-white font-bold font-mono text-[11px] px-4 py-2 rounded-lg cursor-pointer transition-all disabled:opacity-50"
+                  >
+                    {isValidatingCoupon ? "Checking..." : "Apply"}
+                  </button>
+                )}
+              </div>
+              {couponError && <p className="text-[10px] text-red-500 font-mono mt-1">❌ {couponError}</p>}
+              {couponSuccess && <p className="text-[10px] text-emerald-600 font-mono mt-1">✅ {couponSuccess}</p>}
+              {appliedCoupon && !couponError && (
+                <div className="bg-emerald-50 border border-emerald-100 p-2 rounded text-[10px] text-emerald-700 font-mono flex justify-between">
+                  <span>Activated Code:</span>
+                  <span className="font-bold">{appliedCoupon}</span>
+                </div>
+              )}
             </div>
 
             {/* Invoices totals check */}
             <div className="border-t border-gray-100 pt-4 space-y-2 font-mono text-xs text-gray-500">
               <div className="flex justify-between">
                 <span>Total Items value</span>
-                <span>${subtotal.toFixed(2)}</span>
+                <span>₹{subtotal.toFixed(2)}</span>
               </div>
+              {discountAmount > 0 && (
+                <div className="flex justify-between text-emerald-600 font-semibold">
+                  <span>Promo Discount Applied</span>
+                  <span>-₹{discountAmount.toFixed(2)}</span>
+                </div>
+              )}
               <div className="flex justify-between">
-                <span>Regulatory Tax (5%)</span>
-                <span>${tax.toFixed(2)}</span>
+                <span>Regulatory SGST (5%)</span>
+                <span>₹{tax.toFixed(2)}</span>
               </div>
               <div className="flex justify-between border-b border-gray-100 pb-2">
                 <span>Shipping freight value</span>
-                <span>{shipping === 0 ? "FREE" : `$${shipping.toFixed(2)}`}</span>
+                <span>{shipping === 0 ? "FREE" : `₹${shipping.toFixed(2)}`}</span>
               </div>
               <div className="flex justify-between pt-2 text-sm text-[#0D1B2A] font-extrabold font-sans">
                 <span>Adjusted Total Charge</span>
-                <span className="font-mono text-lg font-black text-slate-950">${total.toFixed(2)}</span>
+                <span className="font-mono text-lg font-black text-slate-950">₹{total.toFixed(2)}</span>
               </div>
             </div>
 
@@ -332,7 +453,7 @@ export default function CheckoutView({ cartItems, currentUser, onNavigate, onCle
                   </>
                 ) : (
                   <>
-                    Complete Order & Pay
+                    {paymentMethod === "Cash on Delivery" ? "Complete Order (COD)" : "Pay with Razorpay Secure"}
                     <ArrowRight className="h-4 w-4" />
                   </>
                 )}
@@ -351,7 +472,7 @@ export default function CheckoutView({ cartItems, currentUser, onNavigate, onCle
 
           <div className="space-y-2">
             <h2 className="font-serif text-2xl font-black text-gray-900">Purchase Successfully Booked!</h2>
-            <p className="text-xs text-gray-500 max-w-sm mx-auto leading-relaxed">
+            <p className="text-xs text-gray-500 max-w-sm mx-auto leading-relaxed animate-pulse">
               Order request completed. Your shipment has been lodged inside JANUZEN central courier logistics system.
             </p>
           </div>
@@ -365,13 +486,31 @@ export default function CheckoutView({ cartItems, currentUser, onNavigate, onCle
           </div>
 
           <div className="pt-2 divide-y divide-gray-100 text-xs border-y border-gray-100 text-left space-y-2.5 px-4 font-mono">
+            <div className="flex justify-between items-baseline pt-2.5 font-sans font-bold text-gray-800">
+              <span>Original Basket Value</span>
+              <span>₹{(placedOrder.totals.subtotal || subtotal).toFixed(2)}</span>
+            </div>
+            {placedOrder.totals.discount > 0 && (
+              <div className="flex justify-between items-baseline pt-2.5 text-emerald-600 font-semibold font-sans">
+                <span>Promo Coupon Save</span>
+                <span>-₹{placedOrder.totals.discount.toFixed(2)}</span>
+              </div>
+            )}
             <div className="flex justify-between items-baseline pt-2.5">
-              <span className="text-gray-400">CGST Invoice Total</span>
-              <span className="font-bold text-slate-900">${placedOrder.totals.total.toFixed(2)}</span>
+              <span>GST Tax invoice (5%)</span>
+              <span>₹{(placedOrder.totals.tax || 0).toFixed(2)}</span>
             </div>
             <div className="flex justify-between items-baseline pt-2.5">
-              <span className="text-gray-400">Payment Protocol</span>
-              <span className="font-bold text-slate-900">{placedOrder.paymentMethod}</span>
+              <span>Logistics Freight Duty</span>
+              <span>{(placedOrder.totals.shipping || 0) === 0 ? "FREE" : `₹${(placedOrder.totals.shipping || 0).toFixed(2)}`}</span>
+            </div>
+            <div className="flex justify-between items-baseline pt-2.5 pb-2.5 text-slate-900 font-serif font-black text-sm">
+              <span>Grand Consolidated Sum</span>
+              <span className="font-mono font-black border-b border-double border-slate-700">₹{(placedOrder.totals.total || 0).toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between items-baseline pt-2.5 pb-2.5 text-slate-500">
+              <span>Payment Protocol</span>
+              <span className="font-semibold">{placedOrder.paymentMethod}</span>
             </div>
             <div className="flex justify-between items-baseline pt-2.5 pb-2.5">
               <span className="text-gray-400">Delivery Target ETA</span>
@@ -396,6 +535,206 @@ export default function CheckoutView({ cartItems, currentUser, onNavigate, onCle
             >
               Return to Catalog
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* 💳 INTERACTIVE SIMULATED RAZORPAY GATEWAY OVERLAY MODAL */}
+      {showRazorpay && (
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in font-sans">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-100 flex flex-col shrink-0">
+            {/* Razorpay Banner Header */}
+            <div className="bg-[#0b1b36] text-white p-5 flex justify-between items-center border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="bg-blue-600 h-8 w-8 rounded-lg flex items-center justify-center font-black font-serif italic text-white text-base">
+                  R
+                </div>
+                <div>
+                  <h3 className="font-sans font-black tracking-wide text-xs flex items-center gap-1.5 uppercase text-white">
+                    Razorpay <span className="text-[8px] bg-blue-500/20 px-1.5 py-0.5 rounded text-blue-300 font-mono tracking-widest font-bold">Secure Gateway</span>
+                  </h3>
+                  <p className="text-[10px] text-slate-300 font-mono">Merchant: JANUZEN LLP</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="block text-[8px] uppercase text-slate-400 font-mono font-extrabold tracking-wider">INR Billing Net</span>
+                <span className="block text-sm font-black font-mono text-emerald-400">₹{total.toFixed(2)}</span>
+              </div>
+            </div>
+
+            {/* Stage content */}
+            {razorpayStage === "input" && (
+              <div className="p-5 space-y-4">
+                {/* Method selector */}
+                <span className="text-[10px] font-bold text-gray-400 tracking-wider font-mono uppercase block">Debit Payment Protocol</span>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setRazorpayMethod("card")}
+                    className={`py-2 text-center rounded-lg border text-[11px] font-bold transition-all cursor-pointer flex flex-col items-center gap-1.5 p-1 ${
+                      razorpayMethod === "card"
+                        ? "bg-blue-50/50 border-blue-600 text-blue-700"
+                        : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                    }`}
+                  >
+                    <CreditCard className="h-4 w-4 text-blue-600" />
+                    Debit/Cards
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRazorpayMethod("upi")}
+                    className={`py-2 text-center rounded-lg border text-[11px] font-bold transition-all cursor-pointer flex flex-col items-center gap-1.5 p-1 ${
+                      razorpayMethod === "upi"
+                        ? "bg-blue-50/50 border-blue-600 text-blue-700"
+                        : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                    }`}
+                  >
+                    <ShoppingBag className="h-4 w-4 text-emerald-500" />
+                    UPI / QR Code
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRazorpayMethod("netbanking")}
+                    className={`py-2 text-center rounded-lg border text-[11px] font-bold transition-all cursor-pointer flex flex-col items-center gap-1.5 p-1 ${
+                      razorpayMethod === "netbanking"
+                        ? "bg-blue-50/50 border-blue-600 text-blue-700"
+                        : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                    }`}
+                  >
+                    <ShieldCheck className="h-4 w-4 text-amber-500" />
+                    Netbanking
+                  </button>
+                </div>
+
+                {/* Card input details */}
+                {razorpayMethod === "card" && (
+                  <div className="space-y-3.5 text-xs font-sans">
+                    <div className="space-y-1">
+                      <label className="text-slate-500 font-bold block uppercase tracking-wide text-[9px]">Card Number</label>
+                      <input
+                        type="text"
+                        placeholder="4111 2222 3333 4444"
+                        value={razorpayCardNo}
+                        onChange={(e) => setRazorpayCardNo(e.target.value.replace(/\D/g, "").slice(0, 16))}
+                        className="w-full border border-slate-200 p-2.5 rounded-lg text-sm bg-slate-50 focus:outline-none focus:border-blue-600 font-mono tracking-widest text-slate-800"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 animate-fade-in">
+                      <div className="space-y-1">
+                        <label className="text-slate-500 font-bold block uppercase tracking-wide text-[9px]">Expiry (MM/YY)</label>
+                        <input
+                          type="text"
+                          placeholder="12/28"
+                          value={razorpayExpiry}
+                          onChange={(e) => setRazorpayExpiry(e.target.value.slice(0, 5))}
+                          className="w-full border border-slate-200 p-2.5 rounded-lg text-sm bg-slate-50 focus:outline-none focus:border-blue-600 font-mono text-center text-slate-800"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-slate-500 font-bold block uppercase tracking-wide text-[9px]">CVV Security Code</label>
+                        <input
+                          type="text"
+                          placeholder="123"
+                          value={razorpayCvv}
+                          onChange={(e) => setRazorpayCvv(e.target.value.replace(/\D/g, "").slice(0, 3))}
+                          className="w-full border border-slate-200 p-2.5 rounded-lg text-sm bg-slate-50 focus:outline-none focus:border-blue-600 font-mono text-center text-slate-800"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* UPI details */}
+                {razorpayMethod === "upi" && (
+                  <div className="space-y-2 text-xs font-sans animate-fade-in">
+                    <label className="text-slate-500 font-bold block uppercase tracking-wide text-[9px]">UPI Virtual Payment Address</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. reddyvinuthan@okaxis"
+                      value={razorpayUpiId}
+                      onChange={(e) => setRazorpayUpiId(e.target.value)}
+                      className="w-full border border-slate-200 p-2.5 rounded-lg text-sm bg-slate-50 focus:outline-none focus:border-blue-600 font-mono text-slate-800"
+                    />
+                    <p className="text-[10px] text-slate-400">Securely routing your billing request to your default BHIM Pay, PhonePe, or Google Pay handles.</p>
+                  </div>
+                )}
+
+                {/* Netbanking details */}
+                {razorpayMethod === "netbanking" && (
+                  <div className="space-y-2 text-xs font-sans animate-fade-in">
+                    <label className="text-slate-500 font-bold block uppercase tracking-wide text-[9px]">Select Your Indian Bank Institution</label>
+                    <select
+                      value={razorpayBank}
+                      onChange={(e) => setRazorpayBank(e.target.value)}
+                      className="w-full border border-slate-200 p-2.5 rounded-lg text-sm bg-slate-50 focus:outline-none focus:border-blue-600 text-slate-800 font-bold cursor-pointer"
+                    >
+                      <option value="State Bank of India">State Bank of India (SBI)</option>
+                      <option value="HDFC Bank Limited">HDFC Bank Limited</option>
+                      <option value="ICICI Bank Limited">ICICI Bank Limited</option>
+                      <option value="Axis Bank Limited">Axis Bank Limited</option>
+                      <option value="Andhra Bank">Andhra Bank</option>
+                    </select>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex gap-2.5 pt-3 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setShowRazorpay(false)}
+                    className="flex-1 py-2.5 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 text-xs font-bold cursor-pointer transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRazorpayStage("processing");
+                      setTimeout(() => {
+                        setRazorpayStage("success");
+                        setTimeout(() => {
+                          const payloadString =
+                            razorpayMethod === "card"
+                              ? `Cards (ending in ${razorpayCardNo.slice(-4) || "4111"})`
+                              : razorpayMethod === "upi"
+                              ? `UPI (${razorpayUpiId || "vinuthan@upi"})`
+                              : `Netbanking (${razorpayBank})`;
+                          executeRazorpaySuccess(payloadString);
+                        }, 1200);
+                      }, 2000);
+                    }}
+                    className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-extrabold cursor-pointer shadow-md transition-all uppercase tracking-wide"
+                  >
+                    Resolve ₹{total.toFixed(2)}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {razorpayStage === "processing" && (
+              <div className="p-10 text-center space-y-4">
+                <Loader2 className="h-10 w-10 text-blue-600 animate-spin mx-auto" />
+                <div>
+                  <h4 className="font-bold text-slate-900 text-sm">Validating Handshake Protocol</h4>
+                  <p className="text-[11px] text-slate-400 mt-1">Interacting with Indian bank secure nodal networks...</p>
+                </div>
+              </div>
+            )}
+
+            {razorpayStage === "success" && (
+              <div className="p-10 text-center space-y-4">
+                <div className="h-12 w-12 bg-emerald-50 text-emerald-500 rounded-full border border-emerald-100 flex items-center justify-center mx-auto animate-bounce">
+                  <span className="text-xl">✓</span>
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-slate-900 text-sm">Payment Confirmed Securely!</h4>
+                  <p className="text-[11px] text-emerald-600 font-semibold font-mono bg-emerald-50 inline-block px-2.5 py-0.5 rounded border border-emerald-100 mt-2">
+                    AUTH ID: RZP-{Math.floor(100000 + Math.random() * 900000)}
+                  </p>
+                </div>
+              </div>
+            )}
+
           </div>
         </div>
       )}

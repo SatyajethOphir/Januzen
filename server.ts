@@ -20,7 +20,8 @@ const filterMulter = multer({
 
 async function startServer() {
   const app = express();
-  app.use(express.json());
+  app.use(express.json({ limit: "10mb" }));
+  app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
   // Set up headers for CORS or static
   app.use((req, res, next) => {
@@ -65,7 +66,7 @@ async function startServer() {
 
   // Auth: Register
   app.post("/api/auth/register", async (req, res) => {
-    const { name, email, password, phone, address, role, adminKey } = req.body;
+    const { name, email, password, phone, address, role, adminKey, securityQuestion, securityAnswer, image } = req.body;
     
     if (!name || !email || !password) {
       return res.status(400).json({ error: "Name, email, and password are required fields" });
@@ -95,7 +96,10 @@ async function startServer() {
         email: email.toLowerCase(),
         phone: phone || "",
         address: address || "",
-        role: resolvedRole
+        role: resolvedRole,
+        image: image || "",
+        securityQuestion: securityQuestion || "What was your childhood nickname?",
+        securityAnswer: securityAnswer || "satya"
       };
 
       await dbClient.createUser(newUser, hash);
@@ -167,6 +171,83 @@ async function startServer() {
     } catch (e) {
       console.error(e);
       res.status(500).json({ error: "Internal server error retrieving profile." });
+    }
+  });
+
+  // Auth: Update Profile
+  app.put("/api/auth/profile", authenticateToken, async (req: any, res) => {
+    const { name, phone, address, image, password } = req.body;
+    try {
+      const user = await dbClient.getUserByEmail(req.user.email);
+      if (!user) {
+        return res.status(404).json({ error: "Profile not found." });
+      }
+
+      const updates: Partial<User> = {};
+      if (name) updates.name = name;
+      if (phone !== undefined) updates.phone = phone;
+      if (address !== undefined) updates.address = address;
+      if (image !== undefined) updates.image = image;
+
+      let newPasswordHash: string | undefined;
+      if (password) {
+        const salt = bcrypt.genSaltSync(12);
+        newPasswordHash = bcrypt.hashSync(password, salt);
+      }
+
+      const updatedUser = await dbClient.updateUser(user.id, updates, newPasswordHash);
+      res.json({ message: "Profile updated successfully.", user: updatedUser });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Internal server error updating profile information." });
+    }
+  });
+
+  // Auth: Get Security Question
+  app.get("/api/auth/security-question", async (req, res) => {
+    const { email } = req.query;
+    if (!email) {
+      return res.status(400).json({ error: "Email parameter is required." });
+    }
+    try {
+      const user = await dbClient.getUserByEmail(email as string);
+      if (!user) {
+        return res.status(404).json({ error: "No registered accounts found with this email." });
+      }
+      res.json({ 
+        securityQuestion: user.securityQuestion || "What was your childhood nickname?" 
+      });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Database retrieval error." });
+    }
+  });
+
+  // Auth: Recover/Reset Password
+  app.post("/api/auth/recover-password", async (req, res) => {
+    const { email, securityAnswer, newPassword } = req.body;
+    if (!email || !securityAnswer || !newPassword) {
+      return res.status(400).json({ error: "Email, security answer, and new password are required." });
+    }
+    try {
+      const user = await dbClient.getUserByEmail(email);
+      if (!user) {
+        return res.status(404).json({ error: "Incorrect credentials or account not found." });
+      }
+      if (!user.securityAnswer || user.securityAnswer.toLowerCase().trim() !== securityAnswer.toLowerCase().trim()) {
+        return res.status(400).json({ error: "Incorrect answer to security question." });
+      }
+      
+      const salt = bcrypt.genSaltSync(12);
+      const hash = bcrypt.hashSync(newPassword, salt);
+      await dbClient.resetUserPassword(email, hash);
+      
+      console.log(`[EMAIL DISPATCH] TO: ${email} | SUBJECT: JANUZEN Account Password Reset | CONTENT: Your account password has been successfully reset. If this was not you, please contact client support.`);
+
+      res.json({ message: "Password has been successfully recovered and updated." });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Internal error resetting password." });
     }
   });
 
@@ -400,7 +481,7 @@ async function startServer() {
 
   // Order Placement
   app.post("/api/orders", authenticateToken, async (req: any, res) => {
-    const { items, shippingAddress, paymentMethod } = req.body;
+    const { items, shippingAddress, paymentMethod, couponCode } = req.body;
 
     if (!items || !items.length || !shippingAddress) {
       return res.status(400).json({ error: "Empty shopping basket or shipping forms missing." });
@@ -434,10 +515,28 @@ async function startServer() {
         });
       }
 
+      // Compute Coupon discount
+      let discount = 0;
+      if (couponCode) {
+        const coupons = await dbClient.getCoupons();
+        const matched = coupons.find(c => c.code.toUpperCase() === couponCode.trim().toUpperCase() && c.isActive);
+        if (matched) {
+          if (subtotal >= matched.minBasketValue) {
+            if (matched.discountType === "percentage") {
+              discount = Math.round((subtotal * (matched.discountValue / 100)) * 100) / 100;
+            } else {
+              discount = Math.min(subtotal, matched.discountValue);
+            }
+          }
+        }
+      }
+
+      const postDiscountSubtotal = Math.max(0, subtotal - discount);
+
       // Taxes & Deliver pricing calculations
-      const tax = Math.round((subtotal * 0.05) * 100) / 100; // 5% tax scale
-      const shipping = subtotal > 35 ? 0 : 4.99; // Free shipping on baskets over $35
-      const total = Math.round((subtotal + tax + shipping) * 100) / 100;
+      const tax = Math.round((postDiscountSubtotal * 0.05) * 100) / 100; // 5% GST scale in India
+      const shipping = subtotal >= 1000 ? 0 : 150; // Free shipping above ₹1000, else ₹150
+      const total = Math.round((postDiscountSubtotal + tax + shipping) * 100) / 100;
 
       // Formatting date
       const today = new Date();
@@ -447,7 +546,7 @@ async function startServer() {
       const randCode = Math.floor(1000 + Math.random() * 9000);
       const orderIdCode = `JAN-${yyyy}${mm}${dd}-${randCode}`;
 
-      const newOrder: Order = {
+      const newOrder: any = {
         id: "o_" + Date.now(),
         orderId: orderIdCode,
         userId: req.user.id,
@@ -457,6 +556,7 @@ async function startServer() {
         shippingAddress,
         totals: {
           subtotal,
+          discount,
           shipping,
           tax,
           total
@@ -469,7 +569,7 @@ async function startServer() {
       await dbClient.createOrder(newOrder);
 
       // Nodemailer Simulator Console Logging
-      console.log(`[EMAIL DISPATCH] TO: ${req.user.email} | SUBJECT: JANUZEN Order Confirmed | CONTENT: Rest easy, your purchase ${orderIdCode} has been placed. Deep thank you for supporting Nuthan Medicals & JA Stationery! Grand Total: $${total}`);
+      console.log(`[EMAIL DISPATCH] TO: ${req.user.email} | SUBJECT: JANUZEN Order Confirmed | CONTENT: Rest easy, your purchase ${orderIdCode} has been placed. Deep thank you for supporting Nuthan Medicals & JA Stationery! Grand Total: ₹${total}`);
 
       res.status(201).json({
         message: "Order placed successfully!",
@@ -649,6 +749,266 @@ async function startServer() {
     } catch (e) {
       console.error(e);
       res.status(500).json({ error: "Internal server error listing users." });
+    }
+  });
+
+  // Admin delete a customer with all their corresponding storage
+  app.delete("/api/admin/users/:id", authenticateAdmin, async (req, res) => {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ error: "User ID is required." });
+    }
+    try {
+      const users = await dbClient.getUsers();
+      const targetUser = users.find(u => u.id === id);
+      if (!targetUser) {
+        return res.status(404).json({ error: "User profile not found." });
+      }
+      if (targetUser.role === "admin") {
+        return res.status(403).json({ error: "Cannot delete an administrator account." });
+      }
+
+      const success = await dbClient.deleteUserWithData(id);
+      if (!success) {
+        return res.status(404).json({ error: "User not found or deletion failed." });
+      }
+      res.json({ message: "User profile, associated orders, reviews, and notifications permanently purged to save space." });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Internal server error occurred when removing user." });
+    }
+  });
+
+  // Fetch notifications for the authenticated user
+  app.get("/api/notifications", authenticateToken, async (req: any, res) => {
+    try {
+      const list = await dbClient.getNotifications(req.user.id);
+      res.json({ notifications: list });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Internal server error retrieving notifications." });
+    }
+  });
+
+  // Mark specific notification as read
+  app.put("/api/notifications/:id/read", authenticateToken, async (req: any, res) => {
+    try {
+      const success = await dbClient.markNotificationRead(req.params.id);
+      if (!success) {
+        return res.status(404).json({ error: "Notification not found or update failed." });
+      }
+      res.json({ message: "Notification marked read." });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Internal server error." });
+    }
+  });
+
+  // Admin broadcast notification to all customers, automatically customized with the customer's name
+  app.post("/api/admin/notifications/broadcast", authenticateAdmin, async (req, res) => {
+    const { matter, title } = req.body;
+    if (!matter) {
+      return res.status(400).json({ error: "Notification body matter is required." });
+    }
+    try {
+      const users = await dbClient.getUsers();
+      const customers = users.filter(u => u.role === "customer" || u.role === undefined);
+      const titleText = title || "Urgent Store Announcement";
+
+      for (const customer of customers) {
+        const content = `Dear ${customer.name},\n\n${matter}`;
+        const notif = {
+          id: "notif_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7),
+          userId: customer.id,
+          title: titleText,
+          content,
+          isRead: false,
+          createdAt: new Date().toISOString()
+        };
+        await dbClient.createNotification(notif);
+      }
+
+      res.status(201).json({
+        message: `Dynamic dispatch broadcast completed! Sent personalized alerts addressing ${customers.length} customer names.`,
+        count: customers.length
+      });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Internal server error broadcasting alerts." });
+    }
+  });
+
+  // Fetch reviews for a product
+  app.get("/api/products/:productId/reviews", async (req, res) => {
+    try {
+      const list = await dbClient.getReviews(req.params.productId);
+      res.json({ reviews: list });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Internal server error retrieving reviews." });
+    }
+  });
+
+  // Submit a review for a product
+  app.post("/api/products/:productId/reviews", authenticateToken, async (req: any, res) => {
+    const { rating, comment } = req.body;
+    const { productId } = req.params;
+    if (!rating || !comment) {
+      return res.status(400).json({ error: "Rating and review comment text are required." });
+    }
+    const ratingNum = parseInt(rating);
+    if (isNaN(ratingNum) || ratingNum < 1 || ratingNum > 5) {
+      return res.status(400).json({ error: "Rating must be an integer between 1 and 5." });
+    }
+    try {
+      const fullUser = await dbClient.getUserByEmail(req.user.email);
+      const review = {
+        id: "rev_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7),
+        productId,
+        userId: req.user.id,
+        userName: fullUser?.name || req.user.email,
+        userImage: fullUser?.image || "",
+        rating: ratingNum,
+        comment,
+        createdAt: new Date().toISOString()
+      };
+      const created = await dbClient.createReview(review);
+      res.status(201).json({ message: "Review submitted successfully!", review: created });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Internal server error posting review." });
+    }
+  });
+
+  // --- MARQUEE TEXT ENDPOINTS ---
+  app.get("/api/public/marquee", async (req, res) => {
+    try {
+      const text = await dbClient.getMarquee();
+      res.json({ marquee: text });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Failed to fetch marquee text." });
+    }
+  });
+
+  app.put("/api/admin/marquee", authenticateAdmin, async (req, res) => {
+    const { text } = req.body;
+    if (text === undefined) {
+      return res.status(400).json({ error: "Marquee text missing from payload." });
+    }
+    try {
+      const updated = await dbClient.updateMarquee(text);
+      res.json({ message: "Marquee content updated successfully", marquee: updated });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Failed to update marquee text." });
+    }
+  });
+
+  // --- COUPON ENDPOINTS ---
+  app.get("/api/admin/coupons", authenticateAdmin, async (req, res) => {
+    try {
+      const coupons = await dbClient.getCoupons();
+      res.json({ coupons });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Failed to fetch coupons list." });
+    }
+  });
+
+  // Public/Customer active list for reference (only active ones)
+  app.get("/api/public/coupons", async (req, res) => {
+    try {
+      const coupons = await dbClient.getCoupons();
+      res.json({ coupons: coupons.filter(c => c.isActive) });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Failed to fetch active coupons." });
+    }
+  });
+
+  app.post("/api/admin/coupons", authenticateAdmin, async (req, res) => {
+    const { code, discountType, discountValue, minBasketValue } = req.body;
+    if (!code || !discountType || discountValue === undefined) {
+      return res.status(400).json({ error: "Missing required coupon fields (code, discountType, discountValue)." });
+    }
+    try {
+      const newCoupon = {
+        id: "c_" + Date.now(),
+        code: code.toUpperCase().trim(),
+        discountType: discountType as "percentage" | "fixed",
+        discountValue: parseFloat(discountValue),
+        minBasketValue: minBasketValue ? parseFloat(minBasketValue) : 0,
+        isActive: true
+      };
+      const created = await dbClient.createCoupon(newCoupon);
+      res.status(201).json({ message: "Coupon created successfully", coupon: created });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Failed to create new coupon." });
+    }
+  });
+
+  app.put("/api/admin/coupons/:id", authenticateAdmin, async (req, res) => {
+    try {
+      const updated = await dbClient.updateCoupon(req.params.id, req.body);
+      if (!updated) {
+        return res.status(404).json({ error: "Coupon not found" });
+      }
+      res.json({ message: "Coupon updated successfully", coupon: updated });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Failed to update coupon." });
+    }
+  });
+
+  app.delete("/api/admin/coupons/:id", authenticateAdmin, async (req, res) => {
+    try {
+      const success = await dbClient.deleteCoupon(req.params.id);
+      if (!success) {
+        return res.status(404).json({ error: "Coupon not found" });
+      }
+      res.json({ message: "Coupon eliminated successfully" });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Failed to delete coupon." });
+    }
+  });
+
+  app.post("/api/public/coupons/validate", async (req, res) => {
+    const { code, basketValue } = req.body;
+    if (!code) {
+      return res.status(400).json({ error: "Coupon code is required for validation." });
+    }
+    try {
+      const coupons = await dbClient.getCoupons();
+      const match = coupons.find(c => c.code.toUpperCase() === code.toUpperCase().trim() && c.isActive);
+      if (!match) {
+        return res.status(404).json({ valid: false, message: "Invalid or inactive coupon code." });
+      }
+      const val = parseFloat(basketValue || "0");
+      if (val < match.minBasketValue) {
+        return res.status(400).json({
+          valid: false,
+          message: `Minimum basket value of ₹${match.minBasketValue} is required to use this coupon.`
+        });
+      }
+      let discountAmount = 0;
+      if (match.discountType === "percentage") {
+        discountAmount = Math.round((val * (match.discountValue / 100)) * 100) / 100;
+      } else {
+        discountAmount = Math.min(val, match.discountValue);
+      }
+      res.json({
+        valid: true,
+        discountAmount,
+        discountType: match.discountType,
+        discountValue: match.discountValue,
+        message: `Success! Coupon applied. You save ₹${discountAmount}.`
+      });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Coupon validation execution error." });
     }
   });
 

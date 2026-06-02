@@ -1,4 +1,5 @@
 import React from "react";
+import { gsap } from "gsap";
 import Navbar from "./components/Navbar";
 import HomeView from "./components/HomeView";
 import ShopView from "./components/ShopView";
@@ -10,10 +11,11 @@ import ContactView from "./components/ContactView";
 import LoginView from "./components/LoginView";
 import AdminDashboardView from "./components/AdminDashboardView";
 import OrdersHistoryView from "./components/OrdersHistoryView";
+import ProfileView from "./components/ProfileView";
 import { Product, User } from "./types";
 
 interface NavState {
-  page: "home" | "medicals" | "stationery" | "product-detail" | "cart" | "checkout" | "about" | "contact" | "login" | "admin" | "orders";
+  page: "home" | "medicals" | "stationery" | "product-detail" | "cart" | "checkout" | "about" | "contact" | "login" | "admin" | "orders" | "profile";
   params: Record<string, any>;
 }
 
@@ -23,6 +25,27 @@ export default function App() {
   const [cart, setCart] = React.useState<CartItem[]>([]);
   const [featuredProducts, setFeaturedProducts] = React.useState<Product[]>([]);
   const [toast, setToast] = React.useState<string | null>(null);
+  
+  // Theme state: light, dark, emerald (clinical), amber (stationery), device
+  const [theme, setTheme] = React.useState<"light" | "dark" | "emerald" | "amber" | "device">(() => {
+    return (localStorage.getItem("januzen_theme") as any) || "light";
+  });
+
+  const [resolvedTheme, setResolvedTheme] = React.useState<"light" | "dark" | "emerald" | "amber">("light");
+
+  React.useEffect(() => {
+    if (theme === "device") {
+      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+      const handleChange = () => {
+        setResolvedTheme(mediaQuery.matches ? "dark" : "light");
+      };
+      handleChange();
+      mediaQuery.addEventListener("change", handleChange);
+      return () => mediaQuery.removeEventListener("change", handleChange);
+    } else {
+      setResolvedTheme(theme);
+    }
+  }, [theme]);
 
   // Load User auth token on mount
   React.useEffect(() => {
@@ -63,9 +86,23 @@ export default function App() {
     loadFeatured();
   }, [nav.page]); // Refresh values on navigate tabs to capture additions
 
+  // GSAP View Change Transition
+  React.useEffect(() => {
+    gsap.fromTo(
+      ".gsap-page-container",
+      { opacity: 0, y: 15 },
+      { opacity: 1, y: 0, duration: 0.5, ease: "power2.out", clearProps: "all" }
+    );
+  }, [nav.page]);
+
   const handleNavigate = (pageName: string, params: Record<string, any> = {}) => {
     setNav({ page: pageName as any, params });
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleThemeChange = (newTheme: "light" | "dark" | "emerald" | "amber" | "device") => {
+    setTheme(newTheme);
+    localStorage.setItem("januzen_theme", newTheme);
   };
 
   const showToastMsg = (msg: string) => {
@@ -144,7 +181,7 @@ export default function App() {
   const cartTotalCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F3F4F6] text-gray-900 w-full">
+    <div className={`min-h-screen flex flex-col mode-${resolvedTheme} transition-colors duration-300 w-full`}>
       {/* 🌟 Header Menu */}
       <Navbar
         currentView={nav.page}
@@ -152,10 +189,12 @@ export default function App() {
         currentUser={currentUser}
         onLogout={handleLogout}
         cartCount={cartTotalCount}
+        theme={theme}
+        onThemeChange={handleThemeChange}
       />
 
       {/* Main visual view renders */}
-      <main className="flex-grow">
+      <main className="flex-grow gsap-page-container">
         {nav.page === "home" && (
           <HomeView
             onNavigate={handleNavigate}
@@ -219,6 +258,14 @@ export default function App() {
         )}
 
         {nav.page === "admin" && <AdminDashboardView />}
+        
+        {nav.page === "profile" && (
+          <ProfileView
+            currentUser={currentUser}
+            onNavigate={handleNavigate}
+            onUpdateCurrentUser={(updatedUser) => setCurrentUser(updatedUser)}
+          />
+        )}
 
         {nav.page === "orders" && (
           <OrdersHistoryView

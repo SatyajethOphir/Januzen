@@ -229,7 +229,7 @@ export default function OrdersHistoryView({ onNavigate, currentUser }: OrdersHis
                           />
                           <div className="flex-grow space-y-1">
                             <h4 className="font-serif text-sm font-bold text-gray-900 leading-snug">{item.name}</h4>
-                            <div className="flex items-center gap-2 text-[10px] font-mono">
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-mono">
                               <span className={`px-2 py-0.5 rounded uppercase font-bold text-[9px] ${
                                 item.shop === "medicals" ? "bg-teal-50 text-teal-800 border border-teal-200" : "bg-slate-100 text-gray-700"
                               }`}>
@@ -238,12 +238,12 @@ export default function OrdersHistoryView({ onNavigate, currentUser }: OrdersHis
                               <span className="text-gray-300">•</span>
                               <span className="text-gray-500">Qty: {item.quantity}</span>
                               <span className="text-gray-300">•</span>
-                              <span className="text-gray-500">${item.price.toFixed(2)} each</span>
+                              <span className="text-gray-500">₹{item.price.toFixed(2)} each</span>
                             </div>
                           </div>
                           <div className="text-right pl-2">
                             <p className="font-mono text-xs font-bold text-gray-950">
-                              ${(item.price * item.quantity).toFixed(2)}
+                              ₹{(item.price * item.quantity).toFixed(2)}
                             </p>
                           </div>
                         </div>
@@ -307,22 +307,22 @@ export default function OrdersHistoryView({ onNavigate, currentUser }: OrdersHis
                       <div className="space-y-1.5 text-xs font-mono">
                         <div className="flex justify-between text-gray-500">
                           <span>Subtotal:</span>
-                          <span>${(order.totals?.subtotal || 0).toFixed(2)}</span>
+                          <span>₹{(order.totals?.subtotal || 0).toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between text-gray-500">
                           <span>Shipping:</span>
                           <span>
-                            {order.totals?.shipping === 0 ? "FREE" : `$${(order.totals?.shipping || 0).toFixed(2)}`}
+                            {order.totals?.shipping === 0 ? "FREE" : `₹${(order.totals?.shipping || 0).toFixed(2)}`}
                           </span>
                         </div>
                         <div className="flex justify-between text-gray-500">
                           <span>Surcharge Tax (5%):</span>
-                          <span>${(order.totals?.tax || 0).toFixed(2)}</span>
+                          <span>₹{(order.totals?.tax || 0).toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between text-[#0D1B2A] font-bold text-sm border-t border-dashed border-gray-200 pt-2 mt-1 font-sans">
                           <span>Grand Total Due:</span>
                           <span className="font-mono text-base font-black text-[#0D1B2A]">
-                            ${(order.totals?.total || 0).toFixed(2)}
+                            ₹{(order.totals?.total || 0).toFixed(2)}
                           </span>
                         </div>
                       </div>

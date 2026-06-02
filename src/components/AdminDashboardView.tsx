@@ -7,7 +7,7 @@ import {
 import { Product, Order, Message, User } from "../types";
 
 export default function AdminDashboardView() {
-  const [activeTab, setActiveTab] = React.useState<"stats" | "products" | "orders" | "messages" | "users">("stats");
+  const [activeTab, setActiveTab] = React.useState<"stats" | "products" | "orders" | "messages" | "users" | "coupons" | "marquee">("stats");
   const [token, setToken] = React.useState<string | null>(null);
 
   // States
@@ -17,6 +17,22 @@ export default function AdminDashboardView() {
   const [messages, setMessages] = React.useState<Message[]>([]);
   const [users, setUsers] = React.useState<User[]>([]);
   const [loading, setLoading] = React.useState(true);
+
+  // Coupon and Marquee states
+  const [coupons, setCoupons] = React.useState<any[]>([]);
+  const [marqueeText, setMarqueeText] = React.useState("");
+  const [marqueeSavedMsg, setMarqueeSavedMsg] = React.useState("");
+
+  // Coupon Form state
+  const [newCouponCode, setNewCouponCode] = React.useState("");
+  const [newCouponType, setNewCouponType] = React.useState<"percentage" | "fixed">("percentage");
+  const [newCouponValue, setNewCouponValue] = React.useState("");
+  const [newMinBasketValue, setNewMinBasketValue] = React.useState("");
+
+  // Broadcast Notification Form State
+  const [broadcastTitle, setBroadcastTitle] = React.useState("");
+  const [broadcastMatter, setBroadcastMatter] = React.useState("");
+  const [broadcastStatus, setBroadcastStatus] = React.useState("");
 
   // Product Inventory Search & Filter state
   const [prodSearch, setProdSearch] = React.useState("");
@@ -72,6 +88,19 @@ export default function AdminDashboardView() {
       const userRes = await fetch("/api/admin/users", { headers });
       if (userRes.ok) {
         setUsers(await userRes.json());
+      }
+
+      // Load coupons
+      const couponsRes = await fetch("/api/admin/coupons", { headers });
+      if (couponsRes.ok) {
+        setCoupons(await couponsRes.json());
+      }
+
+      // Load marquee text
+      const marqueeRes = await fetch("/api/public/marquee");
+      if (marqueeRes.ok) {
+        const marqueeData = await marqueeRes.json();
+        setMarqueeText(marqueeData.text || "");
       }
 
     } catch (err) {
@@ -268,6 +297,142 @@ export default function AdminDashboardView() {
     }
   };
 
+  const handleCreateCoupon = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCouponCode || !newCouponValue) {
+      alert("Please fill in both Code and Value fields.");
+      return;
+    }
+    try {
+      const res = await fetch("/api/admin/coupons", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          code: newCouponCode.toUpperCase().trim(),
+          discountType: newCouponType,
+          discountValue: Number(newCouponValue),
+          minBasketValue: Number(newMinBasketValue || 0),
+          isActive: true
+        })
+      });
+      if (res.ok) {
+        setNewCouponCode("");
+        setNewCouponValue("");
+        setNewMinBasketValue("");
+        fetchAllData(token);
+      } else {
+        const errorData = await res.json();
+        alert(errorData.error || "Failed to create new promotional coupon.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Netsync issues adding coupon.");
+    }
+  };
+
+  const handleDeleteCoupon = async (cid: string) => {
+    if (!confirm("Are you sure you want to delete this coupon code register entry?")) return;
+    try {
+      const res = await fetch(`/api/admin/coupons/${cid}`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      if (res.ok) {
+        fetchAllData(token);
+      } else {
+        alert("Failed to delete coupon.");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleSaveMarqueeText = async () => {
+    try {
+      const res = await fetch("/api/admin/marquee", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ text: marqueeText })
+      });
+      if (res.ok) {
+        setMarqueeSavedMsg("Marquee statement successfully published and saved!");
+        setTimeout(() => setMarqueeSavedMsg(""), 3000);
+      } else {
+        alert("Failed to update marquee text.");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleBroadcastNotification = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!broadcastMatter) {
+      alert("Please specify the notification main matter.");
+      return;
+    }
+    setBroadcastStatus("dispatching");
+    try {
+      const res = await fetch("/api/admin/notifications/broadcast", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          title: broadcastTitle.trim() || undefined,
+          matter: broadcastMatter.trim()
+        })
+      });
+      if (res.ok) {
+        setBroadcastTitle("");
+        setBroadcastMatter("");
+        setBroadcastStatus("success");
+        setTimeout(() => setBroadcastStatus(""), 4000);
+        fetchAllData(token);
+      } else {
+        const errData = await res.json();
+        alert(errData.error || "Failed to broadcast notifications.");
+        setBroadcastStatus("failed");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Network exception occurred sending notifications broadcast.");
+      setBroadcastStatus("failed");
+    }
+  };
+
+  const handleDeleteUser = async (userId: string, userName: string) => {
+    if (!confirm(`Are you absolutely sure you want to permanently delete the customer "${userName}"?\n\nThis will purge their user record, associated orders, reviews, and notification history from the database to maximize database space.`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/admin/users/${userId}`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      if (res.ok) {
+        fetchAllData(token);
+      } else {
+        const errData = await res.json();
+        alert(errData.error || "Failed to delete user profile.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Network error trying to purge customer records.");
+    }
+  };
+
   // Filter products locally for table rendering
   const filteredProducts = products.filter(p => {
     const textMatch = p.name.toLowerCase().includes(prodSearch.toLowerCase()) || p.category.toLowerCase().includes(prodSearch.toLowerCase());
@@ -290,17 +455,17 @@ export default function AdminDashboardView() {
         
         {/* Rapid selectors menu */}
         <div className="flex flex-wrap gap-1 bg-slate-100 p-1 rounded-xl">
-          {(["stats", "products", "orders", "messages", "users"] as const).map((tab) => (
+          {(["stats", "products", "orders", "messages", "users", "coupons", "marquee"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all capitalize cursor-pointer ${
+              className={`px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all capitalize cursor-pointer ${
                 activeTab === tab 
                   ? "bg-[#0D1B2A] text-white shadow-sm" 
                   : "text-gray-500 hover:text-black hover:bg-white/50"
               }`}
             >
-              {tab}
+              {tab === "stats" ? "Analytics Stats" : tab === "marquee" ? "Edit Marquee" : tab}
             </button>
           ))}
         </div>
@@ -327,7 +492,7 @@ export default function AdminDashboardView() {
                 <div className="bg-white border border-gray-200/80 p-5 rounded-2xl shadow-sm text-center">
                   <TrendingUp className="h-6 w-6 text-emerald-600 mx-auto mb-2" />
                   <span className="text-[10px] text-gray-400 font-mono uppercase font-bold block">Gross Revenue</span>
-                  <span className="font-serif text-3xl font-black text-[#0D1B2A] block mt-1">${stats.metrics.revenue.toFixed(2)}</span>
+                  <span className="font-serif text-3xl font-black text-[#0D1B2A] block mt-1">₹{stats.metrics.revenue.toFixed(2)}</span>
                 </div>
                 <div className="bg-white border border-gray-200/80 p-5 rounded-2xl shadow-sm text-center">
                   <Users className="h-6 w-6 text-[#D4820A] mx-auto mb-2" />
@@ -389,7 +554,7 @@ export default function AdminDashboardView() {
                           <span className="text-gray-400 font-mono text-[10px] block">{o.userName} • {o.items.length} positions</span>
                         </div>
                         <div className="text-right">
-                          <span className="font-mono font-extrabold text-[#0D1B2A] block">${o.totals.total.toFixed(2)}</span>
+                          <span className="font-mono font-extrabold text-[#0D1B2A] block">₹{o.totals.total.toFixed(2)}</span>
                           <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
                             o.status === "Delivered" ? "bg-emerald-50 text-emerald-800 border border-emerald-250" : "bg-blue-50 text-blue-800 border border-blue-200"
                           }`}>
@@ -480,7 +645,7 @@ export default function AdminDashboardView() {
                           </td>
 
                           <td className="p-4 text-slate-600 font-medium">{p.category}</td>
-                          <td className="p-4 font-mono font-bold">${p.price.toFixed(2)}</td>
+                          <td className="p-4 font-mono font-bold font-bold">₹{p.price.toFixed(2)}</td>
                           <td className="p-4 text-center font-mono font-bold">
                             <span className={p.stock < 5 ? "text-orange-600 animate-pulse bg-orange-50 px-2 py-0.5 rounded border border-orange-200" : "text-gray-950"}>
                               {p.stock} qty
@@ -559,7 +724,7 @@ export default function AdminDashboardView() {
                       {/* Right-Center: Pricing and Destination */}
                       <div className="space-y-1 sm:col-span-1 leading-relaxed">
                         <span className="text-[10px] font-bold text-gray-400">BILLING & ADDRESS</span>
-                        <p className="font-bold text-slate-850">Total Bill: ${o.totals.total.toFixed(2)}</p>
+                        <p className="font-bold text-slate-850">Total Bill: ₹{o.totals.total.toFixed(2)}</p>
                         <p className="text-gray-500 font-sans text-[11px] mt-1 pr-2">
                           Address: {o.shippingAddress.addressLine}, {o.shippingAddress.city} - {o.shippingAddress.postalCode}
                         </p>
@@ -658,25 +823,272 @@ export default function AdminDashboardView() {
 
           {/* TAB 5: REGISTERED USERS LIST */}
           {activeTab === "users" && (
-            <div className="bg-white border border-gray-150 rounded-2xl p-6 shadow-sm space-y-4">
-              <h2 className="font-serif text-lg font-bold text-[#0D1B2A] border-b border-gray-100 pb-3">Central User Directory ledger</h2>
-              <div className="divide-y divide-gray-100 max-h-96 overflow-y-auto">
-                {users.map((u) => (
-                  <div key={u.id} className="py-3 flex justify-between items-center text-xs font-mono">
-                    <div>
-                      <span className="font-bold text-[#0D1B2A] block">{u.name}</span>
-                      <span className="text-gray-400 font-mono text-[10px] block">{u.email} • {u.phone || "No phone"}</span>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 border-b-0">
+              {/* Left Column: Broadcast Notification Form */}
+              <div className="lg:col-span-1 bg-white border border-gray-150 rounded-2xl p-6 shadow-sm space-y-4 h-fit">
+                <h3 className="font-serif text-base font-bold text-[#0D1B2A] border-b border-gray-100 pb-2">
+                  Unified Broadcast Center
+                </h3>
+                <p className="text-[11px] text-gray-500 leading-relaxed font-sans">
+                  Send a dynamic broadcast alert to all registered customers simultaneously. The system automatically prefixes each individual alert with the customer's full name to personalize the announcement.
+                </p>
+                <form onSubmit={handleBroadcastNotification} className="space-y-4 text-xs font-mono">
+                  <div className="space-y-1">
+                    <label className="text-gray-400 uppercase font-bold tracking-widest block">Broadcast Subject Title</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Special Discount Voucher for You!"
+                      value={broadcastTitle}
+                      onChange={(e) => setBroadcastTitle(e.target.value)}
+                      className="w-full bg-slate-50 border border-gray-200 p-2.5 rounded-lg text-sm text-gray-800 focus:outline-none focus:border-slate-850"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-gray-400 uppercase font-bold tracking-widest block">Message Matter</label>
+                    <textarea
+                      required
+                      placeholder="Describe the matter of your broadcast... (e.g. We have stocked amoxicillin tablets, use code FIRST50 for immediate benefits!)"
+                      rows={4}
+                      value={broadcastMatter}
+                      onChange={(e) => setBroadcastMatter(e.target.value)}
+                      className="w-full bg-slate-50 border border-gray-200 p-2.5 rounded-lg text-sm text-gray-850 focus:outline-none focus:border-slate-850"
+                    />
+                  </div>
+
+                  {broadcastStatus === "dispatching" && (
+                    <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded-lg font-sans">
+                      🚀 Dynamically stamping customers names & dispatching alerts...
                     </div>
-                    <div className="text-right">
-                      <span className={`text-[10px] uppercase font-mono font-bold px-2 py-0.5 rounded ${
-                        u.role === "admin" ? "bg-amber-500 text-white border border-amber-600" : "bg-slate-100 text-slate-800"
-                      }`}>
-                        {u.role}
-                      </span>
-                      {u.address && <p className="text-[9px] text-gray-400 font-sans mt-0.5">{u.address}</p>}
+                  )}
+
+                  {broadcastStatus === "success" && (
+                    <div className="text-xs text-emerald-600 bg-emerald-50 p-2 rounded-lg font-sans">
+                      ✓ Broadcast successfully delivered to all active customer stores!
+                    </div>
+                  )}
+
+                  {broadcastStatus === "failed" && (
+                    <div className="text-xs text-red-600 bg-red-50 p-2 rounded-lg font-sans">
+                      ✗ Broadcast transmission failed. Please retry.
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={broadcastStatus === "dispatching"}
+                    className="w-full bg-[#0D1B2A] hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider py-3 rounded-lg shadow-sm transition-all cursor-pointer"
+                  >
+                    Broadcast to All Customers
+                  </button>
+                </form>
+              </div>
+
+              {/* Right Column: User Directory */}
+              <div className="lg:col-span-2 bg-white border border-gray-150 rounded-2xl p-6 shadow-sm space-y-4">
+                <h3 className="font-serif text-lg font-bold text-[#0D1B2A] border-b border-gray-100 pb-2">
+                  Central User Directory Ledger
+                </h3>
+                <div className="divide-y divide-gray-100 max-h-[500px] overflow-y-auto">
+                  {users.map((u) => (
+                    <div key={u.id} className="py-3 flex justify-between items-center text-xs font-mono">
+                      <div className="space-y-0.5">
+                        <span className="font-bold text-[#0D1B2A] block text-sm">{u.name}</span>
+                        <span className="text-gray-400 font-mono text-[10px] block">{u.email} • {u.phone || "No phone"}</span>
+                        {u.address && <p className="text-[10px] text-gray-500 font-sans">{u.address}</p>}
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0 ml-4">
+                        <span className={`text-[9px] uppercase font-mono font-bold px-2 py-0.5 rounded-md ${
+                          u.role === "admin" ? "bg-amber-500 text-white border border-amber-600" : "bg-slate-100 text-slate-800"
+                        }`}>
+                          {u.role || "customer"}
+                        </span>
+                        {u.role !== "admin" && (
+                          <button
+                            onClick={() => handleDeleteUser(u.id, u.name)}
+                            className="p-1 px-2 border border-red-200 text-red-500 hover:bg-red-50 hover:text-red-600 rounded-lg cursor-pointer transition-colors"
+                            title="Delete user and all corresponding data (space-efficient)"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 6: NEW COUPONS MANAGER */}
+          {activeTab === "coupons" && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Left Column: Create Coupon Form */}
+              <div className="lg:col-span-1 bg-white border border-gray-150 rounded-2xl p-6 shadow-sm space-y-4 h-fit">
+                <h3 className="font-serif text-lg font-bold text-[#0D1B2A] border-b border-gray-100 pb-2">
+                  Generate Code Profile
+                </h3>
+                <form onSubmit={handleCreateCoupon} className="space-y-4 text-xs font-mono">
+                  <div className="space-y-1">
+                    <label className="text-gray-400 uppercase font-bold tracking-widest block">Coupon Code</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. INAUGURAL50"
+                      value={newCouponCode}
+                      onChange={(e) => setNewCouponCode(e.target.value)}
+                      className="w-full bg-slate-50 border border-gray-200 p-2.5 rounded-lg text-sm text-gray-800 uppercase focus:outline-none focus:border-slate-850"
+                    />
+                  </div>
+
+                  <div className="space-y-1 block">
+                    <label className="text-gray-400 uppercase font-bold tracking-widest block">Discount Type</label>
+                    <div className="grid grid-cols-2 gap-2 mt-1">
+                      <button
+                        type="button"
+                        onClick={() => setNewCouponType("percentage")}
+                        className={`p-2 rounded-lg text-xs font-bold border transition-all ${
+                          newCouponType === "percentage"
+                            ? "bg-[#0D1B2A] text-white border-[#0D1B2A]"
+                            : "bg-slate-50 border-gray-200 text-gray-700 hover:bg-slate-100"
+                        }`}
+                      >
+                        Percentage (%)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setNewCouponType("fixed")}
+                        className={`p-2 rounded-lg text-xs font-bold border transition-all ${
+                          newCouponType === "fixed"
+                            ? "bg-[#0D1B2A] text-white border-[#0D1B2A]"
+                            : "bg-slate-50 border-gray-200 text-gray-700 hover:bg-slate-100"
+                        }`}
+                      >
+                        Fixed Amount (₹)
+                      </button>
                     </div>
                   </div>
-                ))}
+
+                  <div className="space-y-1">
+                    <label className="text-gray-400 uppercase font-bold tracking-widest block">
+                      {newCouponType === "percentage" ? "Discount Percentage (%)" : "Discount Amount (₹)"}
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min="1"
+                      placeholder={newCouponType === "percentage" ? "10" : "150"}
+                      value={newCouponValue}
+                      onChange={(e) => setNewCouponValue(e.target.value)}
+                      className="w-full bg-slate-50 border border-gray-200 p-2.5 rounded-lg text-sm text-gray-800 focus:outline-none focus:border-slate-850"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-gray-400 uppercase font-bold tracking-widest block">Min Purchase Basket (₹)</label>
+                    <input
+                      type="number"
+                      placeholder="0 for none"
+                      value={newMinBasketValue}
+                      onChange={(e) => setNewMinBasketValue(e.target.value)}
+                      className="w-full bg-slate-50 border border-gray-200 p-2.5 rounded-lg text-sm text-gray-800 focus:outline-none focus:border-slate-850"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider py-3 rounded-lg shadow transition-all"
+                  >
+                    Commit Coupon Code
+                  </button>
+                </form>
+              </div>
+
+              {/* Right Column: Listing Active/Inactive Coupons */}
+              <div className="lg:col-span-2 bg-white border border-gray-150 rounded-2xl p-6 shadow-sm space-y-4">
+                <h3 className="font-serif text-lg font-bold text-[#0D1B2A] border-b border-gray-100 pb-2">
+                  Active Coupons Registry
+                </h3>
+                {coupons.length === 0 ? (
+                  <p className="text-sm text-gray-400 font-mono py-6 text-center">No promotional codes cataloged in database.</p>
+                ) : (
+                  <div className="divide-y divide-gray-100 overflow-y-auto max-h-[500px]">
+                    {coupons.map((c) => (
+                      <div key={c.id || c.code} className="py-4 flex justify-between items-center text-xs font-mono">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="bg-[#D4820A]/10 text-[#D4820A] text-sm font-extrabold px-3 py-1 rounded-md border border-[#D4820A]/20">
+                              {c.code}
+                            </span>
+                            <span className="px-1.5 py-0.5 text-[8px] bg-emerald-100 text-emerald-800 rounded font-black upper border border-emerald-200">
+                              ACTIVE
+                            </span>
+                          </div>
+                          <div className="text-gray-500 font-sans text-[11px] pt-1">
+                            Provides <span className="font-bold text-gray-800">
+                              {c.discountType === "percentage" ? `${c.discountValue}% Off` : `₹${c.discountValue} Off`}
+                            </span> on baskets above <span className="font-bold text-gray-800">₹{c.minBasketValue || 0}</span>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteCoupon(c.id || c._id)}
+                          className="p-1.5 border border-red-200 hover:bg-red-50 text-red-500 rounded-lg cursor-pointer transition-colors"
+                          title="Purge coupon"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 7: EDIT MARQUEE */}
+          {activeTab === "marquee" && (
+            <div className="bg-white border border-gray-150 rounded-2xl p-6 shadow-sm max-w-2xl mx-auto space-y-6">
+              <h2 className="font-serif text-lg font-bold text-[#0D1B2A] border-b border-gray-100 pb-3">Scrolling Header Banner Marquee Settings</h2>
+              
+              <div className="space-y-4 font-mono text-xs">
+                <div className="space-y-2">
+                  <label className="text-gray-400 uppercase font-bold tracking-widest block">Broadcast Announcement Text</label>
+                  <textarea
+                    rows={4}
+                    placeholder="Enter urgent updates, global holiday banners, or new coupon warnings here..."
+                    value={marqueeText}
+                    onChange={(e) => setMarqueeText(e.target.value)}
+                    className="w-full bg-slate-50 border border-gray-200 p-3 rounded-xl text-sm text-gray-850 focus:outline-none focus:border-slate-850"
+                  />
+                  <p className="text-[10px] text-gray-400">
+                    * This updates the scrolling announcement bar fixed to the very top header area on all shop interfaces. Keep it punchy!
+                  </p>
+                </div>
+
+                {marqueeSavedMsg && (
+                  <div className="bg-emerald-50 text-emerald-700 border border-emerald-200 p-3 rounded-lg text-xs font-semibold text-center">
+                    {marqueeSavedMsg}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleSaveMarqueeText}
+                  className="w-full bg-[#036666] hover:bg-[#035252] text-white font-bold text-xs uppercase tracking-wider py-3.5 rounded-lg shadow-md transition-all flex items-center justify-center gap-1.5"
+                >
+                  <Settings className="h-4 w-4" />
+                  Publish Banner Message
+                </button>
+
+                {/* Simulated Marquee Live Preview */}
+                <div className="border border-gray-100 rounded-xl p-4 bg-slate-50 space-y-2">
+                  <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Live Banner Simulation</span>
+                  <div className="bg-black text-amber-300 py-1.5 px-4 rounded-md overflow-hidden relative">
+                    <div className="whitespace-nowrap inline-block animate-[marquee_20s_linear_infinite] font-semibold text-xs tracking-wide">
+                      {marqueeText || "No active message logged — fallback placeholder marquee text"}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -730,7 +1142,7 @@ export default function AdminDashboardView() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-gray-400 uppercase font-bold tracking-widest block">Unit Price ($)</label>
+                <label className="text-gray-400 uppercase font-bold tracking-widest block">Unit Price (₹)</label>
                 <input
                   type="number"
                   step="0.01"

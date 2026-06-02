@@ -2,7 +2,7 @@ import mongoose, { Schema } from "mongoose";
 import fs from "fs";
 import path from "path";
 import bcrypt from "bcryptjs";
-import { User, Product, Order, Message } from "../src/types";
+import { User, Product, Order, Message, Coupon, Review, Notification } from "../src/types";
 
 // Check if MongoDB URI is available
 export const MONGODB_URI = process.env.MONGODB_URI || "";
@@ -19,6 +19,10 @@ interface DBStructure {
   orders: Order[];
   messages: Message[];
   newsletter: string[];
+  coupons: Coupon[];
+  marquee: string;
+  reviews?: Review[];
+  notifications?: Notification[];
 }
 
 // Default Seed Data
@@ -27,7 +31,7 @@ const INITIAL_PRODUCTS: Product[] = [
     id: "m1",
     name: "Amoxicillin 500mg Capsules",
     description: "Broad-spectrum antibiotic used to treat bacterial infections. Prescription required. Store below 25°C in a dry place.",
-    price: 18.50,
+    price: 450.00,
     category: "Prescriptions",
     shop: "medicals",
     stock: 45,
@@ -40,7 +44,7 @@ const INITIAL_PRODUCTS: Product[] = [
     id: "m2",
     name: "Metformin 850mg Tablets",
     description: "Oral anti-diabetic drug indicated for type-2 diabetes mellitus management. Aids in blood sugar regulation.",
-    price: 12.90,
+    price: 240.00,
     category: "Prescriptions",
     shop: "medicals",
     stock: 60,
@@ -53,7 +57,7 @@ const INITIAL_PRODUCTS: Product[] = [
     id: "m3",
     name: "Ibuprofen 400mg Rapid Relief",
     description: "Anti-inflammatory and pain reliever. Effective against headaches, muscle pain, fever, and dental discomfort.",
-    price: 6.25,
+    price: 95.00,
     category: "Over-the-Counter",
     shop: "medicals",
     stock: 120,
@@ -66,7 +70,7 @@ const INITIAL_PRODUCTS: Product[] = [
     id: "m4",
     name: "Cetirizine 10mg Allergy Shield",
     description: "24-hour non-drowsy antihistamine for quick relief from running nose, sneezing, itchy eyes, and seasonal pollen allergies.",
-    price: 8.99,
+    price: 120.00,
     category: "Over-the-Counter",
     shop: "medicals",
     stock: 80,
@@ -79,7 +83,7 @@ const INITIAL_PRODUCTS: Product[] = [
     id: "m5",
     name: "Digital Upper Arm Blood Pressure Monitor",
     description: "Fully automatic, clinical accuracy blood pressure monitor with dynamic cuff size 22-42cm, heart rate tracker, and 90 records memory.",
-    price: 49.50,
+    price: 2999.00,
     category: "Medical Devices",
     shop: "medicals",
     stock: 15,
@@ -92,7 +96,7 @@ const INITIAL_PRODUCTS: Product[] = [
     id: "m6",
     name: "Fingertip Pulse Oximeter",
     description: "Dual-color OLED reader checking oxygen saturation level (SpO2) and pulse rate quickly and accurately. Perfect for home wellness care.",
-    price: 24.95,
+    price: 1499.00,
     category: "Medical Devices",
     shop: "medicals",
     stock: 3,
@@ -105,7 +109,7 @@ const INITIAL_PRODUCTS: Product[] = [
     id: "m7",
     name: "Premium Multi-size Adhesive Bandages Pack",
     description: "Assorted flexible, waterproof fabric bandages with sterile non-stick wound pads to protect cuts and minor abrasions.",
-    price: 5.50,
+    price: 60.00,
     category: "First Aid",
     shop: "medicals",
     stock: 140,
@@ -118,7 +122,7 @@ const INITIAL_PRODUCTS: Product[] = [
     id: "m8",
     name: "Complete Emergency First Aid Kit",
     description: "Compact nylon zip container featuring 120 pieces premium sterile and antiseptic components for minor household and driving emergency management.",
-    price: 34.99,
+    price: 1650.00,
     category: "First Aid",
     shop: "medicals",
     stock: 22,
@@ -131,7 +135,7 @@ const INITIAL_PRODUCTS: Product[] = [
     id: "m9",
     name: "Multivitamin A-Z Daily Immune Boost",
     description: "Premium micronutrient support formulated with Vitamin C, D3, Zinc, Ginseng, and iron to improve persistent cell energy and robust daily immunity.",
-    price: 19.99,
+    price: 720.00,
     category: "Wellness & Vitamins",
     shop: "medicals",
     stock: 95,
@@ -144,7 +148,7 @@ const INITIAL_PRODUCTS: Product[] = [
     id: "m10",
     name: "High Pure Omega-3 Fish Oil 1000mg",
     description: "Triple-strength softgels packed with EPA and DHA values supporting natural cardiovascular rhythms, mental clarity, and visual precision.",
-    price: 22.50,
+    price: 890.00,
     category: "Wellness & Vitamins",
     shop: "medicals",
     stock: 65,
@@ -157,7 +161,7 @@ const INITIAL_PRODUCTS: Product[] = [
     id: "s1",
     name: "Double A A4 Copy Paper 80gsm",
     description: "Premium smooth copy sheets engineered for high-speed printer execution. Smear-resistant, high brightness level, superb opacity.",
-    price: 7.95,
+    price: 320.00,
     category: "Office Paper",
     shop: "stationery",
     stock: 250,
@@ -170,7 +174,7 @@ const INITIAL_PRODUCTS: Product[] = [
     id: "s2",
     name: "Luxurious Matte Black Fountain Pen",
     description: "Full metal chassis, classic nib, and ink converter kit. Elegantly weighted barrel ensuring fatigue-free journaling cycles.",
-    price: 38.00,
+    price: 1850.00,
     category: "Writing Instruments",
     shop: "stationery",
     stock: 18,
@@ -183,7 +187,7 @@ const INITIAL_PRODUCTS: Product[] = [
     id: "s3",
     name: "Retractable Gel Ink Pens (12 Color Set)",
     description: "Vibrant gel dye colors, 0.5mm extra fine tips, smearless fast drying fluid ink. Soft cushioned visual grip sections.",
-    price: 14.50,
+    price: 450.00,
     category: "Writing Instruments",
     shop: "stationery",
     stock: 90,
@@ -196,7 +200,7 @@ const INITIAL_PRODUCTS: Product[] = [
     id: "s4",
     name: "Classic Hardcover Dot Grid Journal",
     description: "Thick 120gsm inkproof paper, expandible back folder, flat ribbon marker, elastic binding strap. Sturdy elegant leatherette.",
-    price: 16.90,
+    price: 699.00,
     category: "Notebooks & Diaries",
     shop: "stationery",
     stock: 75,
@@ -209,7 +213,7 @@ const INITIAL_PRODUCTS: Product[] = [
     id: "s5",
     name: "Leatherbound Executive Weekly Planner",
     description: "Premium diary detailing weekly slots, monthly goal spreads, project logs, and reference tracking, with luxury gold-edged sheets.",
-    price: 29.99,
+    price: 1249.00,
     category: "Notebooks & Diaries",
     shop: "stationery",
     stock: 40,
@@ -222,7 +226,7 @@ const INITIAL_PRODUCTS: Product[] = [
     id: "s6",
     name: "Expanding Document Accordion Wallet",
     description: "13 tab separate internal pockets, colored divider bookmarks, elastic file clasp. Safe heavy-duty poly construction.",
-    price: 11.20,
+    price: 349.00,
     category: "Organizers & Files",
     shop: "stationery",
     stock: 80,
@@ -235,7 +239,7 @@ const INITIAL_PRODUCTS: Product[] = [
     id: "s7",
     name: "All-in-one Wire Mesh Desk Organizer Suite",
     description: "Includes letter sorting slots, pencil cups, paper clip bowls, dynamic memo box, and utility drawers in durable black finish.",
-    price: 21.50,
+    price: 850.00,
     category: "Organizers & Files",
     shop: "stationery",
     stock: 2,
@@ -248,7 +252,7 @@ const INITIAL_PRODUCTS: Product[] = [
     id: "s8",
     name: "Premium Professional Watercolor Paint Set",
     description: "36 deeply saturated half pans, metal palette case, blending brush, luxury canvas mixing zones. Pure intense organic pigments.",
-    price: 45.00,
+    price: 2200.00,
     category: "Art Supplies",
     shop: "stationery",
     stock: 15,
@@ -268,6 +272,9 @@ const UserSchema = new Schema({
   role: { type: String, enum: ["customer", "admin"], default: "customer" },
   address: { type: String, default: "" },
   passwordHash: { type: String, required: true },
+  image: { type: String, default: "" },
+  securityQuestion: { type: String, default: "" },
+  securityAnswer: { type: String, default: "" },
 });
 
 const ProductSchema = new Schema({
@@ -313,12 +320,34 @@ const NewsletterSchema = new Schema({
   email: { type: String, required: true, unique: true, lowercase: true },
 });
 
+const ReviewSchema = new Schema({
+  id: { type: String, required: true, unique: true },
+  productId: { type: String, required: true },
+  userId: { type: String, required: true },
+  userName: { type: String, required: true },
+  userImage: { type: String, default: "" },
+  rating: { type: Number, required: true },
+  comment: { type: String, required: true },
+  createdAt: { type: String, required: true }
+});
+
+const NotificationSchema = new Schema({
+  id: { type: String, required: true, unique: true },
+  userId: { type: String, required: true },
+  title: { type: String, required: true },
+  content: { type: String, required: true },
+  isRead: { type: Boolean, default: false },
+  createdAt: { type: String, required: true }
+});
+
 // Create Mongoose models with any cast to prevent strict TypeScript query schema checking
 export const MongoUser = (mongoose.models.User || mongoose.model("User", UserSchema)) as any;
 export const MongoProduct = (mongoose.models.Product || mongoose.model("Product", ProductSchema)) as any;
 export const MongoOrder = (mongoose.models.Order || mongoose.model("Order", OrderSchema)) as any;
 export const MongoMessage = (mongoose.models.Message || mongoose.model("Message", MessageSchema)) as any;
 export const MongoNewsletter = (mongoose.models.Newsletter || mongoose.model("Newsletter", NewsletterSchema)) as any;
+export const MongoReview = (mongoose.models.Review || mongoose.model("Review", ReviewSchema)) as any;
+export const MongoNotification = (mongoose.models.Notification || mongoose.model("Notification", NotificationSchema)) as any;
 
 // JSON DB Fallback implementation
 let localDBCache: DBStructure | null = null;
@@ -340,18 +369,24 @@ export function loadLocalDB(): DBStructure {
           {
             id: "u1_admin",
             name: "Enterprise Admin",
-            email: "admin@januzen.com",
-            phone: "+91 9988776655",
+            email: "admin@januzenglobal.com",
+            phone: "09666588553",
             role: "admin",
-            address: "JANUZEN HQ Tower, Suite 402, Bengaluru, IN"
+            address: "P.No- P-12, Mahadevpuram, Gajularamaram, Telangana",
+            image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150",
+            securityQuestion: "What is your favorite book?",
+            securityAnswer: "shrimad bhagavad gita"
           },
           {
             id: "u2_customer",
             name: "Satyajeeth Ophir",
             email: "satyajeeth.ophir@gmail.com",
-            phone: "+91 9443322110",
+            phone: "09666588553",
             role: "customer",
-            address: "Flat 12, Royal Meadows, Chennai, TN"
+            address: "Phase-2, Pno 46 street no 5, Samskruthi Avenues Rd., Dwaraka Nagar, Gajularamaram, Hyderabad, Telangana 500117",
+            image: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150",
+            securityQuestion: "What was your childhood nickname?",
+            securityAnswer: "satya"
           }
         ],
         passwords: {
@@ -417,7 +452,15 @@ export function loadLocalDB(): DBStructure {
         newsletter: [
           "satyajeeth.ophir@gmail.com",
           "hello@januzen.com"
-        ]
+        ],
+        coupons: [
+          { id: "c1", code: "JANUZEN10", discountType: "percentage", discountValue: 10, minBasketValue: 500, isActive: true },
+          { id: "c2", code: "FIRST50", discountType: "fixed", discountValue: 50, minBasketValue: 200, isActive: true },
+          { id: "c3", code: "RUPEE100", discountType: "fixed", discountValue: 100, minBasketValue: 1000, isActive: true }
+        ],
+        marquee: "🇮🇳 Authorized Corporate Logistics & Pharmacy Dispatches. High-opacity copypaper and certified standard healthcare kits available. Enjoy Free Secure Freight Delivery on all basket orders above ₹1000!",
+        reviews: [],
+        notifications: []
       };
       fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2), "utf-8");
       localDBCache = db;
@@ -425,12 +468,36 @@ export function loadLocalDB(): DBStructure {
     } else {
       const data = fs.readFileSync(DB_FILE, "utf-8");
       const parsed = JSON.parse(data);
+      let dirty = false;
+      if (!parsed.reviews) {
+        parsed.reviews = [];
+        dirty = true;
+      }
+      if (!parsed.notifications) {
+        parsed.notifications = [];
+        dirty = true;
+      }
+      if (!parsed.coupons) {
+        parsed.coupons = [
+          { id: "c1", code: "JANUZEN10", discountType: "percentage", discountValue: 10, minBasketValue: 500, isActive: true },
+          { id: "c2", code: "FIRST50", discountType: "fixed", discountValue: 50, minBasketValue: 200, isActive: true },
+          { id: "c3", code: "RUPEE100", discountType: "fixed", discountValue: 100, minBasketValue: 1000, isActive: true }
+        ];
+        dirty = true;
+      }
+      if (parsed.marquee === undefined) {
+        parsed.marquee = "🇮🇳 Authorized Corporate Logistics & Pharmacy Dispatches. High-opacity copypaper and certified standard healthcare kits available. Enjoy Free Secure Freight Delivery on all basket orders above ₹1000!";
+        dirty = true;
+      }
+      if (dirty) {
+        fs.writeFileSync(DB_FILE, JSON.stringify(parsed, null, 2), "utf-8");
+      }
       localDBCache = parsed;
       return parsed;
     }
   } catch (error) {
     console.error("Critical: Failed to read/write JSON database file:", error);
-    return { users: [], passwords: {}, products: [], orders: [], messages: [], newsletter: [] };
+    return { users: [], passwords: {}, products: [], orders: [], messages: [], newsletter: [], coupons: [], marquee: "" };
   }
 }
 
@@ -465,20 +532,26 @@ export async function connectAndSeedDB() {
           {
             id: "u1_admin",
             name: "Enterprise Admin",
-            email: "admin@januzen.com",
-            phone: "+91 9988776655",
+            email: "admin@januzenglobal.com",
+            phone: "09666588553",
             role: "admin",
-            address: "JANUZEN HQ Tower, Suite 402, Bengaluru, IN",
-            passwordHash: adminPasswordHash
+            address: "P.No- P-12, Mahadevpuram, Gajularamaram, Telangana",
+            passwordHash: adminPasswordHash,
+            image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150",
+            securityQuestion: "What is your favorite book?",
+            securityAnswer: "shrimad bhagavad gita"
           },
           {
             id: "u2_customer",
             name: "Satyajeeth Ophir",
             email: "satyajeeth.ophir@gmail.com",
-            phone: "+91 9443322110",
+            phone: "09666588553",
             role: "customer",
-            address: "Flat 12, Royal Meadows, Chennai, TN",
-            passwordHash: userPasswordHash
+            address: "Phase-2, Pno 46 street no 5, Samskruthi Avenues Rd., Dwaraka Nagar, Gajularamaram, Hyderabad, Telangana 500117",
+            passwordHash: userPasswordHash,
+            image: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150",
+            securityQuestion: "What was your childhood nickname?",
+            securityAnswer: "satya"
           }
         ]);
 
@@ -621,6 +694,48 @@ export const dbClient = {
       db.passwords[user.id] = passwordHash;
       saveLocalDB(db);
       return user;
+    }
+  },
+
+  updateUser: async (userId: string, updates: Partial<User>, newPasswordHash?: string): Promise<User | null> => {
+    if (isMongo) {
+      const updateData: any = { ...updates };
+      if (newPasswordHash) {
+        updateData.passwordHash = newPasswordHash;
+      }
+      const updated = await MongoUser.findOneAndUpdate(
+        { id: userId },
+        { $set: updateData },
+        { new: true }
+      ).lean();
+      return updated as any;
+    } else {
+      const db = loadLocalDB();
+      const idx = db.users.findIndex(u => u.id === userId);
+      if (idx === -1) return null;
+      db.users[idx] = { ...db.users[idx], ...updates };
+      if (newPasswordHash) {
+        db.passwords[userId] = newPasswordHash;
+      }
+      saveLocalDB(db);
+      return db.users[idx];
+    }
+  },
+
+  resetUserPassword: async (email: string, newPasswordHash: string): Promise<boolean> => {
+    if (isMongo) {
+      const res = await MongoUser.updateOne(
+        { email: email.toLowerCase() },
+        { $set: { passwordHash: newPasswordHash } }
+      );
+      return res.modifiedCount > 0;
+    } else {
+      const db = loadLocalDB();
+      const user = db.users.find(u => u.email.toLowerCase() === email.toLowerCase());
+      if (!user) return false;
+      db.passwords[user.id] = newPasswordHash;
+      saveLocalDB(db);
+      return true;
     }
   },
 
@@ -857,6 +972,163 @@ export const dbClient = {
         return true;
       }
       return false;
+    }
+  },
+
+  getCoupons: async (): Promise<Coupon[]> => {
+    const db = loadLocalDB();
+    return db.coupons || [];
+  },
+
+  createCoupon: async (coupon: Coupon): Promise<Coupon> => {
+    const db = loadLocalDB();
+    if (!db.coupons) db.coupons = [];
+    db.coupons.push(coupon);
+    saveLocalDB(db);
+    return coupon;
+  },
+
+  updateCoupon: async (id: string, updates: Partial<Coupon>): Promise<Coupon | null> => {
+    const db = loadLocalDB();
+    if (!db.coupons) db.coupons = [];
+    const idx = db.coupons.findIndex(c => c.id === id);
+    if (idx === -1) return null;
+    db.coupons[idx] = { ...db.coupons[idx], ...updates };
+    saveLocalDB(db);
+    return db.coupons[idx];
+  },
+
+  deleteCoupon: async (id: string): Promise<boolean> => {
+    const db = loadLocalDB();
+    if (!db.coupons) db.coupons = [];
+    const initialLength = db.coupons.length;
+    db.coupons = db.coupons.filter(c => c.id !== id);
+    if (db.coupons.length !== initialLength) {
+      saveLocalDB(db);
+      return true;
+    }
+    return false;
+  },
+
+  getMarquee: async (): Promise<string> => {
+    const db = loadLocalDB();
+    return db.marquee || "";
+  },
+
+  updateMarquee: async (text: string): Promise<string> => {
+    const db = loadLocalDB();
+    db.marquee = text;
+    saveLocalDB(db);
+    return text;
+  },
+
+  // Reviews Methods
+  getReviews: async (productId?: string): Promise<Review[]> => {
+    if (isMongo) {
+      const q = productId ? { productId } : {};
+      return MongoReview.find(q).sort({ createdAt: -1 }).lean() as any;
+    } else {
+      const db = loadLocalDB();
+      const list = db.reviews || [];
+      if (productId) {
+        return list.filter(r => r.productId === productId);
+      }
+      return list;
+    }
+  },
+
+  createReview: async (review: Review): Promise<Review> => {
+    if (isMongo) {
+      const doc = await MongoReview.create(review);
+      return doc.toObject() as any;
+    } else {
+      const db = loadLocalDB();
+      if (!db.reviews) db.reviews = [];
+      db.reviews.unshift(review);
+      saveLocalDB(db);
+      return review;
+    }
+  },
+
+  deleteReview: async (id: string): Promise<boolean> => {
+    if (isMongo) {
+      const res = await MongoReview.deleteOne({ id });
+      return res.deletedCount > 0;
+    } else {
+      const db = loadLocalDB();
+      if (!db.reviews) db.reviews = [];
+      const len = db.reviews.length;
+      db.reviews = db.reviews.filter(r => r.id !== id);
+      if (db.reviews.length !== len) {
+        saveLocalDB(db);
+        return true;
+      }
+      return false;
+    }
+  },
+
+  // Notifications Methods
+  getNotifications: async (userId: string): Promise<Notification[]> => {
+    if (isMongo) {
+      return MongoNotification.find({ $or: [{ userId }, { userId: "all" }] }).sort({ createdAt: -1 }).lean() as any;
+    } else {
+      const db = loadLocalDB();
+      const list = db.notifications || [];
+      return list.filter(n => n.userId === userId || n.userId === "all");
+    }
+  },
+
+  createNotification: async (notif: Notification): Promise<Notification> => {
+    if (isMongo) {
+      const doc = await MongoNotification.create(notif);
+      return doc.toObject() as any;
+    } else {
+      const db = loadLocalDB();
+      if (!db.notifications) db.notifications = [];
+      db.notifications.unshift(notif);
+      saveLocalDB(db);
+      return notif;
+    }
+  },
+
+  markNotificationRead: async (id: string): Promise<boolean> => {
+    if (isMongo) {
+      const res = await MongoNotification.updateOne({ id }, { $set: { isRead: true } });
+      return res.modifiedCount > 0;
+    } else {
+      const db = loadLocalDB();
+      if (!db.notifications) db.notifications = [];
+      const item = db.notifications.find(n => n.id === id);
+      if (item) {
+        item.isRead = true;
+        saveLocalDB(db);
+        return true;
+      }
+      return false;
+    }
+  },
+
+  deleteUserWithData: async (userId: string): Promise<boolean> => {
+    if (isMongo) {
+      const res = await MongoUser.deleteOne({ id: userId });
+      await MongoNotification.deleteMany({ userId });
+      await MongoReview.deleteMany({ userId });
+      await MongoOrder.deleteMany({ userId });
+      return res.deletedCount > 0;
+    } else {
+      const db = loadLocalDB();
+      const len = db.users.length;
+      db.users = db.users.filter(u => u.id !== userId);
+      delete db.passwords[userId];
+      if (db.notifications) {
+        db.notifications = db.notifications.filter(n => n.userId !== userId);
+      }
+      if (db.reviews) {
+        db.reviews = db.reviews.filter(r => r.userId !== userId);
+      }
+      db.orders = db.orders.filter(o => o.userId !== userId);
+      saveLocalDB(db);
+      return db.users.length !== len;
     }
   }
 };
