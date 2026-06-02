@@ -505,5 +505,34 @@
   "newsletter": [
     "satyajeeth.ophir@gmail.com",
     "hello@januzen.com"
-  ]
+  ],
+  "reviews": [],
+  "notifications": [],
+  "coupons": [
+    {
+      "id": "c1",
+      "code": "JANUZEN10",
+      "discountType": "percentage",
+      "discountValue": 10,
+      "minBasketValue": 500,
+      "isActive": true
+    },
+    {
+      "id": "c2",
+      "code": "FIRST50",
+      "discountType": "fixed",
+      "discountValue": 50,
+      "minBasketValue": 200,
+      "isActive": true
+    },
+    {
+      "id": "c3",
+      "code": "RUPEE100",
+      "discountType": "fixed",
+      "discountValue": 100,
+      "minBasketValue": 1000,
+      "isActive": true
+    }
+  ],
+  "marquee": "🇮🇳 Authorized Corporate Logistics & Pharmacy Dispatches. High-opacity copypaper and certified standard healthcare kits available. Enjoy Free Secure Freight Delivery on all basket orders above ₹1000!"
 }
