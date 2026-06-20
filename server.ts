@@ -10,7 +10,7 @@ import { dbClient, connectAndSeedDB, isMongo } from "./server/db";
 
 const PORT = 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "JANUZEN_JWT_SECRET_KEY";
-const ADMIN_SECRET_KEY = "itsjanuzen@123";
+const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY || "";
 
 // In-memory file upload middleware
 const filterMulter = multer({
