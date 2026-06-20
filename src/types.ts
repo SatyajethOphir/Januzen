@@ -18,6 +18,9 @@ export interface Product {
   category: string;
   shop: 'medicals' | 'stationery';
   stock: number;
+  stockQuantity?: number;
+  lowStockThreshold?: number;
+  stockStatus?: 'in_stock' | 'low_stock' | 'out_of_stock';
   image: string;
   tags: string[];
   featured: boolean;
@@ -48,6 +51,12 @@ export interface OrderTotals {
   total: number;
 }
 
+export interface OrderStatusLog {
+  status: string;
+  timestamp: string;
+  note?: string;
+}
+
 export interface Order {
   id: string;
   orderId: string;
@@ -57,9 +66,18 @@ export interface Order {
   items: OrderItem[];
   shippingAddress: ShippingAddress;
   totals: OrderTotals;
-  status: 'Pending' | 'Dispatched' | 'Delivered' | 'Cancelled';
+  status: 'Pending' | 'Dispatched' | 'Delivered' | 'Cancelled' | 'placed' | 'confirmed' | 'processing' | 'dispatched' | 'out_for_delivery' | 'delivered' | 'cancelled' | 'returned';
+  statusHistory?: OrderStatusLog[];
   paymentMethod: string;
   createdAt: string;
+}
+
+export interface WishlistItem {
+  id: string;
+  userId: string;
+  productId: string;
+  productType: 'medicals' | 'stationery';
+  addedAt: string;
 }
 
 export interface Message {

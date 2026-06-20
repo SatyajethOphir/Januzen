@@ -25,6 +25,7 @@ export default function App() {
   const [cart, setCart] = React.useState<CartItem[]>([]);
   const [featuredProducts, setFeaturedProducts] = React.useState<Product[]>([]);
   const [toast, setToast] = React.useState<string | null>(null);
+  const [wishlistProductIds, setWishlistProductIds] = React.useState<string[]>([]);
   
   // Theme state: light, dark, emerald (clinical), amber (stationery), device
   const [theme, setTheme] = React.useState<"light" | "dark" | "emerald" | "amber" | "device">(() => {
@@ -32,6 +33,72 @@ export default function App() {
   });
 
   const [resolvedTheme, setResolvedTheme] = React.useState<"light" | "dark" | "emerald" | "amber">("light");
+
+  // Deep Link product parsing on mount
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const prodId = params.get("product");
+    if (prodId) {
+      setNav({ page: "product-detail", params: { productId: prodId } });
+    }
+  }, []);
+
+  // Sync Wishlist Product IDs on Auth State shift
+  React.useEffect(() => {
+    if (currentUser) {
+      const savedToken = localStorage.getItem("januzen_token") || sessionStorage.getItem("januzen_token");
+      if (savedToken) {
+        fetch("/api/wishlist", {
+          headers: { "Authorization": `Bearer ${savedToken}` }
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.wishlist) {
+            setWishlistProductIds(data.wishlist.map((w: any) => w.productId));
+          }
+        })
+        .catch(err => console.error("Error loading user wishlist:", err));
+      }
+    } else {
+      setWishlistProductIds([]);
+    }
+  }, [currentUser]);
+
+  const handleToggleWishlist = async (productId: string, productType: 'medicals' | 'stationery') => {
+    if (!currentUser) {
+      showToastMsg("⚠️ Please log in to edit your wishlist.");
+      setNav({ page: "login", params: { redirectAfter: nav.page, redirectParams: nav.params } });
+      return;
+    }
+    const savedToken = localStorage.getItem("januzen_token") || sessionStorage.getItem("januzen_token");
+    if (!savedToken) return;
+
+    try {
+      const res = await fetch("/api/wishlist/toggle", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${savedToken}`
+        },
+        body: JSON.stringify({ productId, productType })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        if (data.added) {
+          setWishlistProductIds(prev => [...prev, productId]);
+          showToastMsg("Added to wishlist ❤️");
+        } else {
+          setWishlistProductIds(prev => prev.filter(id => id !== productId));
+          showToastMsg("Removed from wishlist 🖤");
+        }
+      } else {
+        showToastMsg(data.error || "Failed to edit wishlist.");
+      }
+    } catch (err) {
+      console.error(err);
+      showToastMsg("Error updating wishlist.");
+    }
+  };
 
   React.useEffect(() => {
     if (theme === "device") {
@@ -200,6 +267,8 @@ export default function App() {
             onNavigate={handleNavigate}
             featuredProducts={featuredProducts}
             onAddToBag={handleAddToBag}
+            wishlistProductIds={wishlistProductIds}
+            onToggleWishlist={handleToggleWishlist}
           />
         )}
 
@@ -208,6 +277,8 @@ export default function App() {
             division="medicals"
             onNavigate={handleNavigate}
             onAddToBag={handleAddToBag}
+            wishlistProductIds={wishlistProductIds}
+            onToggleWishlist={handleToggleWishlist}
           />
         )}
 
@@ -216,6 +287,8 @@ export default function App() {
             division="stationery"
             onNavigate={handleNavigate}
             onAddToBag={handleAddToBag}
+            wishlistProductIds={wishlistProductIds}
+            onToggleWishlist={handleToggleWishlist}
           />
         )}
 
@@ -224,6 +297,8 @@ export default function App() {
             productId={nav.params.productId}
             onNavigate={handleNavigate}
             onAddToBag={handleAddToBag}
+            wishlistProductIds={wishlistProductIds}
+            onToggleWishlist={handleToggleWishlist}
           />
         )}
 
@@ -264,6 +339,7 @@ export default function App() {
             currentUser={currentUser}
             onNavigate={handleNavigate}
             onUpdateCurrentUser={(updatedUser) => setCurrentUser(updatedUser)}
+            onAddToBag={handleAddToBag}
           />
         )}
 

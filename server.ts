@@ -10,7 +10,7 @@ import { dbClient, connectAndSeedDB, isMongo } from "./server/db";
 
 const PORT = 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "JANUZEN_JWT_SECRET_KEY";
-const ADMIN_SECRET_KEY = "JANUZEN_ADMIN_CONFIDENTIAL";
+const ADMIN_SECRET_KEY = "itsjanuzen@123";
 
 // In-memory file upload middleware
 const filterMulter = multer({
@@ -491,7 +491,7 @@ async function startServer() {
       const orderItems: any[] = [];
       let subtotal = 0;
 
-      // Validate elements stock, decrease values
+      // Validate elements stock
       for (const item of items) {
         const prod = await dbClient.getProductById(item.productId);
         if (!prod) {
@@ -501,8 +501,6 @@ async function startServer() {
           return res.status(400).json({ error: `Insufficient stock for product [${prod.name}]. Currently only ${prod.stock} items left.` });
         }
 
-        // Decrement inventory stock securely
-        await dbClient.updateProduct(prod.id, { stock: prod.stock - item.quantity });
         subtotal += prod.price * item.quantity;
         
         orderItems.push({
@@ -561,7 +559,7 @@ async function startServer() {
           tax,
           total
         },
-        status: "Pending",
+        status: "placed",
         paymentMethod: paymentMethod || "Cash on Delivery",
         createdAt: new Date().toISOString()
       };
@@ -605,19 +603,33 @@ async function startServer() {
 
   // Admin update order status
   app.put("/api/admin/orders/:id/status", authenticateAdmin, async (req, res) => {
-    const { status } = req.body;
-    if (!["Pending", "Dispatched", "Delivered", "Cancelled"].includes(status)) {
-      return res.status(400).json({ error: "Invalid order status code provided" });
+    const { status, note } = req.body;
+    const allowedStatuses = [
+      "placed", "confirmed", "processing", "dispatched", "out_for_delivery", 
+      "delivered", "cancelled", "returned", "Pending", "Dispatched", "Delivered", "Cancelled"
+    ];
+    if (!status || !allowedStatuses.includes(status)) {
+      return res.status(400).json({ error: "Invalid or missing order status code provided" });
     }
 
     try {
-      const updatedOrder = await dbClient.updateOrderStatus(req.params.id, status);
+      const updatedOrder = await dbClient.updateOrderStatus(req.params.id, status, note);
       if (!updatedOrder) {
         return res.status(404).json({ error: "Order details could not be retrieved" });
       }
 
+      // Generate custom personalized notification
+      await dbClient.createNotification({
+        id: "notif_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
+        userId: updatedOrder.userId,
+        title: `Order Status Update: ${status}`,
+        content: note || `Hi ${updatedOrder.userName}, your corporate purchase status has been updated to "${status}" for order ${updatedOrder.orderId}.`,
+        isRead: false,
+        createdAt: new Date().toISOString()
+      });
+
       // Nodemailer Simulator Console Logging
-      console.log(`[EMAIL DISPATCH] TO: ${updatedOrder.userEmail} | SUBJECT: JANUZEN Order Status Update | CONTENT: Your purchase status has updated to: [${status}] for order ID ${updatedOrder.orderId}.`);
+      console.log(`[EMAIL DISPATCH] TO: ${updatedOrder.userEmail} | SUBJECT: JANUZEN Order Status Update | CONTENT: Your purchase status has updated to: [${status}] for order ID ${updatedOrder.orderId}. Description: ${note || 'None'}`);
 
       res.json({
         message: `Status updated successfully to ${status}`,
@@ -801,6 +813,32 @@ async function startServer() {
     } catch (e) {
       console.error(e);
       res.status(500).json({ error: "Internal server error." });
+    }
+  });
+
+  // Fetch Wishlist for active authenticated customer
+  app.get("/api/wishlist", authenticateToken, async (req: any, res) => {
+    try {
+      const list = await dbClient.getWishlist(req.user.id);
+      res.json({ wishlist: list });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Internal server error retrieving wishlist." });
+    }
+  });
+
+  // Toggle Wishlist item status (add/remove)
+  app.post("/api/wishlist/toggle", authenticateToken, async (req: any, res) => {
+    const { productId, productType } = req.body;
+    if (!productId || !productType) {
+      return res.status(400).json({ error: "Missing product identifiers for wishlist modification." });
+    }
+    try {
+      const result = await dbClient.toggleWishlistItem(req.user.id, productId, productType);
+      res.json(result);
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Internal server error editing wishlist record." });
     }
   });
 
@@ -1091,15 +1129,6 @@ async function startServer() {
     console.log(`🚀 JANUZEN Full-Stack Server running on container port ${PORT}`);
     console.log(`===========================================================`);
     console.log(`🔌 Database Mode: ${isMongo ? "MongoDB Connected Cluster" : "Local JSON Offline Database"}`);
-    console.log(`-----------------------------------------------------------`);
-    console.log(`🔐 Administrator Seed Details:`);
-    console.log(`   Email:    admin@januzen.com`);
-    console.log(`   Password: admin123`);
-    console.log(`   Admin Key: ${ADMIN_SECRET_KEY}`);
-    console.log(`-----------------------------------------------------------`);
-    console.log(`🛍️ Customer Seed Details:`);
-    console.log(`   Email:    satyajeeth.ophir@gmail.com`);
-    console.log(`   Password: user123`);
     console.log(`===========================================================`);
   });
 }

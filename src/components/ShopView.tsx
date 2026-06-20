@@ -1,15 +1,23 @@
 import React from "react";
 import { gsap } from "gsap";
-import { Search, Filter, RotateCcw, AlertCircle, ShoppingBag, Grid, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Filter, RotateCcw, AlertCircle, ShoppingBag, Grid, ChevronLeft, ChevronRight, Heart, Share2, Check } from "lucide-react";
 import { Product } from "../types";
 
 interface ShopViewProps {
   division: "medicals" | "stationery";
   onNavigate: (view: string, params?: Record<string, any>) => void;
   onAddToBag: (product: Product) => void;
+  wishlistProductIds?: string[];
+  onToggleWishlist?: (productId: string, productType: 'medicals' | 'stationery') => void;
 }
 
-export default function ShopView({ division, onNavigate, onAddToBag }: ShopViewProps) {
+export default function ShopView({ 
+  division, 
+  onNavigate, 
+  onAddToBag, 
+  wishlistProductIds = [], 
+  onToggleWishlist 
+}: ShopViewProps) {
   // Styles based on Division
   const themeTeal = "teal";
   const isMed = division === "medicals";
@@ -32,6 +40,7 @@ export default function ShopView({ division, onNavigate, onAddToBag }: ShopViewP
   const [page, setPage] = React.useState(1);
   const [pages, setPages] = React.useState(1);
   const [loading, setLoading] = React.useState(true);
+  const [copiedId, setCopiedId] = React.useState<string | null>(null);
 
   // Load categories and products dynamically of active division
   React.useEffect(() => {
@@ -262,15 +271,27 @@ export default function ShopView({ division, onNavigate, onAddToBag }: ShopViewP
           ) : (
             <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-6">
               {products.map((p) => {
-                const isOutOfStock = p.stock === 0;
-                const isLowStock = p.stock > 0 && p.stock < 5;
+                const isWishlisted = wishlistProductIds.includes(p.id);
+                const isOutOfStock = (p.stockQuantity ?? p.stock) === 0;
+                const isLowStock = !isOutOfStock && (p.stockQuantity ?? p.stock) <= (p.lowStockThreshold ?? 5);
+                const stockVal = p.stockQuantity ?? p.stock;
+                
+                const isCopied = copiedId === p.id;
+                const handleShareLink = (e: React.MouseEvent) => {
+                  e.stopPropagation();
+                  const shareUrl = `${window.location.origin}${window.location.pathname}?product=${p.id}`;
+                  navigator.clipboard.writeText(shareUrl).then(() => {
+                    setCopiedId(p.id);
+                    setTimeout(() => setCopiedId(null), 2000);
+                  });
+                };
 
                 return (
                   <div
                     key={p.id}
-                    className="gsap-shop-card group bg-white border border-gray-200/60 rounded-xl overflow-hidden hover:shadow-lg transition-all flex flex-col justify-between"
+                    className="gsap-shop-card group bg-white border border-gray-200/60 rounded-xl overflow-hidden hover:shadow-lg transition-all flex flex-col justify-between relative group/tile"
                   >
-                    <div className="relative">
+                    <div className="relative overflow-hidden">
                       <img
                         src={p.image}
                         alt={p.name}
@@ -279,18 +300,44 @@ export default function ShopView({ division, onNavigate, onAddToBag }: ShopViewP
                         onClick={() => onNavigate("product-detail", { productId: p.id })}
                       />
                       
+                      {/* Integrated Heart Toggle & Share controls over image card */}
+                      <div className="absolute top-3 right-3 flex gap-1.5 z-10 opacity-100 sm:opacity-0 sm:group-hover/tile:opacity-100 transition-opacity">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (onToggleWishlist) onToggleWishlist(p.id, p.shop);
+                          }}
+                          className="h-7 w-7 bg-white/95 hover:bg-white text-slate-700 hover:text-red-600 rounded-full flex items-center justify-center shadow border border-gray-200 transition-all cursor-pointer"
+                          title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+                        >
+                          <Heart className={`h-3.5 w-3.5 transition-colors ${isWishlisted ? "fill-red-600 stroke-red-600" : ""}`} />
+                        </button>
+
+                        <button
+                          onClick={handleShareLink}
+                          className="h-7 w-7 bg-white/95 hover:bg-white text-slate-700 hover:text-teal-600 rounded-full flex items-center justify-center shadow border border-gray-200 transition-all cursor-pointer"
+                          title="Copy product link"
+                        >
+                          {isCopied ? (
+                            <Check className="h-3.5 w-3.5 text-teal-600" />
+                          ) : (
+                            <Share2 className="h-3.5 w-3.5" />
+                          )}
+                        </button>
+                      </div>
+
                       {/* Inventory indicators */}
                       {isOutOfStock ? (
-                        <span className="absolute top-3 right-3 text-[9px] font-extrabold uppercase bg-red-600 text-white px-2 py-0.5 rounded-full border border-red-500 shadow">
+                        <span className="absolute top-3 left-3 text-[9px] font-extrabold uppercase bg-red-600 text-white px-2 py-0.5 rounded-full border border-red-500 shadow z-10">
                           Out of Stock
                         </span>
                       ) : isLowStock ? (
-                        <span className="absolute top-3 right-3 text-[9px] font-extrabold uppercase bg-[#D4820A] text-white px-2 py-0.5 rounded-full border border-amber-500 shadow animate-pulse">
-                          Only {p.stock} left!
+                        <span className="absolute top-3 left-3 text-[9px] font-extrabold uppercase bg-[#D4820A] text-white px-2 py-0.5 rounded-full border border-amber-500 shadow animate-pulse z-10">
+                          Only {stockVal} left!
                         </span>
                       ) : null}
 
-                      <span className={`absolute bottom-3 left-3 text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full border ${badgeStyle} backdrop-blur-md`}>
+                      <span className={`absolute bottom-3 left-3 text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full border ${badgeStyle} backdrop-blur-md z-10`}>
                         {p.category}
                       </span>
                     </div>
@@ -299,7 +346,7 @@ export default function ShopView({ division, onNavigate, onAddToBag }: ShopViewP
                       <div>
                         <h3
                           onClick={() => onNavigate("product-detail", { productId: p.id })}
-                          className="font-serif text-sm font-bold text-gray-900 hover:text-blue-700 cursor-pointer line-clamp-1"
+                          className="font-serif text-sm font-bold text-gray-900 hover:text-teal-600 cursor-pointer line-clamp-1"
                           title={p.name}
                         >
                           {p.name}
@@ -317,12 +364,12 @@ export default function ShopView({ division, onNavigate, onAddToBag }: ShopViewP
                           disabled={isOutOfStock}
                           className={`text-white text-xs font-bold py-1.5 px-3 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
                             isOutOfStock 
-                              ? "bg-gray-300 cursor-not-allowed opacity-50" 
+                              ? "bg-gray-200 text-gray-400 border border-gray-300 cursor-not-allowed" 
                               : btnColor
                           }`}
                         >
                           <ShoppingBag className="h-3.5 w-3.5" />
-                          Add
+                          {isOutOfStock ? "Sold Out" : "Add"}
                         </button>
                       </div>
                     </div>

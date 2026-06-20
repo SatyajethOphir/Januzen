@@ -2,7 +2,7 @@ import mongoose, { Schema } from "mongoose";
 import fs from "fs";
 import path from "path";
 import bcrypt from "bcryptjs";
-import { User, Product, Order, Message, Coupon, Review, Notification } from "../src/types";
+import { User, Product, Order, Message, Coupon, Review, Notification, WishlistItem } from "../src/types";
 
 // Check if MongoDB URI is available
 export const MONGODB_URI = process.env.MONGODB_URI || "";
@@ -23,6 +23,7 @@ interface DBStructure {
   marquee: string;
   reviews?: Review[];
   notifications?: Notification[];
+  wishlist?: WishlistItem[];
 }
 
 // Default Seed Data
@@ -285,6 +286,9 @@ const ProductSchema = new Schema({
   category: { type: String, required: true },
   shop: { type: String, enum: ["medicals", "stationery"], required: true },
   stock: { type: Number, required: true },
+  stockQuantity: { type: Number },
+  lowStockThreshold: { type: Number, default: 5 },
+  stockStatus: { type: String, enum: ["in_stock", "low_stock", "out_of_stock"] },
   image: { type: String, required: true },
   tags: [String],
   featured: { type: Boolean, default: false },
@@ -300,9 +304,18 @@ const OrderSchema = new Schema({
   items: { type: Schema.Types.Mixed, required: true },
   shippingAddress: { type: Schema.Types.Mixed, required: true },
   totals: { type: Schema.Types.Mixed, required: true },
-  status: { type: String, enum: ["Pending", "Dispatched", "Delivered", "Cancelled"], default: "Pending" },
+  status: { type: String, enum: ["Pending", "Dispatched", "Delivered", "Cancelled", "placed", "confirmed", "processing", "dispatched", "out_for_delivery", "delivered", "cancelled", "returned"], default: "Pending" },
+  statusHistory: { type: Schema.Types.Mixed, default: [] },
   paymentMethod: { type: String, default: "Cash on Delivery" },
   createdAt: { type: String, required: true },
+});
+
+const WishlistSchema = new Schema({
+  id: { type: String, required: true, unique: true },
+  userId: { type: String, required: true },
+  productId: { type: String, required: true },
+  productType: { type: String, enum: ["medicals", "stationery"], required: true },
+  addedAt: { type: String, required: true }
 });
 
 const MessageSchema = new Schema({
@@ -348,6 +361,7 @@ export const MongoMessage = (mongoose.models.Message || mongoose.model("Message"
 export const MongoNewsletter = (mongoose.models.Newsletter || mongoose.model("Newsletter", NewsletterSchema)) as any;
 export const MongoReview = (mongoose.models.Review || mongoose.model("Review", ReviewSchema)) as any;
 export const MongoNotification = (mongoose.models.Notification || mongoose.model("Notification", NotificationSchema)) as any;
+export const MongoWishlist = (mongoose.models.Wishlist || mongoose.model("Wishlist", WishlistSchema)) as any;
 
 // JSON DB Fallback implementation
 let localDBCache: DBStructure | null = null;
@@ -360,99 +374,13 @@ export function loadLocalDB(): DBStructure {
       fs.mkdirSync(DB_DIR, { recursive: true });
     }
     if (!fs.existsSync(DB_FILE)) {
-      const salt = bcrypt.genSaltSync(12);
-      const adminPasswordHash = bcrypt.hashSync("admin123", salt);
-      const userPasswordHash = bcrypt.hashSync("user123", salt);
-
       const db: DBStructure = {
-        users: [
-          {
-            id: "u1_admin",
-            name: "Enterprise Admin",
-            email: "admin@januzenglobal.com",
-            phone: "09666588553",
-            role: "admin",
-            address: "P.No- P-12, Mahadevpuram, Gajularamaram, Telangana",
-            image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150",
-            securityQuestion: "What is your favorite book?",
-            securityAnswer: "shrimad bhagavad gita"
-          },
-          {
-            id: "u2_customer",
-            name: "Satyajeeth Ophir",
-            email: "satyajeeth.ophir@gmail.com",
-            phone: "09666588553",
-            role: "customer",
-            address: "Phase-2, Pno 46 street no 5, Samskruthi Avenues Rd., Dwaraka Nagar, Gajularamaram, Hyderabad, Telangana 500117",
-            image: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150",
-            securityQuestion: "What was your childhood nickname?",
-            securityAnswer: "satya"
-          }
-        ],
-        passwords: {
-          "u1_admin": adminPasswordHash,
-          "u2_customer": userPasswordHash
-        },
+        users: [],
+        passwords: {},
         products: INITIAL_PRODUCTS,
-        orders: [
-          {
-            id: "o1",
-            orderId: "JAN-20260531-1002",
-            userId: "u2_customer",
-            userName: "Satyajeeth Ophir",
-            userEmail: "satyajeeth.ophir@gmail.com",
-            items: [
-              {
-                productId: "m3",
-                name: "Ibuprofen 400mg Rapid Relief",
-                price: 6.25,
-                quantity: 2,
-                image: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=600&auto=format&fit=crop",
-                shop: "medicals"
-              },
-              {
-                productId: "s4",
-                name: "Classic Hardcover Dot Grid Journal",
-                price: 16.90,
-                quantity: 1,
-                image: "https://images.unsplash.com/photo-1517842645767-c639042777db?w=600&auto=format&fit=crop",
-                shop: "stationery"
-              }
-            ],
-            shippingAddress: {
-              fullName: "Satyajeeth Ophir",
-              addressLine: "Flat 12, Royal Meadows",
-              city: "Chennai",
-              postalCode: "600001",
-              phone: "+91 9443322110"
-            },
-            totals: {
-              subtotal: 29.40,
-              shipping: 4.99,
-              tax: 1.47,
-              total: 35.86
-            },
-            status: "Delivered",
-            paymentMethod: "Credit Card",
-            createdAt: "2026-05-28T14:22:00Z"
-          }
-        ],
-        messages: [
-          {
-            id: "msg1",
-            name: "Rajesh Kumar",
-            email: "rajesh.k@gmail.com",
-            subject: "Wholesale Medicine Supply Quote",
-            shop: "medicals",
-            message: "Hello team, we are running a community clinic and would love to request a wholesale bulk discount plan for Ibuprofen and Vitamin C supplements. Thanks!",
-            isRead: false,
-            createdAt: "2026-05-30T09:12:00Z"
-          }
-        ],
-        newsletter: [
-          "satyajeeth.ophir@gmail.com",
-          "hello@januzen.com"
-        ],
+        orders: [],
+        messages: [],
+        newsletter: [],
         coupons: [
           { id: "c1", code: "JANUZEN10", discountType: "percentage", discountValue: 10, minBasketValue: 500, isActive: true },
           { id: "c2", code: "FIRST50", discountType: "fixed", discountValue: 50, minBasketValue: 200, isActive: true },
@@ -460,7 +388,8 @@ export function loadLocalDB(): DBStructure {
         ],
         marquee: "🇮🇳 Authorized Corporate Logistics & Pharmacy Dispatches. High-opacity copypaper and certified standard healthcare kits available. Enjoy Free Secure Freight Delivery on all basket orders above ₹1000!",
         reviews: [],
-        notifications: []
+        notifications: [],
+        wishlist: []
       };
       fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2), "utf-8");
       localDBCache = db;
@@ -469,6 +398,41 @@ export function loadLocalDB(): DBStructure {
       const data = fs.readFileSync(DB_FILE, "utf-8");
       const parsed = JSON.parse(data);
       let dirty = false;
+
+      // Force-clear any previously generated test messages, reviews and notifications for pristine live deployment
+      if (parsed.messages && parsed.messages.length > 0) {
+        parsed.messages = [];
+        dirty = true;
+      }
+      if (parsed.reviews && parsed.reviews.length > 0) {
+        parsed.reviews = [];
+        dirty = true;
+      }
+      if (parsed.notifications && parsed.notifications.length > 0) {
+        parsed.notifications = [];
+        dirty = true;
+      }
+
+      if (!parsed.wishlist) {
+        parsed.wishlist = [];
+        dirty = true;
+      }
+      let productsDirty = false;
+      parsed.products = (parsed.products || []).map((p: any) => {
+        let updated = false;
+        if (p.stockQuantity === undefined) { p.stockQuantity = p.stock; updated = true; }
+        if (p.lowStockThreshold === undefined) { p.lowStockThreshold = 5; updated = true; }
+        if (p.stockStatus === undefined) {
+          const threshold = p.lowStockThreshold || 5;
+          p.stockStatus = p.stock === 0 ? "out_of_stock" : (p.stock <= threshold ? "low_stock" : "in_stock");
+          updated = true;
+        }
+        if (updated) productsDirty = true;
+        return p;
+      });
+      if (productsDirty) {
+        dirty = true;
+      }
       if (!parsed.reviews) {
         parsed.reviews = [];
         dirty = true;
@@ -523,106 +487,21 @@ export async function connectAndSeedDB() {
       if (userCount === 0) {
         console.log("🌱 Database is empty. Seeding initial data rows into MongoDB...");
         
-        const salt = bcrypt.genSaltSync(12);
-        const adminPasswordHash = bcrypt.hashSync("admin123", salt);
-        const userPasswordHash = bcrypt.hashSync("user123", salt);
-
-        // Save Users
-        await MongoUser.create([
-          {
-            id: "u1_admin",
-            name: "Enterprise Admin",
-            email: "admin@januzenglobal.com",
-            phone: "09666588553",
-            role: "admin",
-            address: "P.No- P-12, Mahadevpuram, Gajularamaram, Telangana",
-            passwordHash: adminPasswordHash,
-            image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150",
-            securityQuestion: "What is your favorite book?",
-            securityAnswer: "shrimad bhagavad gita"
-          },
-          {
-            id: "u2_customer",
-            name: "Satyajeeth Ophir",
-            email: "satyajeeth.ophir@gmail.com",
-            phone: "09666588553",
-            role: "customer",
-            address: "Phase-2, Pno 46 street no 5, Samskruthi Avenues Rd., Dwaraka Nagar, Gajularamaram, Hyderabad, Telangana 500117",
-            passwordHash: userPasswordHash,
-            image: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150",
-            securityQuestion: "What was your childhood nickname?",
-            securityAnswer: "satya"
-          }
-        ]);
+        // Save empty user collection initially for self-service registration
+        await MongoUser.create([]);
 
         // Save Products
         await MongoProduct.create(INITIAL_PRODUCTS);
-
-        // Save Orders
-        await MongoOrder.create({
-          id: "o1",
-          orderId: "JAN-20260531-1002",
-          userId: "u2_customer",
-          userName: "Satyajeeth Ophir",
-          userEmail: "satyajeeth.ophir@gmail.com",
-          items: [
-            {
-              productId: "m3",
-              name: "Ibuprofen 400mg Rapid Relief",
-              price: 6.25,
-              quantity: 2,
-              image: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=600&auto=format&fit=crop",
-              shop: "medicals"
-            },
-            {
-              productId: "s4",
-              name: "Classic Hardcover Dot Grid Journal",
-              price: 16.90,
-              quantity: 1,
-              image: "https://images.unsplash.com/photo-1517842645767-c639042777db?w=600&auto=format&fit=crop",
-              shop: "stationery"
-            }
-          ],
-          shippingAddress: {
-            fullName: "Satyajeeth Ophir",
-            addressLine: "Flat 12, Royal Meadows",
-            city: "Chennai",
-            postalCode: "600001",
-            phone: "+91 9443322110"
-          },
-          totals: {
-            subtotal: 29.40,
-            shipping: 4.99,
-            tax: 1.47,
-            total: 35.86
-          },
-          status: "Delivered",
-          paymentMethod: "Credit Card",
-          createdAt: "2026-05-28T14:22:00Z"
-        });
-
-        // Save Messages
-        await MongoMessage.create({
-          id: "msg1",
-          name: "Rajesh Kumar",
-          email: "rajesh.k@gmail.com",
-          subject: "Wholesale Medicine Supply Quote",
-          shop: "medicals",
-          message: "Hello team, we are running a community clinic and would love to request a wholesale bulk discount plan for Ibuprofen and Vitamin C supplements. Thanks!",
-          isRead: false,
-          createdAt: "2026-05-30T09:12:00Z"
-        });
-
-        // Save Newsletter Emails
-        await MongoNewsletter.create([
-          { email: "satyajeeth.ophir@gmail.com" },
-          { email: "hello@januzen.com" }
-        ]);
 
         console.log("🌱 Seed successfully inserted to MongoDB.");
       } else {
         console.log("📦 Found existing records inside MongoDB. Direct operational connections active.");
       }
+
+      // Automatically prune and clear previous trial/test reviews, notifications, and contact inquiries for live release
+      await MongoMessage.deleteMany({});
+      await MongoReview.deleteMany({});
+      await MongoNotification.deleteMany({});
     } catch (e) {
       console.error("❌ CRITICAL: Failed to connect to MongoDB cluster! Falling back to database.json file:", e);
     }
@@ -808,6 +687,9 @@ export const dbClient = {
   },
 
   createProduct: async (product: Product): Promise<Product> => {
+    product.stockQuantity = product.stock;
+    const thresh = product.lowStockThreshold !== undefined ? product.lowStockThreshold : 5;
+    product.stockStatus = product.stock === 0 ? "out_of_stock" : (product.stock <= thresh ? "low_stock" : "in_stock");
     if (isMongo) {
       const doc = await MongoProduct.create(product);
       return doc.toObject() as any;
@@ -820,6 +702,11 @@ export const dbClient = {
   },
 
   updateProduct: async (id: string, updates: Partial<Product>): Promise<Product | null> => {
+    if (updates.stock !== undefined) {
+      updates.stockQuantity = updates.stock;
+      const thresh = updates.lowStockThreshold !== undefined ? updates.lowStockThreshold : 5;
+      updates.stockStatus = updates.stock === 0 ? "out_of_stock" : (updates.stock <= thresh ? "low_stock" : "in_stock");
+    }
     if (isMongo) {
       const doc = await MongoProduct.findOneAndUpdate({ id }, { $set: updates }, { new: true }).lean() as any;
       return doc;
@@ -848,6 +735,15 @@ export const dbClient = {
   },
 
   createOrder: async (order: Order): Promise<Order> => {
+    if (!order.statusHistory || order.statusHistory.length === 0) {
+      order.statusHistory = [
+        {
+          status: "placed",
+          timestamp: new Date().toISOString(),
+          note: "Order has been successfully placed."
+        }
+      ];
+    }
     if (isMongo) {
       const doc = await MongoOrder.create(order);
       return doc.toObject() as any;
@@ -859,17 +755,107 @@ export const dbClient = {
     }
   },
 
-  updateOrderStatus: async (id: string, status: string): Promise<Order | null> => {
+  updateOrderStatus: async (id: string, status: string, note?: string): Promise<Order | null> => {
     if (isMongo) {
-      const doc = await MongoOrder.findOneAndUpdate({ id }, { $set: { status } }, { new: true }).lean() as any;
+      const orderDoc = await MongoOrder.findOne({ id });
+      if (!orderDoc) return null;
+      const order = orderDoc.toObject() as any;
+      
+      let stockAdjusted = order.stockAdjusted || false;
+      const history = order.statusHistory || [];
+      
+      history.push({
+        status,
+        timestamp: new Date().toISOString(),
+        note: note || `Order status updated to ${status}`
+      });
+
+      // Stock adjustment logic
+      if (status.toLowerCase() === "confirmed" && !stockAdjusted) {
+        for (const item of order.items || []) {
+          const p = await MongoProduct.findOne({ id: item.productId });
+          if (p) {
+            const newStock = Math.max(0, p.stock - item.quantity);
+            await MongoProduct.updateOne({ id: item.productId }, { 
+              $set: { 
+                stock: newStock,
+                stockQuantity: newStock,
+                stockStatus: newStock === 0 ? "out_of_stock" : (newStock <= (p.lowStockThreshold || 5) ? "low_stock" : "in_stock")
+              }
+            });
+          }
+        }
+        stockAdjusted = true;
+      } else if (status.toLowerCase() === "cancelled" && stockAdjusted) {
+        for (const item of order.items || []) {
+          const p = await MongoProduct.findOne({ id: item.productId });
+          if (p) {
+            const newStock = p.stock + item.quantity;
+            await MongoProduct.updateOne({ id: item.productId }, { 
+              $set: { 
+                stock: newStock,
+                stockQuantity: newStock,
+                stockStatus: newStock === 0 ? "out_of_stock" : (newStock <= (p.lowStockThreshold || 5) ? "low_stock" : "in_stock")
+              }
+            });
+          }
+        }
+        stockAdjusted = false;
+      }
+
+      const doc = await MongoOrder.findOneAndUpdate(
+        { id },
+        { $set: { status, statusHistory: history, stockAdjusted } },
+        { new: true }
+      ).lean() as any;
       return doc;
     } else {
       const db = loadLocalDB();
       const idx = db.orders.findIndex(o => o.id === id);
       if (idx === -1) return null;
-      db.orders[idx].status = status as any;
+      const order = db.orders[idx] as any;
+      
+      let stockAdjusted = order.stockAdjusted || false;
+      const history = order.statusHistory || [];
+      
+      history.push({
+        status,
+        timestamp: new Date().toISOString(),
+        note: note || `Order status updated to ${status}`
+      });
+
+      // Stock adjustment logic
+      if (status.toLowerCase() === "confirmed" && !stockAdjusted) {
+        for (const item of order.items || []) {
+          const pIdx = db.products.findIndex(p => p.id === item.productId);
+          if (pIdx > -1) {
+            const p = db.products[pIdx];
+            const newStock = Math.max(0, p.stock - item.quantity);
+            p.stock = newStock;
+            p.stockQuantity = newStock;
+            p.stockStatus = newStock === 0 ? "out_of_stock" : (newStock <= (p.lowStockThreshold || 5) ? "low_stock" : "in_stock");
+          }
+        }
+        stockAdjusted = true;
+      } else if (status.toLowerCase() === "cancelled" && stockAdjusted) {
+        for (const item of order.items || []) {
+          const pIdx = db.products.findIndex(p => p.id === item.productId);
+          if (pIdx > -1) {
+            const p = db.products[pIdx];
+            const newStock = p.stock + item.quantity;
+            p.stock = newStock;
+            p.stockQuantity = newStock;
+            p.stockStatus = newStock === 0 ? "out_of_stock" : (newStock <= (p.lowStockThreshold || 5) ? "low_stock" : "in_stock");
+          }
+        }
+        stockAdjusted = false;
+      }
+
+      order.status = status as any;
+      order.statusHistory = history;
+      order.stockAdjusted = stockAdjusted;
       saveLocalDB(db);
-      return db.orders[idx];
+      return order;
     }
   },
 
@@ -1108,10 +1094,61 @@ export const dbClient = {
     }
   },
 
+  getWishlist: async (userId: string): Promise<WishlistItem[]> => {
+    if (isMongo) {
+      return MongoWishlist.find({ userId }).sort({ addedAt: -1 }).lean() as any;
+    } else {
+      const db = loadLocalDB();
+      const list = db.wishlist || [];
+      return list.filter(w => w.userId === userId);
+    }
+  },
+
+  toggleWishlistItem: async (userId: string, productId: string, productType: 'medicals' | 'stationery'): Promise<{ added: boolean; item?: WishlistItem }> => {
+    if (isMongo) {
+      const existing = await MongoWishlist.findOne({ userId, productId });
+      if (existing) {
+        await MongoWishlist.deleteOne({ id: existing.id });
+        return { added: false };
+      } else {
+        const item: WishlistItem = {
+          id: "w_" + Math.random().toString(36).substring(2, 11),
+          userId,
+          productId,
+          productType,
+          addedAt: new Date().toISOString()
+        };
+        await MongoWishlist.create(item);
+        return { added: true, item };
+      }
+    } else {
+      const db = loadLocalDB();
+      if (!db.wishlist) db.wishlist = [];
+      const idx = db.wishlist.findIndex(w => w.userId === userId && w.productId === productId);
+      if (idx > -1) {
+        db.wishlist.splice(idx, 1);
+        saveLocalDB(db);
+        return { added: false };
+      } else {
+        const item: WishlistItem = {
+          id: "w_" + Math.random().toString(36).substring(2, 11),
+          userId,
+          productId,
+          productType,
+          addedAt: new Date().toISOString()
+        };
+        db.wishlist.push(item);
+        saveLocalDB(db);
+        return { added: true, item };
+      }
+    }
+  },
+
   deleteUserWithData: async (userId: string): Promise<boolean> => {
     if (isMongo) {
       const res = await MongoUser.deleteOne({ id: userId });
       await MongoNotification.deleteMany({ userId });
+      await MongoWishlist.deleteMany({ userId });
       await MongoReview.deleteMany({ userId });
       await MongoOrder.deleteMany({ userId });
       return res.deletedCount > 0;
@@ -1122,6 +1159,9 @@ export const dbClient = {
       delete db.passwords[userId];
       if (db.notifications) {
         db.notifications = db.notifications.filter(n => n.userId !== userId);
+      }
+      if (db.wishlist) {
+        db.wishlist = db.wishlist.filter(w => w.userId !== userId);
       }
       if (db.reviews) {
         db.reviews = db.reviews.filter(r => r.userId !== userId);

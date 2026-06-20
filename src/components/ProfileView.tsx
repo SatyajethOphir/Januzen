@@ -1,9 +1,10 @@
 import React from "react";
 import { 
   User as UserIcon, Mail, Phone, MapPin, Lock, Camera, Save, ArrowLeft, 
-  Sparkles, ShieldCheck, Heart, Trash2, Eye, EyeOff, Upload, Image as ImageIcon
+  Sparkles, ShieldCheck, Heart, Trash2, Eye, EyeOff, Upload, Image as ImageIcon,
+  ShoppingBag, Check, ArrowRight, HeartOff
 } from "lucide-react";
-import { User } from "../types";
+import { User, Product, WishlistItem } from "../types";
 
 // Styled predefined avatar presets
 const AVATAR_PRESETS = [
@@ -19,13 +20,17 @@ interface ProfileViewProps {
   currentUser: User | null;
   onNavigate: (view: string, params?: Record<string, any>) => void;
   onUpdateCurrentUser: (user: User) => void;
+  onAddToBag?: (product: Product, qty?: number) => void;
 }
 
-export default function ProfileView({ currentUser, onNavigate, onUpdateCurrentUser }: ProfileViewProps) {
+export default function ProfileView({ currentUser, onNavigate, onUpdateCurrentUser, onAddToBag }: ProfileViewProps) {
   const [loading, setLoading] = React.useState(false);
   const [successMsg, setSuccessMsg] = React.useState("");
   const [errorMsg, setErrorMsg] = React.useState("");
   const [uploadActive, setUploadActive] = React.useState(false);
+  
+  // Navigation tabs state: "settings" or "wishlist"
+  const [activeTab, setActiveTab] = React.useState<"settings" | "wishlist">("settings");
   
   // Field States
   const [name, setName] = React.useState("");
@@ -36,6 +41,11 @@ export default function ProfileView({ currentUser, onNavigate, onUpdateCurrentUs
   const [confirmPassword, setConfirmPassword] = React.useState("");
   const [showPassword, setShowPassword] = React.useState(false);
 
+  // Wishlist specific state
+  const [wishlistItems, setWishlistItems] = React.useState<WishlistItem[]>([]);
+  const [catalogProducts, setCatalogProducts] = React.useState<Product[]>([]);
+  const [wishlistLoading, setWishlistLoading] = React.useState(false);
+
   // Sync state with current user prop on mount or update
   React.useEffect(() => {
     if (currentUser) {
@@ -45,6 +55,41 @@ export default function ProfileView({ currentUser, onNavigate, onUpdateCurrentUs
       setAvatarUrl(currentUser.image || "");
     }
   }, [currentUser]);
+
+  // Load wishlist items & catalog products
+  const fetchWishlistData = async () => {
+    const token = localStorage.getItem("januzen_token") || sessionStorage.getItem("januzen_token");
+    if (!token) return;
+    setWishlistLoading(true);
+    try {
+      // Fetch wishlist items
+      const wishRes = await fetch("/api/wishlist", {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const wishData = await wishRes.json();
+      
+      // Fetch all products to lookup details
+      const prodRes = await fetch("/api/products");
+      const prodData = await prodRes.json();
+
+      if (wishRes.ok) {
+        setWishlistItems(wishData.wishlist || []);
+      }
+      if (prodRes.ok) {
+        setCatalogProducts(prodData.products || []);
+      }
+    } catch (err) {
+      console.error("Failed to load wishlist content:", err);
+    } finally {
+      setWishlistLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    if (currentUser && activeTab === "wishlist") {
+      fetchWishlistData();
+    }
+  }, [currentUser, activeTab]);
 
   if (!currentUser) {
     return (
@@ -157,6 +202,61 @@ export default function ProfileView({ currentUser, onNavigate, onUpdateCurrentUs
     }
   };
 
+  // Toggle item from wishlist API helper
+  const handleRemoveWishlist = async (productId: string, productType: 'medicals' | 'stationery') => {
+    const token = localStorage.getItem("januzen_token") || sessionStorage.getItem("januzen_token");
+    if (!token) return;
+    try {
+      const res = await fetch("/api/wishlist/toggle", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ productId, productType })
+      });
+      if (res.ok) {
+        setWishlistItems(prev => prev.filter(item => item.productId !== productId));
+        setSuccessMsg("Item removed from your offline-synced wishlist catalog.");
+        setTimeout(() => setSuccessMsg(""), 3000);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Direct to checkout sequence
+  const handleDirectToCheckout = (product: Product) => {
+    if (onAddToBag) {
+      onAddToBag(product, 1);
+      onNavigate("checkout");
+    }
+  };
+
+  // Purchase entire bag (Add all wishlisted products with stock to bag, go to checkout)
+  const handlePurchaseWholeBag = () => {
+    const wishProducts = catalogProducts.filter(p => wishlistItems.some(w => w.productId === p.id));
+    const purchasable = wishProducts.filter(p => (p.stockQuantity ?? p.stock) > 0);
+    
+    if (purchasable.length === 0) {
+      setErrorMsg("No in-stock item registry matches available for dispatch.");
+      setTimeout(() => setErrorMsg(""), 3000);
+      return;
+    }
+
+    if (onAddToBag) {
+      purchasable.forEach(p => {
+        onAddToBag(p, 1);
+      });
+      setSuccessMsg(`Committed ${purchasable.length} verified item matches to active shopping container.`);
+      setTimeout(() => setSuccessMsg(""), 3000);
+      onNavigate("cart");
+    }
+  };
+
+  // Join wishlist item state back to display products
+  const wishlistedProductsInView = catalogProducts.filter(p => wishlistItems.some(w => w.productId === p.id));
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 font-sans space-y-8">
       
@@ -164,14 +264,35 @@ export default function ProfileView({ currentUser, onNavigate, onUpdateCurrentUs
       <div id="profile-banner-back" className="flex items-center justify-between border-b border-gray-250 pb-5">
         <button 
           onClick={() => onNavigate("home")}
-          className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
+          className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-900 transition-colors cursor-pointer font-mono"
         >
           <ArrowLeft className="h-4 w-4" />
           <span>Exit Ledger</span>
         </button>
-        <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-400">
+        <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#0d9488]">
           User Account Security Workspace
         </span>
+      </div>
+
+      {/* Tabs navigation panel */}
+      <div className="flex border-b border-gray-250 gap-4">
+        <button
+          onClick={() => setActiveTab("settings")}
+          className={`pb-3 text-xs uppercase tracking-wider font-bold transition-all border-b-2 cursor-pointer outline-none ${
+            activeTab === "settings" ? "border-[#0d9488] text-[#0d9488]" : "border-transparent text-slate-400 hover:text-slate-600"
+          }`}
+        >
+          System Register Parameters
+        </button>
+        <button
+          onClick={() => setActiveTab("wishlist")}
+          className={`pb-3 text-xs uppercase tracking-wider font-bold transition-all border-b-2 cursor-pointer outline-none flex items-center gap-1.5 ${
+            activeTab === "wishlist" ? "border-[#0d9488] text-[#0d9488]" : "border-transparent text-slate-400 hover:text-slate-600"
+          }`}
+        >
+          <Heart className={`h-3.5 w-3.5 ${activeTab === "wishlist" ? "fill-[#0d9488] stroke-[#0d9488]" : ""}`} />
+          <span>Personal Registry Wishlist ({wishlistItems.length})</span>
+        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -213,7 +334,7 @@ export default function ProfileView({ currentUser, onNavigate, onUpdateCurrentUs
 
             <div>
               <h3 className="font-serif text-base font-bold tracking-normal">{name || "Awaiting Name Input"}</h3>
-              <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest mt-0.5 mt-1">
+              <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest mt-1">
                 {currentUser.role === "admin" ? "🛡️ System Director" : "🛒 Verified Client Consignee"}
               </p>
             </div>
@@ -252,7 +373,7 @@ export default function ProfileView({ currentUser, onNavigate, onUpdateCurrentUs
                   onClick={() => setAvatarUrl(preset.url)}
                   title={preset.name}
                   className={`relative h-12 rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${
-                    avatarUrl === preset.url ? "border-[#0F9B8E] ring-2 ring-[#0F9B8E]/20" : "border-slate-100 hover:border-[#0F9B8E]/40"
+                    avatarUrl === preset.url ? "border-[#0d9488] ring-2 ring-[#0d9488]/20" : "border-slate-100 hover:border-[#0d9488]/40"
                   }`}
                 >
                   <img src={preset.url} alt={preset.name} className="w-full h-full object-cover" />
@@ -261,7 +382,7 @@ export default function ProfileView({ currentUser, onNavigate, onUpdateCurrentUs
             </div>
 
             <div className="space-y-1.5 pt-2 border-t border-gray-150">
-              <label className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block">
+              <label className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block font-mono">
                 Or enter image web URL directly:
               </label>
               <div className="relative">
@@ -275,167 +396,279 @@ export default function ProfileView({ currentUser, onNavigate, onUpdateCurrentUs
                 <ImageIcon className="h-3 w-3 text-slate-400 absolute left-2.5 top-2.5" />
               </div>
             </div>
-            
           </div>
-
         </div>
 
-        {/* Right column: Edit forms inside central card */}
+        {/* Right column: Form or Wishlist based on active tab state */}
         <div className="md:col-span-2">
-          
-          <form onSubmit={handleProfileSubmit} id="profile-editor-form" className="bg-card-theme border border-gray-250 rounded-2xl shadow p-6 sm:p-8 space-y-6">
-            
-            <div className="space-y-1 border-b border-gray-150 pb-4">
-              <h2 className="font-serif text-lg font-black tracking-wide">Secure Profile Parameters</h2>
-              <p className="text-slate-500 text-xs">
-                Maintain and audit your general ledger registration data for fast standard dispatches.
-              </p>
-            </div>
-
-            {successMsg && (
-              <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-xl text-xs font-mono font-semibold">
-                ✓ {successMsg}
-              </div>
-            )}
-
-            {errorMsg && (
-              <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-xl text-xs font-mono font-semibold">
-                ⚠️ {errorMsg}
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
+          {activeTab === "settings" ? (
+            <form onSubmit={handleProfileSubmit} id="profile-editor-form" className="bg-card-theme border border-gray-250 rounded-2xl shadow p-6 sm:p-8 space-y-6">
               
-              {/* Full Name */}
-              <div className="space-y-1.5">
-                <label className="text-slate-400 uppercase tracking-widest font-bold block">Consignee Full name</label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    required
-                    placeholder="E.g. Satyajeeth Ophir"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full bg-slate-50 border border-gray-150 pl-8 pr-3 py-2 text-sm text-slate-800 rounded-lg focus:outline-none focus:border-slate-850"
-                  />
-                  <UserIcon className="h-4 w-4 text-slate-400 absolute left-2.5 top-2.5" />
-                </div>
-              </div>
-
-              {/* Direct Phone */}
-              <div className="space-y-1.5">
-                <label className="text-slate-400 uppercase tracking-widest font-bold block">Direct Mobile Phone</label>
-                <div className="relative">
-                  <input
-                    type="tel"
-                    placeholder="E.g. 09666588553"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="w-full bg-slate-50 border border-gray-150 pl-8 pr-3 py-2 text-sm text-slate-800 rounded-lg focus:outline-none focus:border-slate-850"
-                  />
-                  <Phone className="h-4 w-4 text-slate-400 absolute left-2.5 top-2.5" />
-                </div>
-              </div>
-
-              {/* Billing Address */}
-              <div className="sm:col-span-2 space-y-1.5">
-                <label className="text-slate-400 uppercase tracking-widest font-bold block">Primary Dispatch Address</label>
-                <div className="relative">
-                  <textarea
-                    rows={3}
-                    placeholder="Phase-2, Pno 46 street no 5, Samskruthi Avenues Rd., Dwaraka Nagar..."
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    className="w-full bg-slate-50 border border-gray-150 pl-8 pr-3 py-2 text-sm text-slate-800 rounded-lg focus:outline-none focus:border-slate-850 leading-relaxed"
-                  />
-                  <MapPin className="h-4 w-4 text-slate-400 absolute left-2.5 top-3" />
-                </div>
-              </div>
-
-            </div>
-
-            {/* Password security update box */}
-            <div className="border-t border-gray-150 pt-5 space-y-4">
-              <div>
-                <span className="text-xs uppercase font-extrabold tracking-wider text-slate-800 font-serif">
-                  Modify Portal Passkey (Optional)
-                </span>
-                <p className="text-[10px] text-slate-500">
-                  Leave fields empty to retain password codes currently stored on JANUZEN clusters.
+              <div className="space-y-1 border-b border-gray-150 pb-4">
+                <h2 className="font-serif text-lg font-black tracking-wide text-gray-900">Secure Profile Parameters</h2>
+                <p className="text-slate-500 text-xs">
+                  Maintain and audit your general ledger registration data for fast standard dispatches.
                 </p>
               </div>
 
+              {successMsg && (
+                <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-xl text-xs font-mono font-semibold">
+                  ✓ {successMsg}
+                </div>
+              )}
+
+              {errorMsg && (
+                <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-xl text-xs font-mono font-semibold">
+                  ⚠️ {errorMsg}
+                </div>
+              )}
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
                 
-                {/* New Password */}
+                {/* Full Name */}
                 <div className="space-y-1.5">
-                  <label className="text-slate-400 uppercase tracking-widest font-bold block">New Password</label>
+                  <label className="text-slate-400 uppercase tracking-widest font-bold block">Consignee Full name</label>
                   <div className="relative">
                     <input
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Minimum 6 characters recommended..."
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full bg-slate-50 border border-gray-150 pl-8 pr-8 py-2 text-sm text-slate-800 rounded-lg focus:outline-none focus:border-slate-850"
+                      type="text"
+                      required
+                      placeholder="E.g. Satyajeeth Ophir"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="w-full bg-slate-50 border border-gray-150 pl-8 pr-3 py-2 text-sm text-slate-800 rounded-lg focus:outline-none focus:border-slate-850"
                     />
-                    <Lock className="h-4 w-4 text-slate-400 absolute left-2.5 top-2.5" />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
+                    <UserIcon className="h-4 w-4 text-slate-400 absolute left-2.5 top-2.5" />
                   </div>
                 </div>
 
-                {/* Confirm Password */}
+                {/* Direct Phone */}
                 <div className="space-y-1.5">
-                  <label className="text-slate-400 uppercase tracking-widest font-bold block">Confirm new password</label>
+                  <label className="text-slate-400 uppercase tracking-widest font-bold block">Direct Mobile Phone</label>
                   <div className="relative">
                     <input
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Match passwords..."
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      type="tel"
+                      placeholder="E.g. 09666588553"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
                       className="w-full bg-slate-50 border border-gray-150 pl-8 pr-3 py-2 text-sm text-slate-800 rounded-lg focus:outline-none focus:border-slate-850"
                     />
-                    <Lock className="h-4 w-4 text-slate-400 absolute left-2.5 top-2.5" />
+                    <Phone className="h-4 w-4 text-slate-400 absolute left-2.5 top-2.5" />
+                  </div>
+                </div>
+
+                {/* Billing Address */}
+                <div className="sm:col-span-2 space-y-1.5">
+                  <label className="text-slate-400 uppercase tracking-widest font-bold block">Primary Dispatch Address</label>
+                  <div className="relative">
+                    <textarea
+                      rows={3}
+                      placeholder="Phase-2, Pno 46 street no 5, Samskruthi Avenues Rd., Dwaraka Nagar..."
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      className="w-full bg-slate-50 border border-gray-150 pl-8 pr-3 py-2 text-sm text-slate-800 rounded-lg focus:outline-none focus:border-slate-850 leading-relaxed"
+                    />
+                    <MapPin className="h-4 w-4 text-slate-400 absolute left-2.5 top-3" />
                   </div>
                 </div>
 
               </div>
-            </div>
 
-            {/* Submission triggers */}
-            <div className="flex items-center justify-between border-t border-gray-150 pt-5">
-              <span className="text-[10px] text-slate-400 font-mono">
-                * Modifications write directly to verified user storage cluster.
-              </span>
-              <button
-                type="submit"
-                disabled={loading}
-                className={`py-2.5 px-6 bg-[#0D1B2A] hover:bg-slate-800 text-white font-bold text-xs font-mono uppercase tracking-widest rounded-lg flex items-center gap-2 transition-colors cursor-pointer shadow-md ${
-                  loading ? "opacity-60 cursor-not-allowed" : ""
-                }`}
-              >
-                {loading ? (
-                  <span>Negogiating...</span>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4" />
-                    <span>Save Ledger Changes</span>
-                  </>
+              {/* Password security update box */}
+              <div className="border-t border-gray-150 pt-5 space-y-4">
+                <div>
+                  <span className="text-xs uppercase font-extrabold tracking-wider text-slate-800 font-serif">
+                    Modify Portal Passkey (Optional)
+                  </span>
+                  <p className="text-[10px] text-slate-500">
+                    Leave fields empty to retain password codes currently stored on JANUZEN clusters.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
+                  
+                  {/* New Password */}
+                  <div className="space-y-1.5">
+                    <label className="text-slate-400 uppercase tracking-widest font-bold block">New Password</label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Minimum 6 characters recommended..."
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="w-full bg-slate-50 border border-gray-150 pl-8 pr-8 py-2 text-sm text-slate-800 rounded-lg focus:outline-none focus:border-slate-850"
+                      />
+                      <Lock className="h-4 w-4 text-slate-400 absolute left-2.5 top-2.5" />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Confirm Password */}
+                  <div className="space-y-1.5">
+                    <label className="text-slate-400 uppercase tracking-widest font-bold block">Confirm new password</label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Match passwords..."
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        className="w-full bg-slate-50 border border-gray-150 pl-8 pr-3 py-2 text-sm text-slate-800 rounded-lg focus:outline-none focus:border-slate-850"
+                      />
+                      <Lock className="h-4 w-4 text-slate-400 absolute left-2.5 top-2.5" />
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              {/* Submission triggers */}
+              <div className="flex items-center justify-between border-t border-gray-150 pt-5">
+                <span className="text-[10px] text-slate-400 font-mono">
+                  * Modifications write directly to verified user storage cluster.
+                </span>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className={`py-2.5 px-6 bg-[#0D1B2A] hover:bg-slate-800 text-white font-bold text-xs font-mono uppercase tracking-widest rounded-lg flex items-center gap-2 transition-colors cursor-pointer shadow-md ${
+                    loading ? "opacity-60 cursor-not-allowed" : ""
+                  }`}
+                >
+                  {loading ? (
+                    <span>Negotiating...</span>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4" />
+                      <span>Save Ledger Changes</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="bg-card-theme border border-gray-250 rounded-2xl shadow p-6 sm:p-8 space-y-6">
+              <div className="flex items-center justify-between border-b border-gray-150 pb-4">
+                <div>
+                  <h2 className="font-serif text-lg font-black tracking-wide text-gray-900">Personal Item Registry</h2>
+                  <p className="text-slate-500 text-xs mt-1">
+                    Your offline-synced wishlist. Directly purchase whole lists or dispatch items individually.
+                  </p>
+                </div>
+                {wishlistedProductsInView.length > 0 && (
+                  <button
+                    onClick={handlePurchaseWholeBag}
+                    className="py-2 px-4 bg-[#0d9488]/10 hover:bg-[#0d9488]/20 text-[#0d9488] font-bold text-xs font-mono uppercase tracking-wider rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer border border-[#0d9488]/30"
+                  >
+                    <ShoppingBag className="h-4 w-4" />
+                    <span>Purchase Entire Bag</span>
+                  </button>
                 )}
-              </button>
+              </div>
+
+              {successMsg && (
+                <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-xl text-xs font-mono font-semibold">
+                  ✓ {successMsg}
+                </div>
+              )}
+
+              {wishlistLoading ? (
+                <div className="py-16 text-center font-mono text-slate-400 text-xs">
+                  <div className="animate-spin h-5 w-5 border-2 border-t-transparent border-[#0d9488] rounded-full mx-auto mb-2"></div>
+                  <span>Syncing ledger data...</span>
+                </div>
+              ) : wishlistedProductsInView.length === 0 ? (
+                <div className="py-16 text-center text-slate-400 space-y-3">
+                  <HeartOff className="h-10 w-10 text-slate-300 mx-auto" />
+                  <span className="font-serif text-sm font-medium block">Your registry is fully vacant!</span>
+                  <p className="text-xs max-w-xs mx-auto leading-normal font-mono mb-4 text-slate-400">
+                    Explore Nuthan Pharmacy or Workplace Stationery catalog sheets to populate matches.
+                  </p>
+                  <button
+                    onClick={() => setActiveTab("settings")}
+                    className="py-1.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[10px] font-mono uppercase rounded-lg transition-all cursor-pointer"
+                  >
+                    Return to Settings
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {wishlistedProductsInView.map((product) => {
+                    const isOutOfStock = (product.stockQuantity ?? product.stock) === 0;
+                    const isLowStock = !isOutOfStock && (product.stockQuantity ?? product.stock) <= (product.lowStockThreshold ?? 5);
+                    const stockVal = product.stockQuantity ?? product.stock;
+
+                    return (
+                      <div 
+                        key={product.id} 
+                        className="bg-white hover:bg-slate-50/50 border border-gray-200 rounded-xl p-4 flex flex-col justify-between transition-all group"
+                      >
+                        <div className="flex gap-3">
+                          <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-slate-50 flex-shrink-0 border border-gray-150">
+                            <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                            {isOutOfStock && (
+                              <div className="absolute inset-0 bg-white/80 flex items-center justify-center text-[8px] font-mono font-bold text-red-600 uppercase">
+                                Out of Stock
+                              </div>
+                            )}
+                          </div>
+                          <div className="space-y-1">
+                            <span className="text-[8px] font-mono font-bold uppercase tracking-widest text-[#0d9488]">
+                              {product.category}
+                            </span>
+                            <h4 
+                              onClick={() => onNavigate("product-detail", { productId: product.id })}
+                              className="font-serif text-xs font-bold text-slate-900 group-hover:text-[#0d9488] transition-colors cursor-pointer line-clamp-2"
+                            >
+                              {product.name}
+                            </h4>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-mono font-bold text-slate-900 font-bold">
+                                ₹{product.price.toFixed(2)}
+                              </span>
+                              {isLowStock && (
+                                <span className="bg-amber-50 text-amber-700 border border-amber-200 text-[8px] font-mono px-1 rounded">
+                                  Only {stockVal} left
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 mt-4 border-t border-gray-100 pt-3 text-[10px] font-mono">
+                          <button
+                            onClick={() => handleRemoveWishlist(product.id, product.shop)}
+                            className="bg-slate-50 hover:bg-red-50 text-slate-500 hover:text-red-600 py-1.5 rounded-lg border border-gray-200/80 transition-colors flex items-center justify-center gap-1 cursor-pointer tracking-wider uppercase font-semibold block"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                            <span>Remove</span>
+                          </button>
+                          
+                          <button
+                            onClick={() => handleDirectToCheckout(product)}
+                            disabled={isOutOfStock}
+                            className={`py-1.5 rounded-lg text-white font-bold tracking-wider uppercase flex items-center justify-center gap-1 cursor-pointer transition-colors ${
+                              isOutOfStock 
+                                ? "bg-slate-100 text-slate-400 border border-slate-250 cursor-not-allowed uppercase text-[9px]" 
+                                : "bg-[#0d9488] hover:bg-teal-700 shadow-sm"
+                            }`}
+                          >
+                            <ArrowRight className="h-3 w-3" />
+                            <span>Order Link</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-
-          </form>
-
+          )}
         </div>
-
       </div>
-
     </div>
   );
 }

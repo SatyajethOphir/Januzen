@@ -1,18 +1,27 @@
 import React from "react";
-import { ChevronLeft, ShoppingBag, Truck, ShieldCheck, Heart, Share2, Plus, Minus, Tag, Star } from "lucide-react";
+import { ChevronLeft, ShoppingBag, Truck, ShieldCheck, Heart, Share2, Plus, Minus, Tag, Star, Check } from "lucide-react";
 import { Product } from "../types";
 
 interface ProductDetailViewProps {
   productId: string;
   onNavigate: (view: string, params?: Record<string, any>) => void;
   onAddToBag: (product: Product, quantity?: number) => void;
+  wishlistProductIds?: string[];
+  onToggleWishlist?: (productId: string, productType: 'medicals' | 'stationery') => void;
 }
 
-export default function ProductDetailView({ productId, onNavigate, onAddToBag }: ProductDetailViewProps) {
+export default function ProductDetailView({ 
+  productId, 
+  onNavigate, 
+  onAddToBag,
+  wishlistProductIds = [],
+  onToggleWishlist
+}: ProductDetailViewProps) {
   const [product, setProduct] = React.useState<Product | null>(null);
   const [related, setRelated] = React.useState<Product[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [quantity, setQuantity] = React.useState(1);
+  const [copied, setCopied] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState<"overview" | "specs" | "reviews">("overview");
 
   const [reviews, setReviews] = React.useState<any[]>([]);
@@ -218,36 +227,74 @@ export default function ProductDetailView({ productId, onNavigate, onAddToBag }:
           </div>
 
           <div className="space-y-6 pt-6 border-t border-gray-100">
-            {/* Add to basket controls if in stock */}
-            {!isOutOfStock && (
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
-                <div className="flex items-center justify-between border border-gray-200 rounded-lg p-2 bg-slate-50 min-w-[120px]">
+            {/* Wishlist, Share, and add to basket controls */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+              {!isOutOfStock ? (
+                <>
+                  <div className="flex items-center justify-between border border-gray-200 rounded-lg p-2 bg-slate-50 min-w-[120px]">
+                    <button
+                      onClick={() => setQuantity(q => Math.max(q - 1, 1))}
+                      disabled={quantity <= 1}
+                      className="p-1 text-gray-500 hover:text-black hover:bg-gray-200 rounded disabled:opacity-40 cursor-pointer"
+                    >
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <span className="font-mono text-sm font-bold text-gray-800 px-4">{quantity}</span>
+                    <button
+                      onClick={() => setQuantity(q => Math.min(q + 1, product.stockQuantity ?? product.stock))}
+                      disabled={quantity >= (product.stockQuantity ?? product.stock)}
+                      className="p-1 text-gray-500 hover:text-black hover:bg-gray-200 rounded disabled:opacity-40 cursor-pointer"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+
                   <button
-                    onClick={() => setQuantity(q => Math.max(q - 1, 1))}
-                    disabled={quantity <= 1}
-                    className="p-1 text-gray-500 hover:text-black hover:bg-gray-200 rounded disabled:opacity-40 cursor-pointer"
+                    onClick={() => onAddToBag(product, quantity)}
+                    className={`flex-1 text-white text-sm font-bold tracking-wide py-3 px-6 rounded-lg shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer ${btnColor}`}
                   >
-                    <Minus className="h-4 w-4" />
+                    <ShoppingBag className="h-4 w-4" />
+                    Add to Shopping Bag
                   </button>
-                  <span className="font-mono text-sm font-bold text-gray-800 px-4">{quantity}</span>
-                  <button
-                    onClick={() => setQuantity(q => Math.min(q + 1, product.stock))}
-                    disabled={quantity >= product.stock}
-                    className="p-1 text-gray-500 hover:text-black hover:bg-gray-200 rounded disabled:opacity-40 cursor-pointer"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </button>
+                </>
+              ) : (
+                <div className="flex-1 bg-red-50 text-red-700 border border-red-200 py-3 px-4 rounded-lg text-xs font-mono font-bold text-center">
+                  ⚠️ Bespoke item is temporarily completely vacant.
                 </div>
+              )}
+
+              {/* Wishlist and Share button triggers side-by-side */}
+              <div className="flex gap-2 justify-center">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onToggleWishlist) onToggleWishlist(product.id, product.shop);
+                  }}
+                  className="p-3 bg-white hover:bg-red-50 text-slate-700 hover:text-red-100 rounded-lg border border-gray-250 flex items-center justify-center transition-all cursor-pointer shadow-sm shrink-0"
+                  title={wishlistProductIds.includes(product.id) ? "Remove from wishlist" : "Add to wishlist"}
+                >
+                  <Heart className={`h-5 w-5 transition-colors ${wishlistProductIds.includes(product.id) ? "fill-red-600 stroke-red-600 text-red-600" : "text-slate-500"}`} />
+                </button>
 
                 <button
-                  onClick={() => onAddToBag(product, quantity)}
-                  className={`flex-1 text-white text-sm font-bold tracking-wide py-3 px-6 rounded-lg shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer ${btnColor}`}
+                  onClick={() => {
+                    const shareUrl = `${window.location.origin}${window.location.pathname}?product=${product.id}`;
+                    navigator.clipboard.writeText(shareUrl).then(() => {
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                    });
+                  }}
+                  className="p-3 bg-white hover:bg-teal-50 text-slate-700 hover:text-teal-600 rounded-lg border border-gray-250 flex items-center justify-center transition-all cursor-pointer shadow-sm shrink-0"
+                  title="Copy product link"
                 >
-                  <ShoppingBag className="h-4 w-4" />
-                  Add to Shopping Bag
+                  {copied ? (
+                    <Check className="h-5 w-5 text-teal-600" />
+                  ) : (
+                    <Share2 className="h-5 w-5 text-slate-500" />
+                  )}
                 </button>
               </div>
-            )}
+            </div>
 
             {/* Corporate Assurances */}
             <div className="grid grid-cols-2 gap-4 text-xs text-gray-500 select-none">

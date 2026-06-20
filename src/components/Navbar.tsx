@@ -1,6 +1,7 @@
 import React from "react";
 import { ShoppingBag, User, LogOut, ShieldAlert, Activity, BookOpen, Menu, X, Settings, Palette, Bell } from "lucide-react";
 import { User as UserType } from "../types";
+import { JanuzenLogo, NuthanMedicalsLogo, JaStationeryLogo } from "./Logos";
 
 interface NavbarProps {
   currentView: string;
@@ -73,14 +74,32 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo Brand */}
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => { onNavigate("home"); setMobileMenuOpen(false); }}>
-            <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-[#ffffff] text-[#0D1B2A] font-serif font-extrabold text-xl tracking-wider shadow">
-              JZ
+          <div className="flex items-center gap-2 sm:gap-3 cursor-pointer" onClick={() => { onNavigate("home"); setMobileMenuOpen(false); }}>
+            <JanuzenLogo size={36} className="hover:rotate-6" />
+            <div className="flex flex-col">
+              <span className="font-serif text-base sm:text-lg font-bold tracking-widest text-[#ffffff] leading-tight">JANUZEN</span>
+              <span className="block text-[8px] uppercase tracking-[#0.2em] text-gray-400 font-mono">Global LLP</span>
             </div>
-            <div>
-              <span className="font-serif text-lg font-bold tracking-widest text-[#ffffff]">JANUZEN</span>
-              <span className="block text-[9px] uppercase tracking-[#0.2em] text-gray-400 font-mono">Global LLP</span>
-            </div>
+
+            {/* Division-specific indicator logo next to main company label */}
+            {currentView === "medicals" && (
+              <div className="hidden sm:flex items-center gap-2 border-l border-white/20 pl-3 ml-1 animate-fade-in">
+                <NuthanMedicalsLogo size={28} />
+                <div className="flex flex-col">
+                  <span className="font-serif text-[11px] font-bold text-[#3FE9D9] uppercase tracking-wider leading-none">Nuthan</span>
+                  <span className="text-[7px] text-[#3FE9D9]/85 font-mono tracking-widest uppercase">Medicals</span>
+                </div>
+              </div>
+            )}
+            {currentView === "stationery" && (
+              <div className="hidden sm:flex items-center gap-2 border-l border-white/20 pl-3 ml-1 animate-fade-in">
+                <JaStationeryLogo size={28} />
+                <div className="flex flex-col">
+                  <span className="font-serif text-[11px] font-bold text-[#F5B041] uppercase tracking-wider leading-none">JA</span>
+                  <span className="text-[7px] text-[#F5B041]/85 font-mono tracking-widest uppercase">Stationery</span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Desktop Navigation links */}

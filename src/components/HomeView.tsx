@@ -2,20 +2,30 @@ import React from "react";
 import { gsap } from "gsap";
 import { 
   ArrowRight, ShieldCheck, Truck, Clock, Sparkles, Inbox, 
-  Activity, BookOpen, Quote, HelpCircle, Star, ArrowUpRight 
+  Activity, BookOpen, Quote, HelpCircle, Star, ArrowUpRight, Heart, Share2, Check
 } from "lucide-react";
 import { Product } from "../types";
+import { JanuzenLogo, NuthanMedicalsLogo, JaStationeryLogo } from "./Logos";
 
 interface HomeViewProps {
   onNavigate: (view: string, params?: Record<string, any>) => void;
   featuredProducts: Product[];
   onAddToBag: (product: Product) => void;
+  wishlistProductIds?: string[];
+  onToggleWishlist?: (productId: string, productType: 'medicals' | 'stationery') => void;
 }
 
-export default function HomeView({ onNavigate, featuredProducts, onAddToBag }: HomeViewProps) {
+export default function HomeView({ 
+  onNavigate, 
+  featuredProducts, 
+  onAddToBag, 
+  wishlistProductIds = [], 
+  onToggleWishlist 
+}: HomeViewProps) {
   const [newsEmail, setNewsEmail] = React.useState("");
   const [successMsg, setSuccessMsg] = React.useState("");
   const [errorMsg, setErrorMsg] = React.useState("");
+  const [copiedId, setCopiedId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     // Elegant entrance timeline for the premium brand launch
@@ -172,8 +182,8 @@ export default function HomeView({ onNavigate, featuredProducts, onAddToBag }: H
                   onClick={() => onNavigate("medicals")}
                   className="flex items-start gap-4 p-3 rounded-lg hover:bg-white/5 border border-transparent hover:border-teal-500/20 transition-all group cursor-pointer"
                 >
-                  <div className="h-10 w-10 rounded-lg bg-teal-500/10 text-teal-400 flex items-center justify-center shrink-0 border border-teal-500/20 group-hover:scale-105 transition-transform">
-                    <Activity className="h-5 w-5" />
+                  <div className="h-10 w-10 text-teal-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                    <NuthanMedicalsLogo size={32} />
                   </div>
                   <div>
                     <h4 className="text-sm font-semibold text-white flex items-center gap-1.5 group-hover:text-teal-300">
@@ -189,8 +199,8 @@ export default function HomeView({ onNavigate, featuredProducts, onAddToBag }: H
                   onClick={() => onNavigate("stationery")}
                   className="flex items-start gap-4 p-3 rounded-lg hover:bg-white/5 border border-transparent hover:border-amber-500/20 transition-all group cursor-pointer"
                 >
-                  <div className="h-10 w-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/20 group-hover:scale-105 transition-transform">
-                    <BookOpen className="h-5 w-5" />
+                  <div className="h-10 w-10 text-amber-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                    <JaStationeryLogo size={32} />
                   </div>
                   <div>
                     <h4 className="text-sm font-semibold text-white flex items-center gap-1.5 group-hover:text-amber-300">
@@ -248,8 +258,8 @@ export default function HomeView({ onNavigate, featuredProducts, onAddToBag }: H
           {/* Card 1: Nuthan Medicals */}
           <div className="gsap-division-card bg-card-theme border rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between group">
             <div className="p-8 lg:p-12 space-y-6">
-              <div className="inline-flex h-14 w-14 rounded-2xl bg-teal-500/10 text-teal-600 items-center justify-center border border-teal-200">
-                <Activity className="h-7 w-7" />
+              <div className="inline-flex h-16 w-16 text-teal-600 items-center justify-center">
+                <NuthanMedicalsLogo size={56} className="group-hover:scale-110 transition-transform duration-350" />
               </div>
               
               <div className="space-y-2">
@@ -284,8 +294,8 @@ export default function HomeView({ onNavigate, featuredProducts, onAddToBag }: H
           {/* Card 2: JA Stationery */}
           <div className="gsap-division-card bg-card-theme border rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between group">
             <div className="p-8 lg:p-12 space-y-6">
-              <div className="inline-flex h-14 w-14 rounded-2xl bg-amber-500/10 text-amber-600 items-center justify-center border border-amber-200">
-                <BookOpen className="h-7 w-7" />
+              <div className="inline-flex h-16 w-16 text-amber-600 items-center justify-center">
+                <JaStationeryLogo size={56} className="group-hover:scale-110 transition-transform duration-350" />
               </div>
 
               <div className="space-y-2">
@@ -340,11 +350,27 @@ export default function HomeView({ onNavigate, featuredProducts, onAddToBag }: H
             featuredProducts.slice(0, 4).map((product) => {
               const shopBadge = product.shop === "medicals" ? "bg-teal-50 text-teal-800 border-teal-100" : "bg-amber-50 text-amber-800 border-amber-100";
               const btnTheme = product.shop === "medicals" ? "bg-[#0F9B8E] hover:bg-[#0c7f74]" : "bg-[#D4820A] hover:bg-[#b56e07]";
+              
+              const isWishlisted = wishlistProductIds.includes(product.id);
+              const isOutOfStock = (product.stockQuantity ?? product.stock) === 0;
+              const isLowStock = !isOutOfStock && (product.stockQuantity ?? product.stock) <= (product.lowStockThreshold ?? 5);
+              const stockVal = product.stockQuantity ?? product.stock;
+
+              // Local copy sharing status tracking
+              const isCopied = copiedId === product.id;
+              const handleShareLink = (e: React.MouseEvent) => {
+                e.stopPropagation();
+                const shareUrl = `${window.location.origin}${window.location.pathname}?product=${product.id}`;
+                navigator.clipboard.writeText(shareUrl).then(() => {
+                  setCopiedId(product.id);
+                  setTimeout(() => setCopiedId(null), 2000);
+                });
+              };
 
               return (
                 <div 
                   key={product.id} 
-                  className="gsap-product-tile bg-card-theme border rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between"
+                  className="gsap-product-tile bg-card-theme border rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between relative group/tile"
                 >
                   <div className="relative overflow-hidden group/img">
                     <img
@@ -356,14 +382,55 @@ export default function HomeView({ onNavigate, featuredProducts, onAddToBag }: H
                     <span className={`absolute top-4 left-4 text-[9px] font-mono font-bold tracking-wider uppercase px-3 py-1 rounded-full border shadow-sm ${shopBadge}`}>
                       {product.shop === "medicals" ? "💊 Nuthan Med" : "🖋️ JA Stationery"}
                     </span>
+
+                    {/* Integrated Heart Toggle & Share controls over image card */}
+                    <div className="absolute top-4 right-4 flex flex-col gap-2 z-10 opacity-100 sm:opacity-0 sm:group-hover/tile:opacity-100 transition-opacity">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (onToggleWishlist) onToggleWishlist(product.id, product.shop);
+                        }}
+                        className="h-8 w-8 bg-white/95 hover:bg-white text-slate-700 hover:text-red-600 rounded-full flex items-center justify-center shadow-md border border-gray-200 transition-all cursor-pointer"
+                        title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+                      >
+                        <Heart className={`h-4.5 w-4.5 transition-colors ${isWishlisted ? "fill-red-600 stroke-red-600" : ""}`} />
+                      </button>
+
+                      <button
+                        onClick={handleShareLink}
+                        className="h-8 w-8 bg-white/95 hover:bg-white text-slate-700 hover:text-teal-600 rounded-full flex items-center justify-center shadow-md border border-gray-200 transition-all cursor-pointer"
+                        title="Copy product link"
+                      >
+                        {isCopied ? (
+                          <Check className="h-4 w-4 text-teal-600" />
+                        ) : (
+                          <Share2 className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
+
+                    {isOutOfStock && (
+                      <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                        <span className="text-xs font-mono font-bold text-red-600 uppercase border border-red-300 px-3 py-1.5 rounded-md bg-white">
+                          Sold Out
+                        </span>
+                      </div>
+                    )}
                   </div>
                   
                   <div className="p-5 flex-grow flex flex-col justify-between space-y-4">
                     <div className="space-y-1">
-                      <span className="text-[10px] text-gray-400 uppercase font-mono tracking-widest block">{product.category}</span>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-gray-400 uppercase font-mono tracking-widest block">{product.category}</span>
+                        {isLowStock && (
+                          <span className="text-[8px] font-mono font-bold uppercase text-amber-600 bg-amber-50 border border-amber-200 px-1.5 rounded">
+                            Only {stockVal} Left
+                          </span>
+                        )}
+                      </div>
                       <h4
                         onClick={() => onNavigate("product-detail", { productId: product.id })}
-                        className="font-serif text-lg font-bold text-current cursor-pointer hover:text-amber-500 hover:underline transition-all line-clamp-1"
+                        className="font-serif text-lg font-bold text-current cursor-pointer hover:text-teal-600 hover:underline transition-all line-clamp-1"
                         title={product.name}
                       >
                         {product.name}
@@ -375,9 +442,14 @@ export default function HomeView({ onNavigate, featuredProducts, onAddToBag }: H
                       <span className="font-mono text-base font-bold">₹{product.price.toFixed(2)}</span>
                       <button
                         onClick={() => onAddToBag(product)}
-                        className={`text-white text-[10px] font-mono font-bold uppercase tracking-wider py-2 px-4 rounded-lg transition-colors cursor-pointer ${btnTheme}`}
+                        disabled={isOutOfStock}
+                        className={`text-white text-[10px] font-mono font-bold uppercase tracking-wider py-2 px-4 rounded-lg transition-colors cursor-pointer ${
+                          isOutOfStock 
+                            ? "bg-slate-200 text-slate-400 border border-slate-300 cursor-not-allowed" 
+                            : btnTheme
+                        }`}
                       >
-                        Add to Bag
+                        {isOutOfStock ? "Out of Stock" : "Add to Bag"}
                       </button>
                     </div>
                   </div>

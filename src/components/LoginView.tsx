@@ -1,6 +1,7 @@
 import React from "react";
 import { User as UserIcon, Lock, ShieldCheck, Mail, Phone, Book, KeyRound, Check, HelpCircle } from "lucide-react";
 import { User } from "../types";
+import { JanuzenLogo } from "./Logos";
 
 const SECURITY_QUESTIONS = [
   "What was your childhood nickname?",
@@ -29,7 +30,7 @@ export default function LoginView({ onLoginSuccess, onNavigate, navigationParams
   const [phone, setPhone] = React.useState("");
   const [address, setAddress] = React.useState("");
   const [rememberMe, setRememberMe] = React.useState(true);
-  const [adminKey, setAdminKey] = React.useState(""); // Password code matching "JANUZEN_ADMIN_CONFIDENTIAL"
+  const [adminKey, setAdminKey] = React.useState(""); // Secret verification key for registering administrator accounts
 
   // Password Recovery States
   const [securityQuestion, setSecurityQuestion] = React.useState(SECURITY_QUESTIONS[0]);
@@ -148,9 +149,9 @@ export default function LoginView({ onLoginSuccess, onNavigate, navigationParams
       <div className="bg-white border border-gray-200 rounded-2xl shadow-md overflow-hidden">
         
         {/* Central Logo Indicator banner */}
-        <div className="bg-[#0D1B2A] text-white p-6 text-center space-y-2 border-b border-gray-800">
-          <div className="mx-auto h-12 w-12 bg-white rounded-xl flex items-center justify-center text-[#0D1B2A] font-serif font-black text-2xl shadow">
-            JZ
+        <div className="bg-[#0D1B2A] text-white p-6 text-center space-y-3 border-b border-gray-800">
+          <div className="flex justify-center">
+            <JanuzenLogo size={52} className="hover:scale-105" />
           </div>
           <div>
             <h2 className="font-serif text-lg font-bold tracking-widest uppercase">JANUZEN Group</h2>
@@ -432,7 +433,7 @@ export default function LoginView({ onLoginSuccess, onNavigate, navigationParams
                         <input
                           type="password"
                           required
-                          placeholder="JANUZEN_ADMIN_CONFIDENTIAL"
+                          placeholder="Enter administrative key..."
                           value={adminKey}
                           onChange={(e) => setAdminKey(e.target.value)}
                           className="w-full bg-orange-50 border border-amber-300 pl-8 pr-3 py-2 text-sm text-[#D4820A] rounded-lg focus:outline-none focus:border-amber-600"
@@ -440,7 +441,7 @@ export default function LoginView({ onLoginSuccess, onNavigate, navigationParams
                         <KeyRound className="h-4 w-4 text-[#D4820A] absolute left-2.5 top-2.5" />
                       </div>
                       <span className="block text-[9px] text-[#D4820A] mt-1 font-sans">
-                        * Supply `JANUZEN_ADMIN_CONFIDENTIAL` secret value to bypass access blockades.
+                        * Administrative verification key required for system director privileges.
                       </span>
                     </div>
                   )}
@@ -484,14 +485,7 @@ export default function LoginView({ onLoginSuccess, onNavigate, navigationParams
             </form>
           )}
 
-          {/* Seed accounts reminders specifically for AI Studio environment visibility */}
-          <div className="bg-slate-50 border border-slate-200/80 p-3 rounded-xl space-y-1 text-slate-600 text-[11px] leading-normal font-sans">
-            <span className="font-extrabold text-[#0D1B2A] uppercase tracking-wider block font-mono text-[9px]">🔍 Sandboxed Seed accounts:</span>
-            <div className="space-y-1 leading-normal font-mono text-[10px]">
-              <div>• Admin email: <span className="font-bold text-teal-700">admin@januzen.com</span> (Pwd: <span className="font-bold text-teal-700">admin123</span>)</div>
-              <div>• Customer email: <span className="font-bold text-amber-700">satyajeeth.ophir@gmail.com</span> (Pwd: <span className="font-bold text-amber-700">user123</span>)</div>
-            </div>
-          </div>
+          {/* Sandboxed seed list removed for live launch */}
 
         </div>
       </div>
