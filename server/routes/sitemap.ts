@@ -32,7 +32,7 @@
 // that URL in Google Search Console under Sitemaps.
 
 import { Router, Request, Response } from "express";
-import { dbClient } from "../server/db";
+import { dbClient } from "../db";
 
 const router = Router();
 const SITE_URL = "https://januzen.in";
