@@ -1,22 +1,21 @@
-import React, { lazy, Suspense } from "react";
+import React, { Suspense } from "react";
 import { gsap } from "gsap";
 import Navbar from "./components/Navbar";
 import { Product, User } from "./types";
 import type { CartItem } from "./components/CartView";
 import OfficialLoader from "./components/OfficialLoader";
 
-// Dynamic view components with lazy loading
-const HomeView = lazy(() => import("./components/HomeView"));
-const ShopView = lazy(() => import("./components/ShopView"));
-const ProductDetailView = lazy(() => import("./components/ProductDetailView"));
-const CartView = lazy(() => import("./components/CartView"));
-const CheckoutView = lazy(() => import("./components/CheckoutView"));
-const AboutView = lazy(() => import("./components/AboutView"));
-const ContactView = lazy(() => import("./components/ContactView"));
-const LoginView = lazy(() => import("./components/LoginView"));
-const AdminDashboardView = lazy(() => import("./components/AdminDashboardView"));
-const OrdersHistoryView = lazy(() => import("./components/OrdersHistoryView"));
-const ProfileView = lazy(() => import("./components/ProfileView"));
+import HomeView from "./components/HomeView";
+import ShopView from "./components/ShopView";
+import ProductDetailView from "./components/ProductDetailView";
+import CartView from "./components/CartView";
+import CheckoutView from "./components/CheckoutView";
+import AboutView from "./components/AboutView";
+import ContactView from "./components/ContactView";
+import LoginView from "./components/LoginView";
+import AdminDashboardView from "./components/AdminDashboardView";
+import OrdersHistoryView from "./components/OrdersHistoryView";
+import ProfileView from "./components/ProfileView";
 
 interface NavState {
   page: "home" | "medicals" | "stationery" | "product-detail" | "cart" | "checkout" | "about" | "contact" | "login" | "admin" | "orders" | "profile";
@@ -33,6 +32,7 @@ export default function App() {
   
   // Custom secure elite loading managers
   const [sessionLoading, setSessionLoading] = React.useState(true);
+  const [loaderFadeOut, setLoaderFadeOut] = React.useState(false);
   const [loadProgress, setLoadProgress] = React.useState(10);
   const [pageLoading, setPageLoading] = React.useState(false);
   
@@ -140,9 +140,13 @@ export default function App() {
         incrementProgressTo(70);
       } else if (completedCount >= 2) {
         incrementProgressTo(100);
+        // Fluid exit transition
         setTimeout(() => {
-          setSessionLoading(false);
-        }, 350); // Fluid exit transition
+          setLoaderFadeOut(true);
+          setTimeout(() => {
+            setSessionLoading(false);
+          }, 650);
+        }, 400);
       }
     };
 
@@ -375,12 +379,18 @@ export default function App() {
 
   const cartTotalCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  if (sessionLoading) {
-    return <OfficialLoader fullScreen={true} progress={loadProgress} />;
-  }
-
   return (
     <div className={`min-h-screen flex flex-col mode-${resolvedTheme} transition-colors duration-300 w-full`}>
+      {sessionLoading && (
+        <div 
+          className={`fixed inset-0 z-50 transition-all duration-700 ease-in-out ${
+            loaderFadeOut ? "opacity-0 pointer-events-none scale-102 blur-sm" : "opacity-100"
+          }`}
+        >
+          <OfficialLoader fullScreen={true} progress={loadProgress} />
+        </div>
+      )}
+
       {/* 🌟 Header Menu */}
       <Navbar
         currentView={nav.page}
