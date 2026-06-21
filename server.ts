@@ -8,7 +8,8 @@ import { v2 as cloudinary } from "cloudinary";
 import multer from "multer";
 import { Product, User, Order, Message } from "./src/types";
 import { dbClient, connectAndSeedDB, isMongo } from "./server/db";
-import sitemapRouter from "./routes/sitemap";
+import sitemapRouter from "./server/routes/sitemap";
+
 const PORT = 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "JANUZEN_JWT_SECRET_KEY";
 const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY || "phoenix123&";
