@@ -70,6 +70,7 @@ export interface Order {
   statusHistory?: OrderStatusLog[];
   paymentMethod: string;
   createdAt: string;
+  hasStatusOverflow?: boolean;
 }
 
 export interface WishlistItem {
@@ -118,5 +119,34 @@ export interface Notification {
   content: string;
   isRead: boolean;
   createdAt: string;
+  expiresAt?: string;
+}
+
+export interface Session {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  token: string;
+  createdAt: string;
+  expiresAt: string;
+}
+
+export interface CouponUsage {
+  id: string;
+  couponId: string;
+  couponCode: string;
+  userId: string;
+  orderId: string;
+  redeemedAt: string;
+}
+
+export interface AuditLog {
+  id: string;
+  targetId: string;
+  targetType: "user" | "product";
+  purgedBy: string;
+  timestamp: string;
+  counts: Record<string, number>;
 }
 

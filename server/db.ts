@@ -2,11 +2,11 @@ import mongoose, { Schema } from "mongoose";
 import fs from "fs";
 import path from "path";
 import bcrypt from "bcryptjs";
-import { User, Product, Order, Message, Coupon, Review, Notification, WishlistItem } from "../src/types";
+import { User, Product, Order, Message, Coupon, Review, Notification, WishlistItem, Session, CouponUsage, AuditLog } from "../src/types";
 
 // Check if MongoDB URI is available
 export const MONGODB_URI = process.env.MONGODB_URI || "";
-export const isMongo = !!MONGODB_URI;
+export let isMongo = !!MONGODB_URI;
 
 // Databases Paths for fallback
 const DB_DIR = path.join(process.cwd(), "data");
@@ -24,6 +24,9 @@ interface DBStructure {
   reviews?: Review[];
   notifications?: Notification[];
   wishlist?: WishlistItem[];
+  sessions?: Session[];
+  couponUsages?: CouponUsage[];
+  auditLogs?: AuditLog[];
 }
 
 // Default Seed Data
@@ -267,66 +270,101 @@ const INITIAL_PRODUCTS: Product[] = [
 // Mongoose Mongodb Schema Rules
 const UserSchema = new Schema({
   id: { type: String, required: true, unique: true },
-  name: { type: String, required: true },
-  email: { type: String, required: true, unique: true, lowercase: true },
-  phone: { type: String, default: "" },
+  name: { type: String, required: true, maxlength: 100 },
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+    lowercase: true,
+    validate: {
+      validator: function(v: string) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+      },
+      message: "Invalid email format"
+    }
+  },
+  phone: { type: String, default: "", maxlength: 20 },
   role: { type: String, enum: ["customer", "admin"], default: "customer" },
-  address: { type: String, default: "" },
+  address: { type: String, default: "", maxlength: 500 },
   passwordHash: { type: String, required: true },
-  image: { type: String, default: "" },
-  securityQuestion: { type: String, default: "" },
-  securityAnswer: { type: String, default: "" },
+  image: {
+    type: String,
+    default: "",
+    validate: {
+      validator: function(v: string) {
+        if (!v) return true;
+        return /^(https?:\/\/|\/)/i.test(v) && !/base64|data:/i.test(v);
+      },
+      message: "User image must be a valid URL and cannot contain base64 binary stream."
+    }
+  },
+  securityQuestion: { type: String, default: "", maxlength: 200 },
+  securityAnswer: { type: String, default: "", maxlength: 200 },
 });
 
 const ProductSchema = new Schema({
   id: { type: String, required: true, unique: true },
-  name: { type: String, required: true },
-  description: { type: String, required: true },
-  price: { type: Number, required: true },
-  category: { type: String, required: true },
-  shop: { type: String, enum: ["medicals", "stationery"], required: true },
-  stock: { type: Number, required: true },
-  stockQuantity: { type: Number },
-  lowStockThreshold: { type: Number, default: 5 },
+  name: { type: String, required: true, maxlength: 200 },
+  description: { type: String, required: true, maxlength: 2000 },
+  price: { type: Number, required: true, min: 0 },
+  category: { type: String, required: true, maxlength: 100, index: true },
+  shop: { type: String, enum: ["medicals", "stationery"], required: true, index: true },
+  stock: { type: Number, required: true, min: 0 },
+  stockQuantity: { type: Number, min: 0 },
+  lowStockThreshold: { type: Number, default: 5, min: 0 },
   stockStatus: { type: String, enum: ["in_stock", "low_stock", "out_of_stock"] },
-  image: { type: String, required: true },
+  image: {
+    type: String,
+    required: true,
+    validate: {
+      validator: function(v: string) {
+        return /^(https?:\/\/|\/)/i.test(v) && !/base64|data:/i.test(v);
+      },
+      message: "Product image must be a valid URL and cannot contain base64 binary stream."
+    }
+  },
   tags: [String],
-  featured: { type: Boolean, default: false },
-  isActive: { type: Boolean, default: true },
+  featured: { type: Boolean, default: false, index: true },
+  isActive: { type: Boolean, default: true, index: true },
 });
 
 const OrderSchema = new Schema({
   id: { type: String, required: true, unique: true },
   orderId: { type: String, required: true, unique: true },
-  userId: { type: String, required: true },
-  userName: { type: String, required: true },
+  userId: { type: String, required: true, index: true },
+  userName: { type: String, required: true, maxlength: 100 },
   userEmail: { type: String, required: true },
   items: { type: Schema.Types.Mixed, required: true },
   shippingAddress: { type: Schema.Types.Mixed, required: true },
   totals: { type: Schema.Types.Mixed, required: true },
-  status: { type: String, enum: ["Pending", "Dispatched", "Delivered", "Cancelled", "placed", "confirmed", "processing", "dispatched", "out_for_delivery", "delivered", "cancelled", "returned"], default: "Pending" },
+  status: {
+    type: String,
+    enum: ["Pending", "Dispatched", "Delivered", "Cancelled", "placed", "confirmed", "processing", "dispatched", "out_for_delivery", "delivered", "cancelled", "returned"],
+    default: "Pending",
+    index: true
+  },
   statusHistory: { type: Schema.Types.Mixed, default: [] },
-  paymentMethod: { type: String, default: "Cash on Delivery" },
-  createdAt: { type: String, required: true },
+  paymentMethod: { type: String, default: "Cash on Delivery", maxlength: 100 },
+  createdAt: { type: String, required: true, index: true },
 });
 
 const WishlistSchema = new Schema({
   id: { type: String, required: true, unique: true },
-  userId: { type: String, required: true },
-  productId: { type: String, required: true },
+  userId: { type: String, required: true, index: true },
+  productId: { type: String, required: true, index: true },
   productType: { type: String, enum: ["medicals", "stationery"], required: true },
   addedAt: { type: String, required: true }
 });
 
 const MessageSchema = new Schema({
   id: { type: String, required: true, unique: true },
-  name: { type: String, required: true },
+  name: { type: String, required: true, maxlength: 100 },
   email: { type: String, required: true },
-  subject: { type: String, required: true },
+  subject: { type: String, required: true, maxlength: 200 },
   shop: { type: String, default: "general" },
-  message: { type: String, required: true },
-  isRead: { type: Boolean, default: false },
-  createdAt: { type: String, required: true },
+  message: { type: String, required: true, maxlength: 2000 },
+  isRead: { type: Boolean, default: false, index: true },
+  createdAt: { type: String, required: true, index: true },
 });
 
 const NewsletterSchema = new Schema({
@@ -335,22 +373,51 @@ const NewsletterSchema = new Schema({
 
 const ReviewSchema = new Schema({
   id: { type: String, required: true, unique: true },
-  productId: { type: String, required: true },
-  userId: { type: String, required: true },
-  userName: { type: String, required: true },
+  productId: { type: String, required: true, index: true },
+  userId: { type: String, required: true, index: true },
+  userName: { type: String, required: true, maxlength: 100 },
   userImage: { type: String, default: "" },
-  rating: { type: Number, required: true },
-  comment: { type: String, required: true },
+  rating: { type: Number, required: true, min: 1, max: 5 },
+  comment: { type: String, required: true, maxlength: 1000 },
   createdAt: { type: String, required: true }
 });
 
 const NotificationSchema = new Schema({
   id: { type: String, required: true, unique: true },
-  userId: { type: String, required: true },
-  title: { type: String, required: true },
-  content: { type: String, required: true },
-  isRead: { type: Boolean, default: false },
-  createdAt: { type: String, required: true }
+  userId: { type: String, required: true, index: true },
+  title: { type: String, required: true, maxlength: 150 },
+  content: { type: String, required: true, maxlength: 1000 },
+  isRead: { type: Boolean, default: false, index: true },
+  createdAt: { type: String, required: true, index: true },
+  expiresAt: { type: Date, required: true, index: { expires: 0 } }
+});
+
+const SessionSchema = new Schema({
+  id: { type: String, required: true, unique: true },
+  userId: { type: String, required: true, index: true },
+  userName: { type: String, required: true },
+  userEmail: { type: String, required: true },
+  token: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+  expiresAt: { type: Date, required: true, index: { expires: 0 } }
+});
+
+const CouponUsageSchema = new Schema({
+  id: { type: String, required: true, unique: true },
+  couponId: { type: String, required: true, index: true },
+  couponCode: { type: String, required: true },
+  userId: { type: String, required: true, index: true },
+  orderId: { type: String, required: true },
+  redeemedAt: { type: Date, default: Date.now, index: { expires: 180 * 24 * 60 * 60 } } // auto-expires in 180 days
+});
+
+const AuditLogSchema = new Schema({
+  id: { type: String, required: true, unique: true },
+  targetId: { type: String, required: true },
+  targetType: { type: String, enum: ["user", "product"], required: true },
+  purgedBy: { type: String, required: true },
+  timestamp: { type: String, required: true },
+  counts: { type: Schema.Types.Mixed, required: true }
 });
 
 // Create Mongoose models with any cast to prevent strict TypeScript query schema checking
@@ -362,6 +429,120 @@ export const MongoNewsletter = (mongoose.models.Newsletter || mongoose.model("Ne
 export const MongoReview = (mongoose.models.Review || mongoose.model("Review", ReviewSchema)) as any;
 export const MongoNotification = (mongoose.models.Notification || mongoose.model("Notification", NotificationSchema)) as any;
 export const MongoWishlist = (mongoose.models.Wishlist || mongoose.model("Wishlist", WishlistSchema)) as any;
+export const MongoSession = (mongoose.models.Session || mongoose.model("Session", SessionSchema)) as any;
+export const MongoCouponUsage = (mongoose.models.CouponUsage || mongoose.model("CouponUsage", CouponUsageSchema)) as any;
+export const MongoAuditLog = (mongoose.models.AuditLog || mongoose.model("AuditLog", AuditLogSchema)) as any;
+
+// Custom validation error shape to match Mongoose ValidationError structure
+export class SchemaValidationError extends Error {
+  errors: Record<string, { message: string }>;
+  name = "ValidationError";
+  constructor(errors: Record<string, string>) {
+    super("Validation failed");
+    this.errors = {};
+    for (const [key, msg] of Object.entries(errors)) {
+      this.errors[key] = { message: msg };
+    }
+  }
+}
+
+// Global rigid schema validator to run on both Mongo (pre-validation) and JSON fallback writes
+export function validateModelData(modelName: string, data: any) {
+  const errors: Record<string, string> = {};
+
+  if (modelName === "User") {
+    if (!data.id) errors.id = "User ID is required";
+    if (!data.name) errors.name = "Name is required";
+    else if (data.name.length > 100) errors.name = "Name exceeds limit of 100 characters";
+    
+    if (!data.email) errors.email = "Email is required";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) errors.email = "Invalid email format";
+
+    if (data.phone && data.phone.length > 20) errors.phone = "Phone number exceeds 20 characters";
+    if (data.address && data.address.length > 500) errors.address = "Address exceeds 500 characters";
+    if (data.role && !["customer", "admin"].includes(data.role)) errors.role = "Role is invalid";
+    
+    if (data.image) {
+      if (!/^(https?:\/\/|\/)/i.test(data.image) || /base64|data:/i.test(data.image)) {
+        errors.image = "User image must be a valid URL and cannot contain base64 binary stream.";
+      }
+    }
+  }
+
+  if (modelName === "Product") {
+    if (!data.id) errors.id = "Product ID is required";
+    if (!data.name) errors.name = "Product name is required";
+    else if (data.name.length > 200) errors.name = "Product name exceeds 200 characters";
+
+    if (!data.description) errors.description = "Product description is required";
+    else if (data.description.length > 2000) errors.description = "Product description exceeds 2000 characters";
+
+    if (data.price === undefined || data.price < 0) errors.price = "Price must be a positive number";
+    if (!data.category) errors.category = "Category is required";
+    else if (data.category.length > 100) errors.category = "Category exceeds 100 characters";
+
+    if (!data.shop || !["medicals", "stationery"].includes(data.shop)) errors.shop = "Shop must be medicals or stationery";
+    if (data.stock === undefined || data.stock < 0) errors.stock = "Stock must be a non-negative number";
+
+    if (!data.image) errors.image = "Product image is required";
+    else if (!/^(https?:\/\/|\/)/i.test(data.image) || /base64|data:/i.test(data.image)) {
+      errors.image = "Product image must be a valid URL and cannot contain base64 binary stream.";
+    }
+  }
+
+  if (modelName === "Order") {
+    if (!data.id) errors.id = "Order ID is required";
+    if (!data.orderId) errors.orderId = "Order display ID is required";
+    if (!data.userId) errors.userId = "User ID is required";
+    if (!data.userName) errors.userName = "User name is required";
+    if (data.userName && data.userName.length > 100) errors.userName = "User name exceeds 100 characters";
+    if (!data.userEmail) errors.userEmail = "User email is required";
+    if (!data.items || !Array.isArray(data.items) || data.items.length === 0) errors.items = "Order items list is required";
+    if (!data.shippingAddress) errors.shippingAddress = "Shipping address is required";
+    if (!data.totals) errors.totals = "Totals calculation is required";
+    if (data.status && !["Pending", "Dispatched", "Delivered", "Cancelled", "placed", "confirmed", "processing", "dispatched", "out_for_delivery", "delivered", "cancelled", "returned"].includes(data.status)) {
+      errors.status = "Invalid order status value";
+    }
+  }
+
+  if (modelName === "Review") {
+    if (!data.id) errors.id = "Review ID is required";
+    if (!data.productId) errors.productId = "Product ID is required";
+    if (!data.userId) errors.userId = "User ID is required";
+    if (!data.userName) errors.userName = "User name is required";
+    else if (data.userName.length > 100) errors.userName = "User name exceeds 100 characters";
+    if (data.rating === undefined || data.rating < 1 || data.rating > 5) errors.rating = "Rating must be an integer between 1 and 5";
+    if (!data.comment) errors.comment = "Review comment is required";
+    else if (data.comment.length > 1000) errors.comment = "Review comment exceeds 1000 characters";
+  }
+
+  if (modelName === "Notification") {
+    if (!data.id) errors.id = "Notification ID is required";
+    if (!data.userId) errors.userId = "User ID target is required";
+    if (!data.title) errors.title = "Notification title is required";
+    else if (data.title.length > 150) errors.title = "Notification title exceeds 150 characters";
+    if (!data.content) errors.content = "Notification content is required";
+    else if (data.content.length > 1000) errors.content = "Notification content exceeds 1000 characters";
+    if (!data.expiresAt) errors.expiresAt = "Notification expiry time (expiresAt) is required";
+  }
+
+  if (modelName === "Session") {
+    if (!data.id) errors.id = "Session ID is required";
+    if (!data.userId) errors.userId = "User ID is required";
+    if (!data.token) errors.token = "Token is required";
+    if (!data.expiresAt) errors.expiresAt = "ExpiresAt is required";
+  }
+
+  if (modelName === "Coupon") {
+    if (!data.code) errors.code = "Coupon code is required";
+    if (data.discountType && !["percentage", "fixed"].includes(data.discountType)) errors.discountType = "Discount type is invalid";
+    if (data.discountValue === undefined || data.discountValue < 0) errors.discountValue = "Discount value must be a positive number";
+  }
+
+  if (Object.keys(errors).length > 0) {
+    throw new SchemaValidationError(errors);
+  }
+}
 
 // JSON DB Fallback implementation
 let localDBCache: DBStructure | null = null;
@@ -389,7 +570,10 @@ export function loadLocalDB(): DBStructure {
         marquee: "🇮🇳 Authorized Corporate Logistics & Pharmacy Dispatches. High-opacity copypaper and certified standard healthcare kits available. Enjoy Free Secure Freight Delivery on all basket orders above ₹1000!",
         reviews: [],
         notifications: [],
-        wishlist: []
+        wishlist: [],
+        sessions: [],
+        couponUsages: [],
+        auditLogs: []
       };
       fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2), "utf-8");
       localDBCache = db;
@@ -415,6 +599,18 @@ export function loadLocalDB(): DBStructure {
 
       if (!parsed.wishlist) {
         parsed.wishlist = [];
+        dirty = true;
+      }
+      if (!parsed.sessions) {
+        parsed.sessions = [];
+        dirty = true;
+      }
+      if (!parsed.couponUsages) {
+        parsed.couponUsages = [];
+        dirty = true;
+      }
+      if (!parsed.auditLogs) {
+        parsed.auditLogs = [];
         dirty = true;
       }
       let productsDirty = false;
@@ -461,7 +657,7 @@ export function loadLocalDB(): DBStructure {
     }
   } catch (error) {
     console.error("Critical: Failed to read/write JSON database file:", error);
-    return { users: [], passwords: {}, products: [], orders: [], messages: [], newsletter: [], coupons: [], marquee: "" };
+    return { users: [], passwords: {}, products: [], orders: [], messages: [], newsletter: [], coupons: [], marquee: "", reviews: [], notifications: [], wishlist: [], sessions: [], couponUsages: [], auditLogs: [] };
   }
 }
 
@@ -479,7 +675,7 @@ export async function connectAndSeedDB() {
   if (isMongo) {
     console.log("🔌 Attempting to connect to MongoDB URI...");
     try {
-      await mongoose.connect(MONGODB_URI);
+      await mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 3000 });
       console.log("✅ Successfully connected to MongoDB Database Cluster!");
 
       // Seed core credentials & starter products if they do not exist
@@ -504,6 +700,9 @@ export async function connectAndSeedDB() {
       await MongoNotification.deleteMany({});
     } catch (e) {
       console.error("❌ CRITICAL: Failed to connect to MongoDB cluster! Falling back to database.json file:", e);
+      isMongo = false;
+      loadLocalDB();
+      console.log("📁 Offline DB initialized at path: " + DB_FILE);
     }
   } else {
     // Normal fallback initialization
@@ -770,6 +969,12 @@ export const dbClient = {
         note: note || `Order status updated to ${status}`
       });
 
+      let hasStatusOverflow = false;
+      if (history.length > 20) {
+        hasStatusOverflow = true;
+        console.warn(`⚠️ BUG WARNING: Order status history length exceeds 20 entries (${history.length}) for order ID: ${id}`);
+      }
+
       // Stock adjustment logic
       if (status.toLowerCase() === "confirmed" && !stockAdjusted) {
         for (const item of order.items || []) {
@@ -805,7 +1010,7 @@ export const dbClient = {
 
       const doc = await MongoOrder.findOneAndUpdate(
         { id },
-        { $set: { status, statusHistory: history, stockAdjusted } },
+        { $set: { status, statusHistory: history, stockAdjusted, hasStatusOverflow } },
         { new: true }
       ).lean() as any;
       return doc;
@@ -823,6 +1028,12 @@ export const dbClient = {
         timestamp: new Date().toISOString(),
         note: note || `Order status updated to ${status}`
       });
+
+      let hasStatusOverflow = false;
+      if (history.length > 20) {
+        hasStatusOverflow = true;
+        console.warn(`⚠️ BUG WARNING: Order status history length exceeds 20 entries (${history.length}) for order ID: ${id}`);
+      }
 
       // Stock adjustment logic
       if (status.toLowerCase() === "confirmed" && !stockAdjusted) {
@@ -854,6 +1065,7 @@ export const dbClient = {
       order.status = status as any;
       order.statusHistory = history;
       order.stockAdjusted = stockAdjusted;
+      order.hasStatusOverflow = hasStatusOverflow;
       saveLocalDB(db);
       return order;
     }
@@ -1065,8 +1277,18 @@ export const dbClient = {
   },
 
   createNotification: async (notif: Notification): Promise<Notification> => {
+    // 90 days default unread TTL
+    const ninetyDays = 90 * 24 * 60 * 60 * 1000;
+    const expiry = new Date(Date.now() + ninetyDays);
+    notif.expiresAt = expiry.toISOString();
+
+    validateModelData("Notification", notif);
+
     if (isMongo) {
-      const doc = await MongoNotification.create(notif);
+      const doc = await MongoNotification.create({
+        ...notif,
+        expiresAt: expiry // convert to real Date object for Mongoose TTL index
+      });
       return doc.toObject() as any;
     } else {
       const db = loadLocalDB();
@@ -1078,8 +1300,11 @@ export const dbClient = {
   },
 
   markNotificationRead: async (id: string): Promise<boolean> => {
+    const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+    const expiry = new Date(Date.now() + thirtyDays);
+
     if (isMongo) {
-      const res = await MongoNotification.updateOne({ id }, { $set: { isRead: true } });
+      const res = await MongoNotification.updateOne({ id }, { $set: { isRead: true, expiresAt: expiry } });
       return res.modifiedCount > 0;
     } else {
       const db = loadLocalDB();
@@ -1087,6 +1312,7 @@ export const dbClient = {
       const item = db.notifications.find(n => n.id === id);
       if (item) {
         item.isRead = true;
+        item.expiresAt = expiry.toISOString();
         saveLocalDB(db);
         return true;
       }
@@ -1145,30 +1371,444 @@ export const dbClient = {
   },
 
   deleteUserWithData: async (userId: string): Promise<boolean> => {
+    const res = await dbClient.purgeUser(userId);
+    return res && !res.dryRun && res.counts.users > 0;
+  },
+
+  purgeUser: async (userId: string, options?: { dryRun?: boolean; purgedBy?: string }): Promise<any> => {
+    const dryRun = options?.dryRun ?? false;
+    const purgedBy = options?.purgedBy ?? "system";
+
+    // 1. Gather Counts
+    let counts = {
+      users: 0,
+      notifications: 0,
+      wishlist: 0,
+      reviews: 0,
+      orders: 0,
+      sessions: 0
+    };
+
     if (isMongo) {
-      const res = await MongoUser.deleteOne({ id: userId });
-      await MongoNotification.deleteMany({ userId });
-      await MongoWishlist.deleteMany({ userId });
-      await MongoReview.deleteMany({ userId });
-      await MongoOrder.deleteMany({ userId });
-      return res.deletedCount > 0;
+      counts.users = await MongoUser.countDocuments({ id: userId });
+      counts.notifications = await MongoNotification.countDocuments({ userId });
+      counts.wishlist = await MongoWishlist.countDocuments({ userId });
+      counts.reviews = await MongoReview.countDocuments({ userId });
+      counts.orders = await MongoOrder.countDocuments({ userId });
+      counts.sessions = await MongoSession.countDocuments({ userId });
     } else {
       const db = loadLocalDB();
-      const len = db.users.length;
-      db.users = db.users.filter(u => u.id !== userId);
-      delete db.passwords[userId];
-      if (db.notifications) {
-        db.notifications = db.notifications.filter(n => n.userId !== userId);
-      }
-      if (db.wishlist) {
-        db.wishlist = db.wishlist.filter(w => w.userId !== userId);
-      }
-      if (db.reviews) {
-        db.reviews = db.reviews.filter(r => r.userId !== userId);
-      }
-      db.orders = db.orders.filter(o => o.userId !== userId);
-      saveLocalDB(db);
-      return db.users.length !== len;
+      counts.users = db.users.filter(u => u.id === userId).length;
+      counts.notifications = (db.notifications || []).filter(n => n.userId === userId).length;
+      counts.wishlist = (db.wishlist || []).filter(w => w.userId === userId).length;
+      counts.reviews = (db.reviews || []).filter(r => r.userId === userId).length;
+      counts.orders = db.orders.filter(o => o.userId === userId).length;
+      counts.sessions = (db.sessions || []).filter(s => s.userId === userId).length;
     }
+
+    if (dryRun) {
+      return {
+        dryRun: true,
+        targetId: userId,
+        targetType: "user",
+        counts
+      };
+    }
+
+    // 2. Perform Cascade Deletion
+    if (isMongo) {
+      let session: any = null;
+      try {
+        session = await mongoose.startSession();
+        session.startTransaction();
+        
+        await MongoUser.deleteOne({ id: userId }).session(session);
+        await MongoNotification.deleteMany({ userId }).session(session);
+        await MongoWishlist.deleteMany({ userId }).session(session);
+        await MongoReview.deleteMany({ userId }).session(session);
+        await MongoOrder.deleteMany({ userId }).session(session);
+        await MongoSession.deleteMany({ userId }).session(session);
+
+        await session.commitTransaction();
+      } catch (err: any) {
+        if (session) {
+          try { await session.abortTransaction(); } catch {}
+        }
+        if (err.message && (err.message.includes("transaction") || err.message.includes("session") || err.message.includes("replica set"))) {
+          console.warn("⚠️ Standalone MongoDB detected. Falling back to explicit ordered delete sequence with error logging...");
+          try {
+            await MongoUser.deleteOne({ id: userId });
+            await MongoNotification.deleteMany({ userId });
+            await MongoWishlist.deleteMany({ userId });
+            await MongoReview.deleteMany({ userId });
+            await MongoOrder.deleteMany({ userId });
+            await MongoSession.deleteMany({ userId });
+          } catch (fbErr) {
+            console.error(`🔴 CRITICAL CASCADE PURGE FAILURE for user id ${userId}:`, fbErr);
+            throw fbErr;
+          }
+        } else {
+          console.error(`🔴 Transaction cascade abort for user id ${userId}:`, err);
+          throw err;
+        }
+      } finally {
+        if (session) {
+          session.endSession();
+        }
+      }
+
+      // Add audit log
+      await MongoAuditLog.create({
+        id: "audit-" + Date.now() + "-" + Math.random().toString(36).substr(2, 9),
+        targetId: userId,
+        targetType: "user",
+        purgedBy,
+        timestamp: new Date().toISOString(),
+        counts
+      });
+
+    } else {
+      // JSON DB Fallback path - Defined order with file-write locks (atomic load & save)
+      try {
+        const db = loadLocalDB();
+        
+        // Delete children first
+        if (db.notifications) db.notifications = db.notifications.filter(n => n.userId !== userId);
+        if (db.wishlist) db.wishlist = db.wishlist.filter(w => w.userId !== userId);
+        if (db.reviews) db.reviews = db.reviews.filter(r => r.userId !== userId);
+        db.orders = db.orders.filter(o => o.userId !== userId);
+        if (db.sessions) db.sessions = db.sessions.filter(s => s.userId !== userId);
+        
+        // Parent last
+        db.users = db.users.filter(u => u.id !== userId);
+        delete db.passwords[userId];
+
+        // Audit Log
+        if (!db.auditLogs) db.auditLogs = [];
+        db.auditLogs.push({
+          id: "audit-" + Date.now() + "-" + Math.random().toString(36).substr(2, 9),
+          targetId: userId,
+          targetType: "user",
+          purgedBy,
+          timestamp: new Date().toISOString(),
+          counts
+        });
+
+        saveLocalDB(db);
+      } catch (err) {
+        console.error(`🔴 Fallback JSON CASCADE PURGE FAILURE for user id ${userId}:`, err);
+        throw err;
+      }
+    }
+
+    return {
+      dryRun: false,
+      targetId: userId,
+      targetType: "user",
+      counts
+    };
+  },
+
+  purgeProduct: async (productId: string, options?: { dryRun?: boolean; purgedBy?: string }): Promise<any> => {
+    const dryRun = options?.dryRun ?? false;
+    const purgedBy = options?.purgedBy ?? "system";
+
+    // 1. Gather Counts
+    let counts = {
+      products: 0,
+      reviews: 0,
+      wishlist: 0
+    };
+
+    if (isMongo) {
+      counts.products = await MongoProduct.countDocuments({ id: productId });
+      counts.reviews = await MongoReview.countDocuments({ productId });
+      counts.wishlist = await MongoWishlist.countDocuments({ productId });
+    } else {
+      const db = loadLocalDB();
+      counts.products = db.products.filter(p => p.id === productId).length;
+      counts.reviews = (db.reviews || []).filter(r => r.productId === productId).length;
+      counts.wishlist = (db.wishlist || []).filter(w => w.productId === productId).length;
+    }
+
+    if (dryRun) {
+      return {
+        dryRun: true,
+        targetId: productId,
+        targetType: "product",
+        counts
+      };
+    }
+
+    // 2. Perform Cascade Deletion
+    if (isMongo) {
+      let session: any = null;
+      try {
+        session = await mongoose.startSession();
+        session.startTransaction();
+        
+        await MongoProduct.deleteOne({ id: productId }).session(session);
+        await MongoReview.deleteMany({ productId }).session(session);
+        await MongoWishlist.deleteMany({ productId }).session(session);
+
+        await session.commitTransaction();
+      } catch (err: any) {
+        if (session) {
+          try { await session.abortTransaction(); } catch {}
+        }
+        if (err.message && (err.message.includes("transaction") || err.message.includes("session") || err.message.includes("replica set"))) {
+          console.warn("⚠️ Standalone MongoDB detected. Falling back to explicit ordered delete sequence for product...");
+          try {
+            await MongoProduct.deleteOne({ id: productId });
+            await MongoReview.deleteMany({ productId });
+            await MongoWishlist.deleteMany({ productId });
+          } catch (fbErr) {
+            console.error(`🔴 CRITICAL PRODUCT CASCADE PURGE FAILURE for product id ${productId}:`, fbErr);
+            throw fbErr;
+          }
+        } else {
+          console.error(`🔴 Transaction cascade abort for product id ${productId}:`, err);
+          throw err;
+        }
+      } finally {
+        if (session) {
+          session.endSession();
+        }
+      }
+
+      // Add audit log
+      await MongoAuditLog.create({
+        id: "audit-" + Date.now() + "-" + Math.random().toString(36).substr(2, 9),
+        targetId: productId,
+        targetType: "product",
+        purgedBy,
+        timestamp: new Date().toISOString(),
+        counts
+      });
+
+    } else {
+      try {
+        const db = loadLocalDB();
+        
+        // Children first
+        if (db.reviews) db.reviews = db.reviews.filter(r => r.productId !== productId);
+        if (db.wishlist) db.wishlist = db.wishlist.filter(w => w.productId !== productId);
+        
+        // Parent last
+        db.products = db.products.filter(p => p.id !== productId);
+
+        // Audit Log
+        if (!db.auditLogs) db.auditLogs = [];
+        db.auditLogs.push({
+          id: "audit-" + Date.now() + "-" + Math.random().toString(36).substr(2, 9),
+          targetId: productId,
+          targetType: "product",
+          purgedBy,
+          timestamp: new Date().toISOString(),
+          counts
+        });
+
+        saveLocalDB(db);
+      } catch (err) {
+        console.error(`🔴 Fallback JSON PRODUCT CASCADE PURGE FAILURE for product id ${productId}:`, err);
+        throw err;
+      }
+    }
+
+    return {
+      dryRun: false,
+      targetId: productId,
+      targetType: "product",
+      counts
+    };
+  },
+
+  createSession: async (userId: string, userName: string, userEmail: string, token: string): Promise<any> => {
+    const sevenDays = 7 * 24 * 60 * 60 * 1000;
+    const expiresAt = new Date(Date.now() + sevenDays);
+    const sessionDoc = {
+      id: "sess-" + Date.now() + "-" + Math.random().toString(36).substr(2, 9),
+      userId,
+      userName,
+      userEmail,
+      token,
+      createdAt: new Date(),
+      expiresAt: expiresAt
+    };
+
+    validateModelData("Session", sessionDoc);
+
+    if (isMongo) {
+      await MongoSession.create(sessionDoc);
+    } else {
+      const db = loadLocalDB();
+      if (!db.sessions) db.sessions = [];
+      db.sessions.push({
+        ...sessionDoc,
+        createdAt: sessionDoc.createdAt.toISOString() as any,
+        expiresAt: sessionDoc.expiresAt.toISOString() as any
+      });
+      saveLocalDB(db);
+    }
+    return sessionDoc;
+  },
+
+  getAuditLogs: async (): Promise<any[]> => {
+    if (isMongo) {
+      return MongoAuditLog.find().sort({ timestamp: -1 }).lean() as any;
+    } else {
+      return (loadLocalDB().auditLogs || []).slice().reverse();
+    }
+  },
+
+  getStorageUsage: async (): Promise<any> => {
+    let totalSize = 0;
+    let indexSize = 0;
+    const breakdown = [];
+    const dbCap = 536870912; // 512MB in bytes
+
+    if (isMongo) {
+      try {
+        const dbStats = await mongoose.connection.db.command({ dbStats: 1 });
+        totalSize = dbStats.dataSize || dbStats.storageSize || 0;
+        indexSize = dbStats.indexSize || 0;
+      } catch (e) {
+        totalSize = 0;
+      }
+
+      const list = [
+        { name: "Users", model: MongoUser },
+        { name: "Products", model: MongoProduct },
+        { name: "Orders", model: MongoOrder },
+        { name: "Wishlist", model: MongoWishlist },
+        { name: "Messages", model: MongoMessage },
+        { name: "Newsletter", model: MongoNewsletter },
+        { name: "Reviews", model: MongoReview },
+        { name: "Notifications", model: MongoNotification },
+        { name: "Sessions", model: MongoSession },
+        { name: "CouponUsages", model: MongoCouponUsage },
+        { name: "AuditLogs", model: MongoAuditLog }
+      ];
+
+      let calculatedTotal = 0;
+      for (const col of list) {
+        try {
+          const count = await col.model.countDocuments();
+          let size = count * 512; // 0.5KB standard estimate
+          if (col.name === "Products" || col.name === "Orders") size = count * 1024; // 1KB estimate
+          calculatedTotal += size;
+          breakdown.push({
+            name: col.name,
+            count,
+            sizeBytes: size,
+            growthPattern: ["Notifications", "Sessions", "AuditLogs", "CouponUsages"].includes(col.name) 
+              ? "Grows per event (unbounded)" 
+              : "Grows per entity (stable)"
+          });
+        } catch (err) {
+          breakdown.push({ name: col.name, count: 0, sizeBytes: 0, growthPattern: "unknown" });
+        }
+      }
+      if (totalSize === 0) totalSize = calculatedTotal;
+    } else {
+      const fs = require("fs");
+      if (fs.existsSync(DB_FILE)) {
+        const statsFile = fs.statSync(DB_FILE);
+        totalSize = statsFile.size;
+      } else {
+        totalSize = 0;
+      }
+      indexSize = 0;
+
+      const db = loadLocalDB();
+      const list = [
+        { name: "Users", data: db.users || [] },
+        { name: "Products", data: db.products || [] },
+        { name: "Orders", data: db.orders || [] },
+        { name: "Wishlist", data: db.wishlist || [] },
+        { name: "Messages", data: db.messages || [] },
+        { name: "Newsletter", data: db.newsletter || [] },
+        { name: "Reviews", data: db.reviews || [] },
+        { name: "Notifications", data: db.notifications || [] },
+        { name: "Sessions", data: db.sessions || [] },
+        { name: "CouponUsages", data: db.couponUsages || [] },
+        { name: "AuditLogs", data: db.auditLogs || [] }
+      ];
+
+      for (const col of list) {
+        const sizeBytes = Buffer.byteLength(JSON.stringify(col.data), "utf-8");
+        breakdown.push({
+          name: col.name,
+          count: col.data.length,
+          sizeBytes,
+          growthPattern: ["Notifications", "Sessions", "AuditLogs", "CouponUsages"].includes(col.name) 
+            ? "Grows per event (unbounded)" 
+            : "Grows per entity (stable)"
+        });
+      }
+    }
+
+    const percentOfCap = Math.round((totalSize / dbCap) * 10000) / 100;
+    return {
+      databaseMode: isMongo ? "MongoDB Connected Cluster" : "Local JSON Offline Database",
+      totalSizeBytes: totalSize,
+      indexSizeBytes: indexSize,
+      limitBytes: dbCap,
+      percentOfCap,
+      breakdown
+    };
+  },
+
+  runStorageRetention: async (): Promise<{ notificationPurged: number, sessionPurged: number, couponUsagePurged: number }> => {
+    let notificationPurged = 0;
+    let sessionPurged = 0;
+    let couponUsagePurged = 0;
+
+    const now = new Date();
+
+    if (isMongo) {
+      const notifRes = await MongoNotification.deleteMany({ expiresAt: { $lte: now } });
+      const sessRes = await MongoSession.deleteMany({ expiresAt: { $lte: now } });
+      
+      const oneEightyDaysAgo = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000);
+      const couponRes = await MongoCouponUsage.deleteMany({ redeemedAt: { $lte: oneEightyDaysAgo } });
+
+      notificationPurged = notifRes.deletedCount || 0;
+      sessionPurged = sessRes.deletedCount || 0;
+      couponUsagePurged = couponRes.deletedCount || 0;
+    } else {
+      const db = loadLocalDB();
+      const initialNotifLen = (db.notifications || []).length;
+      const initialSessLen = (db.sessions || []).length;
+      const initialCouponLen = (db.couponUsages || []).length;
+
+      db.notifications = (db.notifications || []).filter(n => {
+        const expiry = n.expiresAt ? new Date(n.expiresAt) : null;
+        return !expiry || expiry > now;
+      });
+
+      db.sessions = (db.sessions || []).filter(s => {
+        const expiry = s.expiresAt ? new Date(s.expiresAt) : null;
+        return !expiry || expiry > now;
+      });
+
+      const oneEightyDaysAgo = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000);
+      db.couponUsages = (db.couponUsages || []).filter(c => {
+        const redeemed = c.redeemedAt ? new Date(c.redeemedAt) : null;
+        return !redeemed || redeemed > oneEightyDaysAgo;
+      });
+
+      notificationPurged = initialNotifLen - db.notifications.length;
+      sessionPurged = initialSessLen - db.sessions.length;
+      couponUsagePurged = initialCouponLen - db.couponUsages.length;
+
+      saveLocalDB(db);
+    }
+
+    return {
+      notificationPurged,
+      sessionPurged,
+      couponUsagePurged
+    };
   }
 };

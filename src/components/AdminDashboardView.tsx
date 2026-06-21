@@ -7,7 +7,7 @@ import {
 import { Product, Order, Message, User } from "../types";
 
 export default function AdminDashboardView() {
-  const [activeTab, setActiveTab] = React.useState<"stats" | "products" | "orders" | "messages" | "users" | "coupons" | "marquee">("stats");
+  const [activeTab, setActiveTab] = React.useState<"stats" | "products" | "orders" | "messages" | "users" | "coupons" | "marquee" | "storage">("stats");
   const [token, setToken] = React.useState<string | null>(null);
 
   // States
@@ -17,6 +17,17 @@ export default function AdminDashboardView() {
   const [messages, setMessages] = React.useState<Message[]>([]);
   const [users, setUsers] = React.useState<User[]>([]);
   const [loading, setLoading] = React.useState(true);
+
+  // Storage Guardrail & Purge states
+  const [storageData, setStorageData] = React.useState<any>(null);
+  const [auditLogs, setAuditLogs] = React.useState<any[]>([]);
+  const [retentionSweepResult, setRetentionSweepResult] = React.useState<any>(null);
+  const [isRetentionLoading, setIsRetentionLoading] = React.useState(false);
+  const [dryRunLoading, setDryRunLoading] = React.useState(false);
+  const [dryRunTarget, setDryRunTarget] = React.useState<{ id: string; type: "user" | "product"; name: string } | null>(null);
+  const [dryRunStats, setDryRunStats] = React.useState<any>(null);
+  const [purgeExecuting, setPurgeExecuting] = React.useState(false);
+  const [expectedMonthlySignins, setExpectedMonthlySignins] = React.useState<number>(1000);
 
   // Coupon and Marquee states
   const [coupons, setCoupons] = React.useState<any[]>([]);
@@ -101,6 +112,18 @@ export default function AdminDashboardView() {
       if (marqueeRes.ok) {
         const marqueeData = await marqueeRes.json();
         setMarqueeText(marqueeData.text || "");
+      }
+
+      // Load storage usage info
+      const storageRes = await fetch("/api/admin/storage-usage", { headers });
+      if (storageRes.ok) {
+        setStorageData(await storageRes.json());
+      }
+
+      // Load purge audit logs
+      const auditRes = await fetch("/api/admin/audit-logs", { headers });
+      if (auditRes.ok) {
+        setAuditLogs(await auditRes.json());
       }
 
     } catch (err) {
@@ -411,25 +434,80 @@ export default function AdminDashboardView() {
   };
 
   const handleDeleteUser = async (userId: string, userName: string) => {
-    if (!confirm(`Are you absolutely sure you want to permanently delete the customer "${userName}"?\n\nThis will purge their user record, associated orders, reviews, and notification history from the database to maximize database space.`)) {
-      return;
-    }
+    setActiveTab("storage");
+    handleAnalyzeDryRun(userId, "user", userName);
+  };
+
+  const handleRunRetentionCleanSweep = async () => {
+    setIsRetentionLoading(true);
+    setRetentionSweepResult(null);
     try {
-      const res = await fetch(`/api/admin/users/${userId}`, {
-        method: "DELETE",
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
+      const res = await fetch("/api/admin/run-retention", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` }
       });
       if (res.ok) {
+        const data = await res.json();
+        setRetentionSweepResult(data.purged);
         fetchAllData(token);
       } else {
-        const errData = await res.json();
-        alert(errData.error || "Failed to delete user profile.");
+        alert("Manual storage retention sweep failed.");
       }
-    } catch (err) {
-      console.error(err);
-      alert("Network error trying to purge customer records.");
+    } catch (e) {
+      console.error(e);
+      alert("Error triggering storage retention clean sweep.");
+    } finally {
+      setIsRetentionLoading(false);
+    }
+  };
+
+  const handleAnalyzeDryRun = async (id: string, type: "user" | "product", name: string) => {
+    setDryRunLoading(true);
+    setDryRunTarget({ id, type, name });
+    setDryRunStats(null);
+    try {
+      const endpoint = `/api/admin/purge-${type}/${id}/dry-run`;
+      const res = await fetch(endpoint, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setDryRunStats(await res.json());
+      } else {
+        alert("Cascade analysis failed. Associated entity may not exist.");
+        setDryRunTarget(null);
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error preparing dry-run simulation analysis.");
+      setDryRunTarget(null);
+    } finally {
+      setDryRunLoading(false);
+    }
+  };
+
+  const handleConfirmExecutePurge = async () => {
+    if (!dryRunTarget) return;
+    setPurgeExecuting(true);
+    try {
+      const endpoint = `/api/admin/purge-${dryRunTarget.type}/${dryRunTarget.id}/execute`;
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (res.ok) {
+        alert(`Cascade Purge Completed! Permanent record scrub for ${dryRunTarget.type} "${dryRunTarget.name}" is logged.`);
+        setDryRunTarget(null);
+        setDryRunStats(null);
+        fetchAllData(token);
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to execute cascading purge.");
+      }
+    } catch (e) {
+      console.error(e);
+      alert(`Critical error executing cascading database purge.`);
+    } finally {
+      setPurgeExecuting(false);
     }
   };
 
@@ -455,7 +533,7 @@ export default function AdminDashboardView() {
         
         {/* Rapid selectors menu */}
         <div className="flex flex-wrap gap-1 bg-slate-100 p-1 rounded-xl">
-          {(["stats", "products", "orders", "messages", "users", "coupons", "marquee"] as const).map((tab) => (
+          {(["stats", "products", "orders", "messages", "users", "coupons", "marquee", "storage"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -465,7 +543,7 @@ export default function AdminDashboardView() {
                   : "text-gray-500 hover:text-black hover:bg-white/50"
               }`}
             >
-              {tab === "stats" ? "Analytics Stats" : tab === "marquee" ? "Edit Marquee" : tab}
+              {tab === "stats" ? "Analytics Stats" : tab === "marquee" ? "Edit Marquee" : tab === "storage" ? "Storage Guardrails" : tab}
             </button>
           ))}
         </div>
@@ -674,6 +752,13 @@ export default function AdminDashboardView() {
                                   <Trash2 className="h-3 w-3" />
                                 </button>
                               )}
+                              <button
+                                onClick={() => { setActiveTab("storage"); handleAnalyzeDryRun(p.id, "product", p.name); }}
+                                className="p-1 px-2 bg-red-50 hover:bg-red-100 border border-red-150 text-red-650 rounded flex items-center gap-1 cursor-pointer font-bold"
+                                title="Permanent Database Purge (Hard Delete)"
+                              >
+                                Purge
+                              </button>
                             </div>
                           </td>
 
@@ -1090,6 +1175,354 @@ export default function AdminDashboardView() {
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* TAB 8: STORAGE OBSERVABILITY & DATABASE GUARDRAILS */}
+          {activeTab === "storage" && (
+            <div className="space-y-8">
+              
+              {/* Row 1: Cap Widget & Manual Sweeper */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                {/* 512MB Capacity Gauge Widget */}
+                <div className="lg:col-span-2 bg-white border border-gray-150 p-6 rounded-2xl shadow-sm space-y-6">
+                  <div>
+                    <span className="text-xs font-mono uppercase tracking-widest text-[#0D1B2A] font-bold">DATABASE CAP CAPACITY GAUGE</span>
+                    <h3 className="font-serif text-lg font-black text-[#0D1B2A] mt-1">Live Free Tier 512MB Allocation Tracker</h3>
+                  </div>
+
+                  {storageData ? (
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-baseline text-xs font-mono">
+                        <div>
+                          <span className="text-gray-400 block">CONSOLIDATED DISK USAGE</span>
+                          <span className="text-base font-black text-slate-900 border-b-2 border-indigo-200">
+                            {(storageData.totalSizeBytes / 1024).toFixed(2)} KB
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-gray-450 block">MAX FREE TIER CAP</span>
+                          <span className="text-gray-900 font-bold">512.00 MB / 524,288 KB</span>
+                        </div>
+                      </div>
+
+                      {/* Bar indicator */}
+                      <div className="w-full bg-slate-150 h-5.5 rounded-full overflow-hidden p-1 border border-gray-200">
+                        <div 
+                          className="bg-indigo-600 h-full rounded-full transition-all duration-300 flex items-center justify-end px-2"
+                          style={{ width: `${Math.max(storageData.percentOfCap, 2.5)}%` }}
+                        >
+                          {storageData.percentOfCap > 5 && (
+                            <span className="text-[9px] font-mono font-black text-white">{storageData.percentOfCap}%</span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4 text-xs font-mono pt-2">
+                        <div className="bg-slate-50 p-3 rounded-xl border border-gray-100">
+                          <span className="text-gray-400 block text-[9px] uppercase">INDEX DISK ALLOC</span>
+                          <span className="font-bold text-slate-800">{(storageData.indexSizeBytes / 1024).toFixed(2)} KB</span>
+                        </div>
+                        <div className="bg-slate-50 p-3 rounded-xl border border-gray-200">
+                          <span className="text-gray-400 block text-[9px] uppercase">PERSISTENT ENGINE</span>
+                          <span className="font-bold text-[#0D1B2A]">{storageData.databaseMode}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="py-8 text-center text-xs text-gray-400">Loading storage gauge metrics...</div>
+                  )}
+                </div>
+
+                {/* Manual Cleanup block */}
+                <div className="lg:col-span-1 bg-white border border-gray-150 p-6 rounded-2xl shadow-sm space-y-4 flex flex-col justify-between">
+                  <div>
+                    <span className="text-xs font-mono uppercase tracking-widest text-[#D4820A] font-bold">LIFECYCLE RETENTION RULES</span>
+                    <h3 className="font-serif text-base font-bold text-[#0D1B2A] mt-1">Manual Database Sweep Console</h3>
+                    <p className="text-[11px] text-gray-550 leading-normal pt-1 font-sans">
+                      Clears read notifications older than 30 days, unread elements older than 90 days, expired sessions, and promotional logs older than six months instantly.
+                    </p>
+                  </div>
+
+                  {retentionSweepResult && (
+                    <div className="bg-emerald-50 border border-emerald-250 p-3 rounded-xl text-xs font-mono text-emerald-800 space-y-1">
+                      <span className="font-bold block">✓ Sweep Successful!</span>
+                      <p>• Notifications Purged: <span className="font-black">{retentionSweepResult.notificationPurged}</span></p>
+                      <p>• Sessions Cleared: <span className="font-black">{retentionSweepResult.sessionPurged}</span></p>
+                      <p>• Coupons Archivings: <span className="font-black">{retentionSweepResult.couponUsagePurged}</span></p>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handleRunRetentionCleanSweep}
+                    disabled={isRetentionLoading}
+                    className="w-full bg-[#0D1B2A] hover:bg-[#1B2A3D] text-white font-bold text-xs uppercase tracking-widest py-3.5 rounded-lg flex items-center justify-center gap-2 cursor-pointer shadow"
+                  >
+                    {isRetentionLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-white" />
+                    ) : (
+                      <RotateCcw className="h-4 w-4" />
+                    )}
+                    Launch Retention Sweep
+                  </button>
+                </div>
+              </div>
+
+              {/* Cascade Purging Workspace Analysis Overlay Panel */}
+              {dryRunTarget && (
+                <div className="bg-amber-50/40 border border-amber-250 p-6 rounded-2xl shadow space-y-4 font-mono text-xs max-w-3xl mx-auto">
+                  <div className="flex justify-between items-start border-b border-amber-200 pb-3">
+                    <div>
+                      <span className="text-[10px] bg-amber-500 text-white font-bold px-2 py-0.5 rounded uppercase">CASCADE DRY-RUN TEST</span>
+                      <h4 className="text-base font-serif font-black text-[#0D1B2A] mt-1 capitalize">
+                        Targeting {dryRunTarget.type === "user" ? "Customer" : "Product SKU"}: "{dryRunTarget.name}"
+                      </h4>
+                      <p className="text-gray-400 text-[10px] mt-0.5 font-mono">DB Reference Ref ID: {dryRunTarget.id}</p>
+                    </div>
+                    <button 
+                      onClick={() => { setDryRunTarget(null); setDryRunStats(null); }}
+                      className="p-1 text-gray-400 hover:text-black hover:bg-slate-200 rounded-md cursor-pointer animate-pulse"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+
+                  {dryRunLoading ? (
+                    <div className="py-6 text-center space-y-2">
+                      <Loader2 className="h-8 w-8 animate-spin text-amber-600 mx-auto" />
+                      <p className="text-[10px] text-gray-505">Querying dependency tables and child arrays...</p>
+                    </div>
+                  ) : dryRunStats ? (
+                    <div className="space-y-4">
+                      <div className="bg-white border border-amber-150 p-4 rounded-xl space-y-2.5">
+                        <span className="block font-bold text-red-700">⚠️ DATA INTEGRITY IMPLICATIONS REPORT:</span>
+                        
+                        {dryRunTarget.type === "user" ? (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs leading-relaxed font-sans">
+                            <div className="bg-slate-50 p-2.5 rounded border">
+                              <span className="text-gray-450 block text-[9px] font-mono uppercase">User Docs</span>
+                              <span className="font-mono font-bold text-slate-800">{dryRunStats.counts.users} deleted</span>
+                            </div>
+                            <div className="bg-slate-50 p-2.5 rounded border">
+                              <span className="text-gray-450 block text-[9px] font-mono uppercase">Order Records</span>
+                              <span className="font-mono font-bold text-slate-800">{dryRunStats.counts.orders} deleted</span>
+                            </div>
+                            <div className="bg-slate-50 p-2.5 rounded border">
+                              <span className="text-gray-450 block text-[9px] font-mono uppercase">Product Reviews</span>
+                              <span className="font-mono font-bold text-slate-800">{dryRunStats.counts.reviews} deleted</span>
+                            </div>
+                            <div className="bg-slate-50 p-2.5 rounded border">
+                              <span className="text-gray-450 block text-[9px] font-mono uppercase">Wishlist Indices</span>
+                              <span className="font-mono font-bold text-slate-800">{dryRunStats.counts.wishlist} deleted</span>
+                            </div>
+                            <div className="bg-slate-50 p-2.5 rounded border">
+                              <span className="text-gray-450 block text-[9px] font-mono uppercase">Notifications</span>
+                              <span className="font-mono font-bold text-slate-800">{dryRunStats.counts.notifications} deleted</span>
+                            </div>
+                            <div className="bg-slate-50 p-2.5 rounded border">
+                              <span className="text-gray-450 block text-[9px] font-mono uppercase">Active Cookies</span>
+                              <span className="font-mono font-bold text-slate-800">{dryRunStats.counts.sessions} deleted</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs leading-relaxed font-sans">
+                            <div className="bg-slate-50 p-2.5 rounded border">
+                              <span className="text-gray-450 block text-[9px] font-mono uppercase">Root Product Doc</span>
+                              <span className="font-mono font-bold text-slate-800">{dryRunStats.counts.products} deleted</span>
+                            </div>
+                            <div className="bg-slate-50 p-2.5 rounded border">
+                              <span className="text-gray-450 block text-[9px] font-mono uppercase">Product Reviews</span>
+                              <span className="font-mono font-bold text-slate-800">{dryRunStats.counts.reviews} deleted</span>
+                            </div>
+                            <div className="bg-slate-50 p-2.5 rounded border">
+                              <span className="text-gray-450 block text-[9px] font-mono uppercase">Active Wishlists</span>
+                              <span className="font-mono font-bold text-slate-800">{dryRunStats.counts.wishlist} deleted</span>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="bg-red-50 text-red-850 p-3 rounded-lg border border-red-150 text-xs font-sans mt-3 space-y-1">
+                          <span className="font-extrabold block">PROMPT CONFIRMATION CHECK:</span>
+                          <p>
+                            "This will delete 1 {dryRunTarget.type}, {dryRunTarget.type === "user" ? `${dryRunStats.counts.reviews} reviews, and ${dryRunStats.counts.wishlist} wishlist items` : `${dryRunStats.counts.reviews} reviews, and ${dryRunStats.counts.wishlist} wishlist items`}. Are you sure?"
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-3 justify-end font-sans">
+                        <button
+                          onClick={() => { setDryRunTarget(null); setDryRunStats(null); }}
+                          className="px-4 py-2 hover:bg-slate-200 border rounded-lg cursor-pointer font-bold"
+                        >
+                          Abort Action
+                        </button>
+                        <button
+                          onClick={handleConfirmExecutePurge}
+                          disabled={purgeExecuting}
+                          className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg flex items-center gap-1.5 cursor-pointer shadow"
+                        >
+                          {purgeExecuting && <Loader2 className="h-4 w-4 animate-spin text-white" />}
+                          Confirm Permanent Cascade Purge
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              )}
+
+              {/* Row 2: Collection Breakdown & Predictive Upgrade Solver */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                
+                {/* Collection Metrics */}
+                <div className="bg-white border border-gray-150 p-6 rounded-2xl shadow-sm space-y-4">
+                  <h3 className="font-serif text-base font-bold text-[#0D1B2A] border-b border-gray-100 pb-2">
+                    Storage Inventory Breakdown by Collection
+                  </h3>
+                  {storageData ? (
+                    <div className="divide-y divide-gray-100 space-y-2.5 max-h-96 overflow-y-auto pr-1">
+                      {storageData.breakdown.map((elm: any, idx: number) => (
+                        <div key={idx} className="flex justify-between items-center py-2 text-xs font-mono">
+                          <div>
+                            <span className="font-bold text-slate-900 text-sm block">{elm.name}</span>
+                            <span className={`text-[9px] font-bold uppercase rounded p-0.5 px-1 inline-block mt-0.5 ${
+                              elm.growthPattern.includes("unbounded") ? "bg-red-50 text-red-700 border border-red-200" : "bg-[#F3F4F6] text-gray-500"
+                            }`}>
+                              {elm.growthPattern}
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <span className="font-black text-slate-800 block">{elm.count} records</span>
+                            <span className="text-[10px] text-gray-400">{(elm.sizeBytes / 1024).toFixed(3)} KB</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-400">Formulating growth lists...</p>
+                  )}
+                </div>
+
+                {/* Growth Upgrader Predictive Solver slider */}
+                <div className="bg-white border border-gray-150 p-6 rounded-2xl shadow-sm space-y-4 flex flex-col justify-between">
+                  <div>
+                    <h3 className="font-serif text-base font-bold text-[#0D1B2A] border-b border-gray-100 pb-2">
+                      Interactive Upgrade Timeline Projection Solver
+                    </h3>
+                    <p className="text-[11px] text-gray-500 leading-normal pt-1 font-sans">
+                      Calculate exact lifespan predictions of your database before exceeding the 512MB threshold by planning monthly sign-ins and broad notifications.
+                    </p>
+                  </div>
+
+                  <div className="space-y-4 font-mono text-xs pt-2">
+                    <div className="space-y-2 bg-slate-50 p-3.5 rounded-xl border">
+                      <div className="flex justify-between items-center text-gray-750">
+                        <span>Expected Monthly Sign-ins:</span>
+                        <span className="font-black text-indigo-700 text-sm">{expectedMonthlySignins} / mo</span>
+                      </div>
+                      <input 
+                        type="range"
+                        min="50"
+                        max="50000"
+                        step="50"
+                        value={expectedMonthlySignins}
+                        onChange={(e) => setExpectedMonthlySignins(Number(e.target.value))}
+                        className="w-full cursor-pointer h-2 bg-slate-200 rounded-lg appearance-none accent-indigo-600"
+                      />
+                      <div className="flex justify-between text-[9px] text-gray-400">
+                        <span>50</span>
+                        <span>25,000</span>
+                        <span>50,000</span>
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-900 text-slate-100 p-4 rounded-xl space-y-2 shadow-inner font-sans text-xs">
+                      <span className="font-bold block text-amber-300 font-mono tracking-wider text-[10px] uppercase">
+                        PREDICTIVE DEPLOYMENT FORECASTING
+                      </span>
+                      {(() => {
+                        const totalBytesUsed = storageData?.totalSizeBytes || 102400; // default 100KB fallback
+                        const targetLimit = 536870912; // 512MB
+                        const remainingBytes = Math.max(targetLimit - totalBytesUsed, 0);
+                        const estimatedBytesPerSignin = 1120; // estimate size of session log + indexing
+                        const estimatedMonthlyUsage = expectedMonthlySignins * estimatedBytesPerSignin;
+                        const monthsRemaining = Math.max(Math.round(remainingBytes / estimatedMonthlyUsage * 10) / 10, 0.1);
+                        
+                        return (
+                          <div className="space-y-2 font-mono leading-relaxed text-slate-300">
+                            <p>• Estimated Monthly Growth: <span className="text-white font-black">{(estimatedMonthlyUsage / (1024 * 1024)).toFixed(2)} MB</span></p>
+                            <p>• Unused Storage Capacity: <span className="text-white font-black">{(remainingBytes / (1024 * 1024)).toFixed(2)} MB</span></p>
+                            
+                            <div className="pt-2 border-t border-slate-800 text-center text-xs">
+                              <span className="text-gray-400 block text-[9px] uppercase">Lifespan Before 512MB Upgrade:</span>
+                              <span className="text-emerald-400 font-black text-2xl tracking-tight block mt-1">
+                                {monthsRemaining > 1200 ? "99+ Years" : `${monthsRemaining} Months`}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 3: Purge Auditing Timelines */}
+              <div className="bg-white border border-gray-150 p-6 rounded-2xl shadow-sm space-y-4">
+                <h3 className="font-serif text-base font-bold text-[#0D1B2A] border-b border-gray-100 pb-2">
+                  Permanent Purge Verification & Audit Register
+                </h3>
+
+                {auditLogs.length === 0 ? (
+                  <p className="text-xs text-gray-400 font-mono">No permanent delete operations have been audited yet.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs font-mono border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 font-bold uppercase border-b text-gray-500 text-[10px]">
+                          <th className="p-3">Reference Log Id</th>
+                          <th className="p-3">Target Kind</th>
+                          <th className="p-3">Target Reference Id</th>
+                          <th className="p-3">Operator Admin</th>
+                          <th className="p-3">Records Scrubbed</th>
+                          <th className="p-3 text-right">Timestamp</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {auditLogs.map((log: any) => (
+                          <tr key={log.id}>
+                            <td className="p-3 font-semibold text-slate-850">{log.id}</td>
+                            <td className="p-3 capitalize">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                log.targetType === "user" ? "bg-purple-50 text-purple-700" : "bg-teal-50 text-teal-700"
+                              }`}>
+                                {log.targetType}
+                              </span>
+                            </td>
+                            <td className="p-3 text-gray-500 break-all">{log.targetId}</td>
+                            <td className="p-3 font-sans font-bold text-gray-750">{log.purgedBy}</td>
+                            <td className="p-3">
+                              <div className="space-y-0.5 text-[10px]">
+                                {Object.entries(log.counts || {}).map(([collection, count]: any) => (
+                                  count > 0 && (
+                                    <span key={collection} className="inline-block mr-2 text-slate-600 bg-slate-100 px-1 py-0.2 rounded font-semibold text-[9px]">
+                                      {collection}: {count}
+                                    </span>
+                                  )
+                                ))}
+                              </div>
+                            </td>
+                            <td className="p-3 text-right text-gray-400 text-[11px]">
+                              {new Date(log.timestamp).toLocaleString()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
             </div>
           )}
 

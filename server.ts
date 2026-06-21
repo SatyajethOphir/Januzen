@@ -111,6 +111,9 @@ async function startServer() {
         { expiresIn: "7d" }
       );
 
+      // Track the session write
+      await dbClient.createSession(newUser.id, newUser.name, newUser.email, token);
+
       // Dynamic Nodemailer Simulator Alert log
       console.log(`[EMAIL DISPATCH] TO: ${email} | SUBJECT: Welcome to JANUZEN Enterprise | CONTENT: Thank you for registering, ${name}! Your account is active. Welcome to Nuthan Medicals & JA Stationery.`);
 
@@ -149,6 +152,9 @@ async function startServer() {
         JWT_SECRET,
         { expiresIn: "7d" }
       );
+
+      // Track the session write
+      await dbClient.createSession(user.id, user.name, user.email, token);
 
       res.json({
         message: "Login successful.",
@@ -1096,6 +1102,96 @@ async function startServer() {
     } catch (e) {
       console.error(e);
       res.status(500).json({ error: "Internal server error aggregating metrics." });
+    }
+  });
+
+  // Admin Storage Usage Breakdown & Obeservability
+  app.get("/api/admin/storage-usage", authenticateAdmin, async (req, res) => {
+    try {
+      const stats = await dbClient.getStorageUsage();
+      res.json(stats);
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Failed to gather storage breakdown info." });
+    }
+  });
+
+  // Manual Trigger for Storage Retention Rules
+  app.post("/api/admin/run-retention", authenticateAdmin, async (req, res) => {
+    try {
+      const purged = await dbClient.runStorageRetention();
+      res.json({
+        message: "Manual storage retention sweep completed successfully.",
+        purged
+      });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Retention engine encountered an error." });
+    }
+  });
+
+  // Retrieve Cascade Purge Audit Trails
+  app.get("/api/admin/audit-logs", authenticateAdmin, async (req, res) => {
+    try {
+      const logs = await dbClient.getAuditLogs();
+      res.json(logs);
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Failed to load purge audit logs." });
+    }
+  });
+
+  // User Cascade Delete Dry-run Analysis
+  app.get("/api/admin/purge-user/:id/dry-run", authenticateAdmin, async (req, res) => {
+    try {
+      const result = await dbClient.purgeUser(req.params.id, { dryRun: true });
+      res.json(result);
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Dry-run analysis failed." });
+    }
+  });
+
+  // Execute User Cascade Delete Purge
+  app.post("/api/admin/purge-user/:id/execute", authenticateAdmin, async (req, res: any) => {
+    try {
+      const purgingAdmin = (req as any).user?.name || "admin";
+      const result = await dbClient.purgeUser(req.params.id, { dryRun: false, purgedBy: purgingAdmin });
+      res.json({
+        success: true,
+        message: "User and all associated accounts/event arrays purged successfully.",
+        result
+      });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Permanent cascade user deletion failed." });
+    }
+  });
+
+  // Product Cascade Delete Dry-run Analysis
+  app.get("/api/admin/purge-product/:id/dry-run", authenticateAdmin, async (req, res) => {
+    try {
+      const result = await dbClient.purgeProduct(req.params.id, { dryRun: true });
+      res.json(result);
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Product dry-run analysis failed." });
+    }
+  });
+
+  // Execute Product Cascade Delete Purge
+  app.post("/api/admin/purge-product/:id/execute", authenticateAdmin, async (req, res: any) => {
+    try {
+      const purgingAdmin = (req as any).user?.name || "admin";
+      const result = await dbClient.purgeProduct(req.params.id, { dryRun: false, purgedBy: purgingAdmin });
+      res.json({
+        success: true,
+        message: "Product and matching review/wishlist indices purged successfully.",
+        result
+      });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Permanent cascade product deletion failed." });
     }
   });
 
