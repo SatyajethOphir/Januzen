@@ -55,7 +55,10 @@
         "Essential Handhelds"
       ],
       "featured": true,
-      "isActive": false
+      "isActive": false,
+      "stockQuantity": 45,
+      "lowStockThreshold": 5,
+      "stockStatus": "in_stock"
     },
     {
       "id": "m2",
@@ -72,7 +75,10 @@
         "Maintenance"
       ],
       "featured": false,
-      "isActive": false
+      "isActive": false,
+      "stockQuantity": 60,
+      "lowStockThreshold": 5,
+      "stockStatus": "in_stock"
     },
     {
       "id": "m3",
@@ -89,7 +95,10 @@
         "Anti-inflammatory"
       ],
       "featured": true,
-      "isActive": false
+      "isActive": false,
+      "stockQuantity": 120,
+      "lowStockThreshold": 5,
+      "stockStatus": "in_stock"
     },
     {
       "id": "m4",
@@ -106,7 +115,10 @@
         "Seasonal Relief"
       ],
       "featured": false,
-      "isActive": true
+      "isActive": true,
+      "stockQuantity": 79,
+      "lowStockThreshold": 5,
+      "stockStatus": "in_stock"
     },
     {
       "id": "m5",
@@ -123,7 +135,10 @@
         "Accurate Diagnostics"
       ],
       "featured": true,
-      "isActive": true
+      "isActive": true,
+      "stockQuantity": 15,
+      "lowStockThreshold": 5,
+      "stockStatus": "in_stock"
     },
     {
       "id": "m6",
@@ -140,7 +155,10 @@
         "Pulse Reader"
       ],
       "featured": false,
-      "isActive": true
+      "isActive": true,
+      "stockQuantity": 99,
+      "lowStockThreshold": 5,
+      "stockStatus": "in_stock"
     },
     {
       "id": "m7",
@@ -157,7 +175,10 @@
         "Wound Care"
       ],
       "featured": false,
-      "isActive": true
+      "isActive": true,
+      "stockQuantity": 140,
+      "lowStockThreshold": 5,
+      "stockStatus": "in_stock"
     },
     {
       "id": "m8",
@@ -174,7 +195,10 @@
         "Comprehensive Kit"
       ],
       "featured": true,
-      "isActive": true
+      "isActive": true,
+      "stockQuantity": 22,
+      "lowStockThreshold": 5,
+      "stockStatus": "in_stock"
     },
     {
       "id": "m9",
@@ -191,7 +215,10 @@
         "Daily Wellness"
       ],
       "featured": true,
-      "isActive": true
+      "isActive": true,
+      "stockQuantity": 95,
+      "lowStockThreshold": 5,
+      "stockStatus": "in_stock"
     },
     {
       "id": "m10",
@@ -208,7 +235,10 @@
         "Omega Fatty Acids"
       ],
       "featured": false,
-      "isActive": true
+      "isActive": true,
+      "stockQuantity": 65,
+      "lowStockThreshold": 5,
+      "stockStatus": "in_stock"
     },
     {
       "id": "s1",
@@ -225,7 +255,10 @@
         "Anti-jam Fibres"
       ],
       "featured": true,
-      "isActive": true
+      "isActive": true,
+      "stockQuantity": 250,
+      "lowStockThreshold": 5,
+      "stockStatus": "in_stock"
     },
     {
       "id": "s2",
@@ -242,7 +275,10 @@
         "Refillable Nib"
       ],
       "featured": true,
-      "isActive": true
+      "isActive": true,
+      "stockQuantity": 18,
+      "lowStockThreshold": 5,
+      "stockStatus": "in_stock"
     },
     {
       "id": "s3",
@@ -259,7 +295,10 @@
         "Journaling Colors"
       ],
       "featured": false,
-      "isActive": true
+      "isActive": true,
+      "stockQuantity": 90,
+      "lowStockThreshold": 5,
+      "stockStatus": "in_stock"
     },
     {
       "id": "s4",
@@ -276,7 +315,10 @@
         "Threadbound Flat"
       ],
       "featured": true,
-      "isActive": true
+      "isActive": true,
+      "stockQuantity": 75,
+      "lowStockThreshold": 5,
+      "stockStatus": "in_stock"
     },
     {
       "id": "s5",
@@ -293,7 +335,10 @@
         "Organized Life"
       ],
       "featured": false,
-      "isActive": true
+      "isActive": true,
+      "stockQuantity": 40,
+      "lowStockThreshold": 5,
+      "stockStatus": "in_stock"
     },
     {
       "id": "s6",
@@ -310,7 +355,10 @@
         "Accordion Poly"
       ],
       "featured": false,
-      "isActive": true
+      "isActive": true,
+      "stockQuantity": 80,
+      "lowStockThreshold": 5,
+      "stockStatus": "in_stock"
     },
     {
       "id": "s7",
@@ -327,7 +375,10 @@
         "Pencil Sorting"
       ],
       "featured": true,
-      "isActive": true
+      "isActive": true,
+      "stockQuantity": 100,
+      "lowStockThreshold": 5,
+      "stockStatus": "in_stock"
     },
     {
       "id": "s8",
@@ -344,7 +395,10 @@
         "Travel Paint Case"
       ],
       "featured": true,
-      "isActive": true
+      "isActive": true,
+      "stockQuantity": 15,
+      "lowStockThreshold": 5,
+      "stockStatus": "in_stock"
     },
     {
       "id": "p_1780233365433",
@@ -359,7 +413,10 @@
         "Fever Removal"
       ],
       "featured": true,
-      "isActive": true
+      "isActive": true,
+      "stockQuantity": 97,
+      "lowStockThreshold": 5,
+      "stockStatus": "in_stock"
     },
     {
       "id": "p_1780234114347",
@@ -374,7 +431,10 @@
         "Best Selling"
       ],
       "featured": true,
-      "isActive": true
+      "isActive": true,
+      "stockQuantity": 100,
+      "lowStockThreshold": 5,
+      "stockStatus": "in_stock"
     },
     {
       "id": "p_1780234562148",
@@ -389,7 +449,10 @@
         "Waterproof"
       ],
       "featured": true,
-      "isActive": true
+      "isActive": true,
+      "stockQuantity": 100,
+      "lowStockThreshold": 5,
+      "stockStatus": "in_stock"
     }
   ],
   "orders": [
@@ -534,5 +597,9 @@
       "isActive": true
     }
   ],
-  "marquee": "🇮🇳 Authorized Corporate Logistics & Pharmacy Dispatches. High-opacity copypaper and certified standard healthcare kits available. Enjoy Free Secure Freight Delivery on all basket orders above ₹1000!"
+  "marquee": "🇮🇳 Authorized Corporate Logistics & Pharmacy Dispatches. High-opacity copypaper and certified standard healthcare kits available. Enjoy Free Secure Freight Delivery on all basket orders above ₹1000!",
+  "wishlist": [],
+  "sessions": [],
+  "couponUsages": [],
+  "auditLogs": []
 }
