@@ -1,18 +1,22 @@
-import React from "react";
+import React, { lazy, Suspense } from "react";
 import { gsap } from "gsap";
 import Navbar from "./components/Navbar";
-import HomeView from "./components/HomeView";
-import ShopView from "./components/ShopView";
-import ProductDetailView from "./components/ProductDetailView";
-import CartView, { CartItem } from "./components/CartView";
-import CheckoutView from "./components/CheckoutView";
-import AboutView from "./components/AboutView";
-import ContactView from "./components/ContactView";
-import LoginView from "./components/LoginView";
-import AdminDashboardView from "./components/AdminDashboardView";
-import OrdersHistoryView from "./components/OrdersHistoryView";
-import ProfileView from "./components/ProfileView";
 import { Product, User } from "./types";
+import type { CartItem } from "./components/CartView";
+import OfficialLoader from "./components/OfficialLoader";
+
+// Dynamic view components with lazy loading
+const HomeView = lazy(() => import("./components/HomeView"));
+const ShopView = lazy(() => import("./components/ShopView"));
+const ProductDetailView = lazy(() => import("./components/ProductDetailView"));
+const CartView = lazy(() => import("./components/CartView"));
+const CheckoutView = lazy(() => import("./components/CheckoutView"));
+const AboutView = lazy(() => import("./components/AboutView"));
+const ContactView = lazy(() => import("./components/ContactView"));
+const LoginView = lazy(() => import("./components/LoginView"));
+const AdminDashboardView = lazy(() => import("./components/AdminDashboardView"));
+const OrdersHistoryView = lazy(() => import("./components/OrdersHistoryView"));
+const ProfileView = lazy(() => import("./components/ProfileView"));
 
 interface NavState {
   page: "home" | "medicals" | "stationery" | "product-detail" | "cart" | "checkout" | "about" | "contact" | "login" | "admin" | "orders" | "profile";
@@ -26,6 +30,11 @@ export default function App() {
   const [featuredProducts, setFeaturedProducts] = React.useState<Product[]>([]);
   const [toast, setToast] = React.useState<string | null>(null);
   const [wishlistProductIds, setWishlistProductIds] = React.useState<string[]>([]);
+  
+  // Custom secure elite loading managers
+  const [sessionLoading, setSessionLoading] = React.useState(true);
+  const [loadProgress, setLoadProgress] = React.useState(10);
+  const [pageLoading, setPageLoading] = React.useState(false);
   
   // Theme state: light, dark, emerald (clinical), amber (stationery), device
   const [theme, setTheme] = React.useState<"light" | "dark" | "emerald" | "amber" | "device">(() => {
@@ -114,9 +123,31 @@ export default function App() {
     }
   }, [theme]);
 
-  // Load User auth token on mount
+  // Core master session and featured items loader on initial mount
   React.useEffect(() => {
+    let completedCount = 0;
+    
+    const incrementProgressTo = (target: number) => {
+      setLoadProgress(prev => {
+        if (prev >= target) return prev;
+        return target;
+      });
+    };
+
+    const itemResolved = () => {
+      completedCount++;
+      if (completedCount === 1) {
+        incrementProgressTo(70);
+      } else if (completedCount >= 2) {
+        incrementProgressTo(100);
+        setTimeout(() => {
+          setSessionLoading(false);
+        }, 350); // Fluid exit transition
+      }
+    };
+
     async function verifySession() {
+      incrementProgressTo(25);
       const savedToken = localStorage.getItem("januzen_token") || sessionStorage.getItem("januzen_token");
       if (savedToken) {
         try {
@@ -127,17 +158,19 @@ export default function App() {
           if (res.ok) {
             setCurrentUser(data.user);
           } else {
-            // Clean expired values
             localStorage.removeItem("januzen_token");
             localStorage.removeItem("januzen_user");
           }
         } catch (err) {
-          console.error("Session verification failed. Network disconnected:", err);
+          console.error("Session verification failed:", err);
         }
       }
+      incrementProgressTo(45);
+      itemResolved();
     }
 
     async function loadFeatured() {
+      incrementProgressTo(55);
       try {
         const res = await fetch("/api/products?featured=true");
         if (res.ok) {
@@ -147,11 +180,42 @@ export default function App() {
       } catch (err) {
         console.error("Failed to load featured products index:", err);
       }
+      incrementProgressTo(85);
+      itemResolved();
     }
 
     verifySession();
     loadFeatured();
-  }, [nav.page]); // Refresh values on navigate tabs to capture additions
+  }, []);
+
+  // Lightweight background sync when switching pages of the portal (completely non-blocking)
+  React.useEffect(() => {
+    if (sessionLoading) return;
+
+    async function syncData() {
+      const savedToken = localStorage.getItem("januzen_token") || sessionStorage.getItem("januzen_token");
+      if (savedToken) {
+        try {
+          const res = await fetch("/api/auth/profile", {
+            headers: { "Authorization": `Bearer ${savedToken}` }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setCurrentUser(data.user);
+          }
+        } catch (e) {}
+      }
+      try {
+        const res = await fetch("/api/products?featured=true");
+        if (res.ok) {
+          const data = await res.json();
+          setFeaturedProducts(data.products || []);
+        }
+      } catch (e) {}
+    }
+
+    syncData();
+  }, [nav.page]);
 
   // GSAP View Change Transition
   React.useEffect(() => {
@@ -170,7 +234,7 @@ export default function App() {
     switch(nav.page) {
       case "home":
         titleStr = "JANUZEN Global LLP | Care Diagnostics & Premium Corporate Office Supplies";
-        descContent = "Home of Januzen Global LLP. Managing two trusted entities: Nuthan Medicals (healthcare, surgical kits, tablets) and JA Stationery (registers, planners, luxury diaries). Founded by Vinuthan Reddy Kogara.";
+        descContent = "Home of Januzen Global LLP. Managing two trusted entities: Nuthan Medicals (healthcare, surgical kits, tablets) and JA Stationery (registers, planners, luxury diaries). Founded by Vinuthan Reddy Kongara.";
         break;
       case "medicals":
         titleStr = "Nuthan Medicals | Authentic Clinical Pharmaceuticals & Diagnostics by JANUZEN";
@@ -223,8 +287,12 @@ export default function App() {
   }, [nav.page]);
 
   const handleNavigate = (pageName: string, params: Record<string, any> = {}) => {
+    setPageLoading(true);
     setNav({ page: pageName as any, params });
     window.scrollTo({ top: 0, behavior: "smooth" });
+    setTimeout(() => {
+      setPageLoading(false);
+    }, 450);
   };
 
   const handleThemeChange = (newTheme: "light" | "dark" | "emerald" | "amber" | "device") => {
@@ -307,6 +375,10 @@ export default function App() {
 
   const cartTotalCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
+  if (sessionLoading) {
+    return <OfficialLoader fullScreen={true} progress={loadProgress} />;
+  }
+
   return (
     <div className={`min-h-screen flex flex-col mode-${resolvedTheme} transition-colors duration-300 w-full`}>
       {/* 🌟 Header Menu */}
@@ -320,95 +392,113 @@ export default function App() {
         onThemeChange={handleThemeChange}
       />
 
-      {/* Main visual view renders */}
-      <main className="flex-grow gsap-page-container">
-        {nav.page === "home" && (
-          <HomeView
-            onNavigate={handleNavigate}
-            featuredProducts={featuredProducts}
-            onAddToBag={handleAddToBag}
-            wishlistProductIds={wishlistProductIds}
-            onToggleWishlist={handleToggleWishlist}
-          />
+      {/* Main visual view renders wrapped with complete brand Suspense or loading transitions */}
+      <main className="relative flex-grow gsap-page-container">
+        {pageLoading && (
+          <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-[#050C16]/80 backdrop-blur-md transition-all duration-300">
+            <div className="text-center space-y-4">
+              <div className="relative flex items-center justify-center">
+                <div className="w-12 h-12 border-4 border-[#0F9B8E] border-t-transparent rounded-full animate-spin"></div>
+                <div className="absolute w-6 h-6 border-4 border-amber-500 border-b-transparent rounded-full animate-spin" style={{ animationDirection: "reverse" }}></div>
+              </div>
+              <p className="text-xs font-mono text-slate-300 tracking-[0.2em] uppercase animate-pulse">
+                Accessing {nav.page} database...
+              </p>
+            </div>
+          </div>
         )}
 
-        {nav.page === "medicals" && (
-          <ShopView
-            division="medicals"
-            onNavigate={handleNavigate}
-            onAddToBag={handleAddToBag}
-            wishlistProductIds={wishlistProductIds}
-            onToggleWishlist={handleToggleWishlist}
-          />
-        )}
+        <Suspense fallback={
+          <OfficialLoader fullScreen={false} message="Streaming verified partner view modules..." />
+        }>
+          {nav.page === "home" && (
+            <HomeView
+              onNavigate={handleNavigate}
+              featuredProducts={featuredProducts}
+              onAddToBag={handleAddToBag}
+              wishlistProductIds={wishlistProductIds}
+              onToggleWishlist={handleToggleWishlist}
+            />
+          )}
 
-        {nav.page === "stationery" && (
-          <ShopView
-            division="stationery"
-            onNavigate={handleNavigate}
-            onAddToBag={handleAddToBag}
-            wishlistProductIds={wishlistProductIds}
-            onToggleWishlist={handleToggleWishlist}
-          />
-        )}
+          {nav.page === "medicals" && (
+            <ShopView
+              division="medicals"
+              onNavigate={handleNavigate}
+              onAddToBag={handleAddToBag}
+              wishlistProductIds={wishlistProductIds}
+              onToggleWishlist={handleToggleWishlist}
+            />
+          )}
 
-        {nav.page === "product-detail" && (
-          <ProductDetailView
-            productId={nav.params.productId}
-            onNavigate={handleNavigate}
-            onAddToBag={handleAddToBag}
-            wishlistProductIds={wishlistProductIds}
-            onToggleWishlist={handleToggleWishlist}
-          />
-        )}
+          {nav.page === "stationery" && (
+            <ShopView
+              division="stationery"
+              onNavigate={handleNavigate}
+              onAddToBag={handleAddToBag}
+              wishlistProductIds={wishlistProductIds}
+              onToggleWishlist={handleToggleWishlist}
+            />
+          )}
 
-        {nav.page === "cart" && (
-          <CartView
-            cartItems={cart}
-            onUpdateQty={handleUpdateCartQty}
-            onRemoveItem={handleRemoveCartItem}
-            onNavigate={handleNavigate}
-          />
-        )}
+          {nav.page === "product-detail" && (
+            <ProductDetailView
+              productId={nav.params.productId}
+              onNavigate={handleNavigate}
+              onAddToBag={handleAddToBag}
+              wishlistProductIds={wishlistProductIds}
+              onToggleWishlist={handleToggleWishlist}
+            />
+          )}
 
-        {nav.page === "checkout" && (
-          <CheckoutView
-            cartItems={cart}
-            currentUser={currentUser}
-            onNavigate={handleNavigate}
-            onClearCart={handleClearCart}
-          />
-        )}
+          {nav.page === "cart" && (
+            <CartView
+              cartItems={cart}
+              onUpdateQty={handleUpdateCartQty}
+              onRemoveItem={handleRemoveCartItem}
+              onNavigate={handleNavigate}
+            />
+          )}
 
-        {nav.page === "about" && <AboutView />}
+          {nav.page === "checkout" && (
+            <CheckoutView
+              cartItems={cart}
+              currentUser={currentUser}
+              onNavigate={handleNavigate}
+              onClearCart={handleClearCart}
+            />
+          )}
 
-        {nav.page === "contact" && <ContactView />}
+          {nav.page === "about" && <AboutView />}
 
-        {nav.page === "login" && (
-          <LoginView
-            onLoginSuccess={handleLoginSuccess}
-            onNavigate={handleNavigate}
-            navigationParams={nav.params}
-          />
-        )}
+          {nav.page === "contact" && <ContactView />}
 
-        {nav.page === "admin" && <AdminDashboardView />}
-        
-        {nav.page === "profile" && (
-          <ProfileView
-            currentUser={currentUser}
-            onNavigate={handleNavigate}
-            onUpdateCurrentUser={(updatedUser) => setCurrentUser(updatedUser)}
-            onAddToBag={handleAddToBag}
-          />
-        )}
+          {nav.page === "login" && (
+            <LoginView
+              onLoginSuccess={handleLoginSuccess}
+              onNavigate={handleNavigate}
+              navigationParams={nav.params}
+            />
+          )}
 
-        {nav.page === "orders" && (
-          <OrdersHistoryView
-            onNavigate={handleNavigate}
-            currentUser={currentUser}
-          />
-        )}
+          {nav.page === "admin" && <AdminDashboardView />}
+          
+          {nav.page === "profile" && (
+            <ProfileView
+              currentUser={currentUser}
+              onNavigate={handleNavigate}
+              onUpdateCurrentUser={(updatedUser) => setCurrentUser(updatedUser)}
+              onAddToBag={handleAddToBag}
+            />
+          )}
+
+          {nav.page === "orders" && (
+            <OrdersHistoryView
+              onNavigate={handleNavigate}
+              currentUser={currentUser}
+            />
+          )}
+        </Suspense>
       </main>
 
       {/* 📢 TOAST ALERT MESSAGE PANEL */}

@@ -32,18 +32,23 @@ export default function AboutView() {
   const timeline = [
     {
       year: "2005",
-      title: "Nuthan Medicals & JA Stationery Inception",
-      desc: "Founded by Vinuthan Reddy Kogara. Nuthan Medicals launched on June 6th, followed closely by JA Stationery on September 10th to deliver critical public care and desk utilities."
+      title: "Nuthan Medicals Inception",
+      desc: "Founded by Vinuthan Reddy Kongara, launching Nuthan Medicals on June 6th to deliver critical clinical diagnostics and pharmaceutical care."
     },
     {
       year: "2012",
       title: "Establishment of Gajularamaram Joint Hub",
-      desc: "Consolidated dual brick-and-mortar storefronts into our primary Dwaraka Nagar Gajularamaram facility to centralize regional stock pipelines."
+      desc: "Consolidated brick-and-mortar operations into our primary Dwaraka Nagar Gajularamaram facility to centralize regional stock pipelines."
     },
     {
       year: "2018",
       title: "Transition to Januzen Global LLP",
       desc: "Formally registered as an LLP consortium to support bulk corporate supply chains and certified diagnostics licenses seamlessly."
+    },
+    {
+      year: "2024",
+      title: "Inception of JA Stationery",
+      desc: "Launching JA Stationery on September 10th, 2024 under the trusted Januzen umbrella to offer premium leather diaries and archival desk essentials."
     },
     {
       year: "2026",
@@ -75,7 +80,7 @@ export default function AboutView() {
           
           <div className="space-y-4 text-sm text-gray-500 leading-relaxed font-serif">
             <p>
-              <strong>Januzen Global LLP</strong>, founded by <strong>Vinuthan Reddy Kogara</strong>, operates as a parent company with two highly trusted divisions that touch everyday lives. **Nuthan Medicals** (established June 6th, 2005) serves the clinical market by providing authenticated prescriptions and diagnostic tools. Simultaneously, **JA Stationery** (established September 10th, 2005) powers offices and classrooms through premium paper, diaries, and writing tools.
+              <strong>Januzen Global LLP</strong>, founded by <strong>Vinuthan Reddy Kongara</strong>, operates as a parent company with two highly trusted divisions that touch everyday lives. **Nuthan Medicals** (established June 6th, 2005) serves the clinical market by providing authenticated prescriptions and diagnostic tools. Simultaneously, **JA Stationery** (established September 10th, 2024) powers offices and classrooms through premium paper, diaries, and writing tools.
             </p>
             <p>
               Both divisions operate securely out of our central facility, consolidating healthcare logistics and workspace inventories under one efficient administrative portal for hassle-free invoicing and genuine stock telemetry.

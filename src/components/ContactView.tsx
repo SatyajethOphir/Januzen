@@ -97,7 +97,7 @@ export default function ContactView() {
               Januzen Global <span className="italic font-light">LLP Headquarters</span>
             </h2>
             <p className="text-gray-500 text-xs font-serif leading-relaxed max-w-xl">
-              Overseeing global corporate audits, healthcare compliance dispatches, and premium paper logistics. Founded & authorized by <strong className="text-current text-[#D4820A]">Vinuthan Reddy Kogara</strong>.
+              Overseeing global corporate audits, healthcare compliance dispatches, and premium paper logistics. Founded & authorized by <strong className="text-current text-[#D4820A]">Vinuthan Reddy Kongara</strong>.
             </p>
           </div>
           <div className="bg-black/5 p-5 rounded-xl border border-gray-200/40 text-xs font-mono space-y-2.5 shrink-0 md:w-96 flex flex-col justify-center">
@@ -164,7 +164,7 @@ export default function ContactView() {
             </div>
 
             <p className="text-xs text-gray-500 leading-relaxed font-serif">
-              Fulfilling corporate copy paper bulk mandates, executive planning diaries, indexing cardboards, and fine painting materials. Started Sept 10th, 2005.
+              Fulfilling corporate copy paper bulk mandates, executive planning diaries, indexing cardboards, and fine painting materials. Started Sept 10th, 2024.
             </p>
 
             <div className="space-y-3.5 text-xs text-gray-500 font-mono">

@@ -576,7 +576,7 @@ export default function HomeView({
               <span className="font-serif text-lg font-bold tracking-widest text-[#0D1B2A]">JANUZEN</span>
             </div>
             <p className="text-xs text-gray-500 leading-relaxed font-serif">
-              <strong>Januzen Global LLP</strong>, founded by <strong>Vinuthan Reddy Kogara</strong>, coordinates premier, verified physical standards in clinical healthcare and fine workstation archives.
+              <strong>Januzen Global LLP</strong>, founded by <strong>Vinuthan Reddy Kongara</strong>, coordinates premier, verified physical standards in clinical healthcare and fine workstation archives.
             </p>
             <p className="text-[10px] text-gray-400 font-mono">
               HQ: P.No- P-12, Mahadevpuram, Gajularamaram, Telangana.
@@ -594,12 +594,11 @@ export default function HomeView({
           </div>
 
           <div>
-            <h4 className="text-[10px] font-mono font-bold uppercase tracking-widest text-current mb-4">JA Stationery (Est. Sept 2005)</h4>
+            <h4 className="text-[10px] font-mono font-bold uppercase tracking-widest text-current mb-4">JA Stationery (Est. Sept 2024)</h4>
             <ul className="space-y-2.5 text-xs text-gray-500 font-serif">
               <li>📞 Order Desk: 09666588553</li>
               <li>📍 Phase-2, Pno 46 street no 5, Samskruthi Avenues Rd., Dwaraka Nagar, Gajularamaram, Hyderabad, Telangana 500117</li>
-              <li>🕒 Estd: Sept 10th, 2005</li>
-              <li>📁 Corporate GSTIN: 29AAACJ8501L1ZS</li>
+              <li>🕒 Estd: Sept 10th, 2024</li>
             </ul>
           </div>
 
