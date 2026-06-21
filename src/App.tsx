@@ -162,6 +162,66 @@ export default function App() {
     );
   }, [nav.page]);
 
+  // Dynamic SEO Page Title & Metadata switcher
+  React.useEffect(() => {
+    let titleStr = "JANUZEN Global LLP | Premium Pharmaceuticals & Office Stationery";
+    let descContent = "Official portal of JANUZEN Global LLP, hosting two premier divisions: Nuthan Medicals (clinical essentials & diagnostics) and JA Stationery (expert notebooks, diaries).";
+
+    switch(nav.page) {
+      case "home":
+        titleStr = "JANUZEN Global LLP | Care Diagnostics & Premium Corporate Office Supplies";
+        descContent = "Home of Januzen Global LLP. Managing two trusted entities: Nuthan Medicals (healthcare, surgical kits, tablets) and JA Stationery (registers, planners, luxury diaries). Founded by Vinuthan Reddy Kogara.";
+        break;
+      case "medicals":
+        titleStr = "Nuthan Medicals | Authentic Clinical Pharmaceuticals & Diagnostics by JANUZEN";
+        descContent = "Explore Nuthan Medicals. Certified pharmaceuticals, professional nebulizers, authentic surgical tools, clinical devices, and consumer health items.";
+        break;
+      case "stationery":
+        titleStr = "JA Stationery | Curated Office Calendars, Leather Diaries & Writing Books";
+        descContent = "Explore JA Stationery. Luxury leather business diaries, executive academic planners, customized corporate stationery notebooks, and high-caliber stationery items.";
+        break;
+      case "product-detail":
+        titleStr = "Premium Catalog Item | JANUZEN Global LLP";
+        descContent = "View details and pricing specifications for this authenticated product in the JANUZEN Global corporate inventory list.";
+        break;
+      case "cart":
+        titleStr = "Shopping Bag | JANUZEN Global Supply Channel";
+        descContent = "Review clinical health kits or elegant office planners before finalizing your order securely.";
+        break;
+      case "checkout":
+        titleStr = "Secure Gateway Billing | JANUZEN Global LLP";
+        descContent = "Submit your corporate address, tax identification inputs, and perform seamless UPI or Netbanking transactions safely.";
+        break;
+      case "about":
+        titleStr = "Our Historic Footprint & Board of Trustees | JANUZEN Global LLP";
+        descContent = "Trace JANUZEN Global's evolution from a single custom apothecary in 2005 to a global enterprise partnership serving multiple public divisions.";
+        break;
+      case "contact":
+        titleStr = "Get In Touch with Nuthan Medicals & JA Stationery | Official LLP Helpdesk";
+        descContent = "Contact the corporate office of Januzen Global LLP at team@januzen.in or direct phone desk inquiries. Address, locations, and live ticket support.";
+        break;
+      case "login":
+        titleStr = "Secure Member Access | JANUZEN Corporate Portal";
+        descContent = "Access customized bulk order tiering, check wishlist records, or track dispatch items inside JANUZEN client area.";
+        break;
+      case "admin":
+        titleStr = "Admin Telemetry Dashboard | JANUZEN Internal Core";
+        break;
+      case "orders":
+        titleStr = "Your Orders Telemetry | JANUZEN Global";
+        break;
+      case "profile":
+        titleStr = "Your Commercial Profile Settings | JANUZEN Global";
+        break;
+    }
+
+    document.title = titleStr;
+    const metaDescriptionEl = document.querySelector('meta[name="description"]');
+    if (metaDescriptionEl) {
+      metaDescriptionEl.setAttribute("content", descContent);
+    }
+  }, [nav.page]);
+
   const handleNavigate = (pageName: string, params: Record<string, any> = {}) => {
     setNav({ page: pageName as any, params });
     window.scrollTo({ top: 0, behavior: "smooth" });

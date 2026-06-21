@@ -1,0 +1,6 @@
+Place your public assets here, such as:
+- favicon.ico (or favicon.png)
+- logo.png
+- division_logos...
+
+These can be fetched in the frontend code at absolute root paths (e.g. "/logo.png").

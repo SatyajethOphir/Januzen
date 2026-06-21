@@ -486,7 +486,7 @@ export default function HomeView({
                 color: "bg-amber-50 border-amber-200 text-amber-800"
               },
               {
-                text: "Consolidated enterprise accounting saves our operations countless steps. I buy face shields for store floor crew and executive planners for office corporate leads in a single purchase cycle.",
+                text: "Consolidated partnership billing saves our operations countless steps. I buy face shields for store floor crew and executive planners for office corporate leads in a single purchase cycle.",
                 author: "Sujata Sharma",
                 role: "Operations Director, Titan Corp",
                 avatar: "SS",

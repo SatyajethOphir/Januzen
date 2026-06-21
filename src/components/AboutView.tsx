@@ -75,7 +75,7 @@ export default function AboutView() {
           
           <div className="space-y-4 text-sm text-gray-500 leading-relaxed font-serif">
             <p>
-              <strong>Januzen Global LLP</strong>, founded by <strong>Vinuthan Reddy Kogara</strong>, operates as a parent enterprise with two highly trusted divisions that touch everyday lives. **Nuthan Medicals** (established June 6th, 2005) serves the clinical market by providing authenticated prescriptions and diagnostic tools. Simultaneously, **JA Stationery** (established September 10th, 2005) powers offices and classrooms through premium paper, diaries, and writing tools.
+              <strong>Januzen Global LLP</strong>, founded by <strong>Vinuthan Reddy Kogara</strong>, operates as a parent company with two highly trusted divisions that touch everyday lives. **Nuthan Medicals** (established June 6th, 2005) serves the clinical market by providing authenticated prescriptions and diagnostic tools. Simultaneously, **JA Stationery** (established September 10th, 2005) powers offices and classrooms through premium paper, diaries, and writing tools.
             </p>
             <p>
               Both divisions operate securely out of our central facility, consolidating healthcare logistics and workspace inventories under one efficient administrative portal for hassle-free invoicing and genuine stock telemetry.
@@ -137,7 +137,7 @@ export default function AboutView() {
             <Milestone className="h-6 w-6 text-amber-500" />
             25 Years <span className="italic">in Focus</span>
           </h2>
-          <p className="text-gray-400 text-xs font-mono">Tracing our history from a local apothecary shop to an enterprise consortium.</p>
+          <p className="text-gray-400 text-xs font-mono">Tracing our history from a local apothecary shop to a global partnership.</p>
         </div>
 
         <div className="bg-card-theme border rounded-2xl p-8 sm:p-12 shadow-sm max-w-4xl mx-auto relative overflow-hidden">

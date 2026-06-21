@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
@@ -10,7 +11,7 @@ import { dbClient, connectAndSeedDB, isMongo } from "./server/db";
 
 const PORT = 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "JANUZEN_JWT_SECRET_KEY";
-const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY || "";
+const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY || "phoenix123&";
 
 // In-memory file upload middleware
 const filterMulter = multer({
