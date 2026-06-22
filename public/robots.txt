@@ -1,0 +1,20 @@
+# robots.txt for januzen.in
+#
+# Purpose: tells search engine crawlers what they can access, and points them
+# to the sitemap so they discover all product pages, not just the homepage.
+#
+# Place this file at the SITE ROOT (e.g. public/robots.txt in a Vite project,
+# so it's served at https://januzen.in/robots.txt — verify it's reachable
+# there after deploying).
+
+User-agent: *
+Allow: /
+
+# Don't waste crawl budget on admin/account/checkout flows — these have no
+# SEO value and may contain user-specific or sensitive content.
+Disallow: /admin
+Disallow: /account
+Disallow: /checkout
+Disallow: /cart
+
+Sitemap: https://januzen.in/sitemap.xml
