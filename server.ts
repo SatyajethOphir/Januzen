@@ -36,6 +36,19 @@ async function startServer() {
     next();
   });
 
+// Explicitly serve robots.txt before the SPA catch-all can intercept it
+app.get("/robots.txt", (req, res) => {
+  res.setHeader("Content-Type", "text/plain");
+  res.send(`User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /account
+Disallow: /checkout
+Disallow: /cart
+
+Sitemap: https://januzen.in/sitemap.xml`);
+});
+
   // Sitemap route — mounted FIRST before express.static and catch-all
   // so /sitemap.xml returns XML and not index.html
   app.use("/", sitemapRouter);
