@@ -142,9 +142,9 @@ export default function ContactView() {
                 <Phone className="h-4 w-4 text-teal-600 shrink-0" />
                 <span>09666588553 (Helpline Support)</span>
               </div>
-              <div className="flex items-center gap-3 font-medium text-slate-100 bg-[#0F9B8E]/10 py-1 px-2.5 rounded border border-[#0F9B8E]/20">
+              <div className="flex items-center gap-3 font-medium text-teal-950 dark:text-teal-300 bg-[#0F9B8E]/15 py-1.5 px-3 rounded-lg border border-[#0F9B8E]/30 shadow-sm">
                 <Mail className="h-4 w-4 text-teal-600 shrink-0" />
-                <a href="mailto:team@januzen.in" className="hover:underline">team@januzen.in</a>
+                <a href="mailto:team@januzen.in" className="hover:underline hover:text-teal-700 dark:hover:text-teal-200 transition-colors font-bold">team@januzen.in</a>
               </div>
               <div className="flex items-center gap-3">
                 <Clock className="h-4 w-4 text-teal-600 shrink-0" />
@@ -176,9 +176,9 @@ export default function ContactView() {
                 <Phone className="h-4 w-4 text-[#D4820A] shrink-0" />
                 <span>09666588553 (Corporate Order-Desk)</span>
               </div>
-              <div className="flex items-center gap-3 font-medium text-slate-100 bg-[#D4820A]/10 py-1 px-2.5 rounded border border-[#D4820A]/20">
+              <div className="flex items-center gap-3 font-medium text-amber-950 dark:text-amber-300 bg-[#D4820A]/15 py-1.5 px-3 rounded-lg border border-[#D4820A]/30 shadow-sm">
                 <Mail className="h-4 w-4 text-[#D4820A] shrink-0" />
-                <a href="mailto:team@januzen.in" className="hover:underline">team@januzen.in</a>
+                <a href="mailto:team@januzen.in" className="hover:underline hover:text-amber-800 dark:hover:text-amber-200 transition-colors font-bold">team@januzen.in</a>
               </div>
               <div className="flex items-center gap-3">
                 <Clock className="h-4 w-4 text-[#D4820A] shrink-0" />

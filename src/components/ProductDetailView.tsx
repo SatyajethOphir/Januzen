@@ -156,7 +156,9 @@ export default function ProductDetailView({
   const isMed = product.shop === "medicals";
   const btnColor = isMed ? "bg-[#0F9B8E] hover:bg-[#0c7f74]" : "bg-[#D4820A] hover:bg-[#b56e07]";
   const borderFocus = isMed ? "focus:border-teal-500" : "focus:border-amber-500";
-  const badgeStyle = isMed ? "bg-teal-50 text-teal-800 border-teal-100" : "bg-amber-50 text-amber-800 border-amber-100";
+  const badgeStyle = isMed 
+    ? "bg-slate-900/95 text-teal-300 border-teal-800/60" 
+    : "bg-slate-900/95 text-amber-300 border-amber-800/60";
   const isOutOfStock = product.stock === 0;
 
   return (
