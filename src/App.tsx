@@ -22,8 +22,88 @@ interface NavState {
   params: Record<string, any>;
 }
 
+// ---------------------------------------------------------------------------
+// URL <-> NavState helpers
+// ---------------------------------------------------------------------------
+
+// Maps a URL pathname/search to a NavState.
+// Clean paths we publish in the sitemap:
+//   /                  → home
+//   /medicals          → medicals
+//   /stationery        → stationery
+//   /product/:id       → product-detail
+//   /cart              → cart
+//   /checkout          → checkout
+//   /about             → about
+//   /contact           → contact
+//   /login             → login
+//   /orders            → orders
+//   /profile           → profile
+//   /admin             → admin
+// Legacy query-param deep links (?product=m1) are still supported for
+// backward compatibility with any existing shared links.
+function urlToNav(location: Location): NavState {
+  const path = location.pathname;
+  const params = new URLSearchParams(location.search);
+
+  // Legacy deep-link support — old /?product=m1 links still work
+  const legacyProduct = params.get("product");
+  if (legacyProduct) {
+    return { page: "product-detail", params: { productId: legacyProduct } };
+  }
+
+  if (path === "/" || path === "") return { page: "home", params: {} };
+  if (path === "/medicals") return { page: "medicals", params: {} };
+  if (path === "/stationery") return { page: "stationery", params: {} };
+  if (path === "/cart") return { page: "cart", params: {} };
+  if (path === "/checkout") return { page: "checkout", params: {} };
+  if (path === "/about") return { page: "about", params: {} };
+  if (path === "/contact") return { page: "contact", params: {} };
+  if (path === "/login") return { page: "login", params: {} };
+  if (path === "/orders") return { page: "orders", params: {} };
+  if (path === "/profile") return { page: "profile", params: {} };
+  if (path === "/admin") return { page: "admin", params: {} };
+
+  // /product/:id
+  const productMatch = path.match(/^\/product\/(.+)$/);
+  if (productMatch) {
+    return { page: "product-detail", params: { productId: decodeURIComponent(productMatch[1]) } };
+  }
+
+  // Fallback — unknown path → home
+  return { page: "home", params: {} };
+}
+
+// Maps a NavState to the canonical clean URL we want in the address bar.
+function navToUrl(nav: NavState): string {
+  switch (nav.page) {
+    case "home":        return "/";
+    case "medicals":    return "/medicals";
+    case "stationery":  return "/stationery";
+    case "cart":        return "/cart";
+    case "checkout":    return "/checkout";
+    case "about":       return "/about";
+    case "contact":     return "/contact";
+    case "login":       return "/login";
+    case "orders":      return "/orders";
+    case "profile":     return "/profile";
+    case "admin":       return "/admin";
+    case "product-detail":
+      return nav.params.productId
+        ? `/product/${encodeURIComponent(nav.params.productId)}`
+        : "/";
+    default:            return "/";
+  }
+}
+
+// ---------------------------------------------------------------------------
+// App
+// ---------------------------------------------------------------------------
+
 export default function App() {
-  const [nav, setNav] = React.useState<NavState>({ page: "home", params: {} });
+  // Initialise nav from the current URL on first load
+  const [nav, setNav] = React.useState<NavState>(() => urlToNav(window.location));
+
   const [currentUser, setCurrentUser] = React.useState<User | null>(null);
   const [cart, setCart] = React.useState<CartItem[]>([]);
   const [featuredProducts, setFeaturedProducts] = React.useState<Product[]>([]);
@@ -43,14 +123,27 @@ export default function App() {
 
   const [resolvedTheme, setResolvedTheme] = React.useState<"light" | "dark" | "emerald" | "amber">("light");
 
-  // Deep Link product parsing on mount
+  // -------------------------------------------------------------------------
+  // Sync URL → nav when user hits Back / Forward
+  // -------------------------------------------------------------------------
   React.useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const prodId = params.get("product");
-    if (prodId) {
-      setNav({ page: "product-detail", params: { productId: prodId } });
-    }
+    const handlePopState = () => {
+      setNav(urlToNav(window.location));
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
   }, []);
+
+  // -------------------------------------------------------------------------
+  // Sync nav → URL whenever nav state changes (push clean URL into history)
+  // -------------------------------------------------------------------------
+  React.useEffect(() => {
+    const targetUrl = navToUrl(nav);
+    // Only push if the URL actually differs (avoid duplicate history entries)
+    if (window.location.pathname + window.location.search !== targetUrl) {
+      window.history.pushState({ page: nav.page, params: nav.params }, "", targetUrl);
+    }
+  }, [nav]);
 
   // Sync Wishlist Product IDs on Auth State shift
   React.useEffect(() => {
