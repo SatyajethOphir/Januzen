@@ -179,7 +179,7 @@ export default function HomeView({
               {/* The Majestic Generated Image Asset */}
               <div className="relative w-full h-48 md:h-56 rounded-xl overflow-hidden border border-white/15 shadow-inner">
                 <img 
-                  src="/src/assets/images/januzen_hero_centerpiece_1782099432421.jpg" 
+                  src="/januzen_hero_centerpiece_1782099432421.jpg" 
                   alt="Januzen Global Sovereign Pieces" 
                   referrerPolicy="no-referrer"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 filter brightness-95 hover:brightness-105"
