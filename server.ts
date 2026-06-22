@@ -939,12 +939,78 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
-    app.get("*", (req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
-    });
-  }
+  const distPath = path.join(process.cwd(), "dist");
+  app.use(express.static(distPath));
+
+  app.get("*", async (req, res) => {
+    const fs = await import("fs");
+    let html = fs.readFileSync(path.join(distPath, "index.html"), "utf-8");
+
+    // Inject product-specific meta tags for /product/:id routes
+    const productMatch = req.path.match(/^\/product\/(.+)$/);
+    if (productMatch) {
+      try {
+        const productId = decodeURIComponent(productMatch[1]);
+        const product = await dbClient.getProductById(productId);
+
+        if (product) {
+          const title = `${product.name} | JANUZEN Global LLP`;
+          const desc = `${product.description} — ₹${product.price}. ${product.stock > 0 ? "In Stock" : "Out of Stock"}. Available at JANUZEN Global LLP.`;
+          const image = product.image || "https://januzen.in/logo.png";
+          const url = `https://januzen.in/product/${encodeURIComponent(product.id)}`;
+
+          html = html
+            .replace(
+              /<title>[\s\S]*?<\/title>/,
+              `<title>${title}</title>`
+            )
+            .replace(
+              /<meta name="description" content="[^"]*"/,
+              `<meta name="description" content="${desc.replace(/"/g, "&quot;")}"`
+            )
+            .replace(
+              /<link rel="canonical" href="[^"]*"/,
+              `<link rel="canonical" href="${url}"`
+            )
+            .replace(
+              /<meta property="og:title" content="[^"]*"/,
+              `<meta property="og:title" content="${title}"`
+            )
+            .replace(
+              /<meta property="og:description" content="[^"]*"/,
+              `<meta property="og:description" content="${desc.replace(/"/g, "&quot;")}"`
+            )
+            .replace(
+              /<meta property="og:image" content="[^"]*"/,
+              `<meta property="og:image" content="${image}"`
+            )
+            .replace(
+              /<meta property="og:url" content="[^"]*"/,
+              `<meta property="og:url" content="${url}"`
+            )
+            .replace(
+              /<meta name="twitter:title" content="[^"]*"/,
+              `<meta name="twitter:title" content="${title}"`
+            )
+            .replace(
+              /<meta name="twitter:description" content="[^"]*"/,
+              `<meta name="twitter:description" content="${desc.replace(/"/g, "&quot;")}"`
+            )
+            .replace(
+              /<meta name="twitter:image" content="[^"]*"/,
+              `<meta name="twitter:image" content="${image}"`
+            );
+        }
+      } catch (e) {
+        console.error("Meta injection failed for product route:", e);
+        // Falls through and serves default index.html — safe fallback
+      }
+    }
+
+    res.setHeader("Content-Type", "text/html");
+    res.send(html);
+  });
+}
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`===========================================================`);
