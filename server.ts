@@ -8,7 +8,6 @@ import { v2 as cloudinary } from "cloudinary";
 import multer from "multer";
 import { Product, User, Order, Message } from "./src/types";
 import { dbClient, connectAndSeedDB, isMongo } from "./server/db";
-import sitemapRouter from "./server/routes/sitemap";
 
 const PORT = 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "JANUZEN_JWT_SECRET_KEY";
@@ -19,10 +18,9 @@ const filterMulter = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB weight limit
 });
-const app = express();
-app.use("/", sitemapRouter);
 
 async function startServer() {
+  const app = express();
   app.use(express.json({ limit: "10mb" }));
   app.use(express.urlencoded({ limit: "10mb", extended: true }));
 

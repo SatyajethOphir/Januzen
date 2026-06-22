@@ -226,51 +226,54 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
             <div className="relative group">
               <button 
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1E293B] hover:bg-[#2D3748] text-white rounded text-xs font-mono font-bold tracking-wide transition-all border border-[#ffffff]/10 cursor-pointer"
-                title="Swith Januzen Theme Mode"
+                title="Switch Januzen Theme Mode"
               >
                 <Palette className="h-3.5 w-3.5 text-amber-400" />
                 Mode: <span className="capitalize text-teal-400 font-bold">{theme}</span>
               </button>
               
-              <div className="absolute right-0 top-full mt-1.5 w-48 bg-[#0D1B2A] border border-[#1e293b] rounded-lg shadow-2xl py-1 opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto transition-all duration-200 z-50">
-                <div className="px-3 py-1 text-[9px] font-mono tracking-widest text-gray-400 uppercase border-b border-gray-800 mb-1">
-                  Select Theme
+              {/* Seam-free pointer hover helper bridge (with padding instead of margins) to prevent dropdown from vanishing */}
+              <div className="absolute right-0 top-full pt-2 w-48 opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto transition-all duration-200 z-50">
+                <div className="bg-[#0D1B2A] border border-[#1e293b] rounded-lg shadow-2xl py-1">
+                  <div className="px-3 py-1 text-[9px] font-mono tracking-widest text-gray-400 uppercase border-b border-gray-800 mb-1">
+                    Select Theme
+                  </div>
+                  <button
+                    onClick={() => onThemeChange?.("light")}
+                    className={`w-full text-left px-3 py-2 text-xs font-medium flex items-center gap-2 hover:bg-[#1E293B] cursor-pointer transition-colors ${theme === "light" ? "text-amber-400 bg-slate-800" : "text-gray-300"}`}
+                  >
+                    <span className="inline-block w-2.5 h-2.5 rounded-full bg-slate-300"></span>
+                    Light Workspace
+                  </button>
+                  <button
+                    onClick={() => onThemeChange?.("dark")}
+                    className={`w-full text-left px-3 py-2 text-xs font-medium flex items-center gap-2 hover:bg-[#1E293B] cursor-pointer transition-colors ${theme === "dark" ? "text-amber-400 bg-slate-800" : "text-gray-300"}`}
+                  >
+                    <span className="inline-block w-2.5 h-2.5 rounded-full bg-slate-900 border border-slate-600"></span>
+                    Dark Obsidian
+                  </button>
+                  <button
+                    onClick={() => onThemeChange?.("emerald")}
+                    className={`w-full text-left px-3 py-2 text-xs font-medium flex items-center gap-2 hover:bg-[#1E293B] cursor-pointer transition-colors ${theme === "emerald" ? "text-amber-400 bg-slate-800" : "text-gray-300"}`}
+                  >
+                    <span className="inline-block w-2.5 h-2.5 rounded-full bg-teal-500"></span>
+                    Clinical Emerald
+                  </button>
+                  <button
+                    onClick={() => onThemeChange?.("amber")}
+                    className={`w-full text-left px-3 py-2 text-xs font-medium flex items-center gap-2 hover:bg-[#1E293B] cursor-pointer transition-colors ${theme === "amber" ? "text-amber-400 bg-slate-800" : "text-gray-300"}`}
+                  >
+                    <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                    Warm Amber
+                  </button>
+                  <button
+                    onClick={() => onThemeChange?.("device")}
+                    className={`w-full text-left px-3 py-2 text-xs font-medium flex items-center gap-2 hover:bg-[#1E293B] cursor-pointer transition-colors ${theme === "device" ? "text-teal-400 bg-slate-800" : "text-gray-300"}`}
+                  >
+                    <span className="inline-block w-2.5 h-2.5 rounded-full bg-slate-400"></span>
+                    Device Theme
+                  </button>
                 </div>
-                <button
-                  onClick={() => onThemeChange?.("light")}
-                  className={`w-full text-left px-3 py-2 text-xs font-medium flex items-center gap-2 hover:bg-[#1E293B] cursor-pointer transition-colors ${theme === "light" ? "text-amber-400 bg-slate-800" : "text-gray-300"}`}
-                >
-                  <span className="inline-block w-2.5 h-2.5 rounded-full bg-slate-300"></span>
-                  Light Workspace
-                </button>
-                <button
-                  onClick={() => onThemeChange?.("dark")}
-                  className={`w-full text-left px-3 py-2 text-xs font-medium flex items-center gap-2 hover:bg-[#1E293B] cursor-pointer transition-colors ${theme === "dark" ? "text-amber-400 bg-slate-800" : "text-gray-300"}`}
-                >
-                  <span className="inline-block w-2.5 h-2.5 rounded-full bg-slate-900 border border-slate-600"></span>
-                  Dark Obsidian
-                </button>
-                <button
-                  onClick={() => onThemeChange?.("emerald")}
-                  className={`w-full text-left px-3 py-2 text-xs font-medium flex items-center gap-2 hover:bg-[#1E293B] cursor-pointer transition-colors ${theme === "emerald" ? "text-amber-400 bg-slate-800" : "text-gray-300"}`}
-                >
-                  <span className="inline-block w-2.5 h-2.5 rounded-full bg-teal-500"></span>
-                  Clinical Emerald
-                </button>
-                <button
-                  onClick={() => onThemeChange?.("amber")}
-                  className={`w-full text-left px-3 py-2 text-xs font-medium flex items-center gap-2 hover:bg-[#1E293B] cursor-pointer transition-colors ${theme === "amber" ? "text-amber-400 bg-slate-800" : "text-gray-300"}`}
-                >
-                  <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-                  Warm Amber
-                </button>
-                <button
-                  onClick={() => onThemeChange?.("device")}
-                  className={`w-full text-left px-3 py-2 text-xs font-medium flex items-center gap-2 hover:bg-[#1E293B] cursor-pointer transition-colors ${theme === "device" ? "text-teal-400 bg-slate-800" : "text-gray-300"}`}
-                >
-                  <span className="inline-block w-2.5 h-2.5 rounded-full bg-slate-400"></span>
-                  Device Theme
-                </button>
               </div>
             </div>
 

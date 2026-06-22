@@ -30,11 +30,42 @@ body {
   --color-card-base: #FFFFFF;
   --color-border-base: #E7E5E4;
   --color-text-title: #0D1B2A;
-  --color-text-sub: #57534E;
+  --color-text-sub: #292524;
 }
 .mode-light .bg-card-theme {
   background-color: #FFFFFF;
   border-color: #E7E5E4;
+}
+
+/* Rich readability text overrides for light mode to completely eliminate pale/washed-out text */
+.mode-light .text-gray-400,
+.mode-light .text-slate-400 {
+  color: #57534E !important; /* Rich warm dark stone gray instead of pale gray */
+}
+.mode-light .text-gray-500,
+.mode-light .text-slate-500 {
+  color: #44403C !important; /* Deep stone gray for secondary copy */
+}
+.mode-light .text-gray-600,
+.mode-light .text-slate-600 {
+  color: #292524 !important; /* Beautiful dark lead gray */
+}
+.mode-light .text-gray-700,
+.mode-light .text-slate-700,
+.mode-light .text-gray-800,
+.mode-light .text-slate-800,
+.mode-light .text-gray-950,
+.mode-light .text-slate-950,
+.mode-light .text-gray-900,
+.mode-light .text-slate-900 {
+  color: #1C1917 !important; /* Rich human-comfort Charcoal Black */
+}
+.mode-light .border-gray-100,
+.mode-light .border-gray-150,
+.mode-light .border-gray-200,
+.mode-light .border-slate-100,
+.mode-light .border-slate-200 {
+  border-color: #D6D3D1 !important; /* Defined clean border lines */
 }
 
 .mode-dark {

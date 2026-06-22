@@ -165,56 +165,76 @@ export default function HomeView({
           </div>
 
           {/* Hero Graphic Frame (Interactive Brand Hub Preview) */}
-          <div className="gsap-hero-frame lg:w-5/12 flex justify-center relative w-full max-w-sm lg:max-w-none">
-            <div className="w-80 h-96 bg-gradient-to-tr from-[#0F9B8E]/30 to-[#D4820A]/30 rounded-2xl absolute -rotate-3 scale-95 blur-2xl opacity-40 shadow-2xl"></div>
+          <div className="gsap-hero-frame lg:w-5/12 flex justify-center relative w-full max-w-lg lg:max-w-none">
+            {/* Ambient Colorful Neon Glow Behind the Asset */}
+            <div className="w-full h-full bg-gradient-to-tr from-[#0F9B8E]/40 via-amber-500/20 to-[#D4820A]/40 rounded-2xl absolute -rotate-2 scale-102 blur-2xl opacity-50 shadow-2xl"></div>
             
-            <div className="w-full bg-[#111625] border border-white/10 rounded-2xl p-8 shadow-2xl relative z-10 flex flex-col justify-between space-y-8 backdrop-blur-md">
-              <div className="border-b border-white/5 pb-4">
-                <span className="font-mono text-[9px] text-amber-500 uppercase tracking-[0.25em] font-extrabold block">Federated Standard</span>
-                <h3 className="font-serif text-3xl font-regular mt-1 text-white tracking-wide">
-                  JANUZEN <span className="text-gray-500 font-sans text-lg font-light">Suite</span>
-                </h3>
+            <div className="w-full bg-[#111625]/90 border-2 border-amber-500/25 rounded-2xl p-6 md:p-8 shadow-2xl relative z-10 flex flex-col justify-between space-y-6 backdrop-blur-md overflow-hidden group">
+              
+              {/* Eye-catching Banner Header Accent */}
+              <div className="absolute top-0 right-0 bg-gradient-to-l from-amber-600 to-amber-500 text-black text-[9px] font-mono font-black py-1 px-3 rounded-bl-lg uppercase tracking-widest shadow-md">
+                DIRECT INVENTORY LIVE
               </div>
 
-              <div className="space-y-6">
+              {/* The Majestic Generated Image Asset */}
+              <div className="relative w-full h-48 md:h-56 rounded-xl overflow-hidden border border-white/15 shadow-inner">
+                <img 
+                  src="/src/assets/images/januzen_hero_centerpiece_1782099432421.jpg" 
+                  alt="Januzen Global Sovereign Pieces" 
+                  referrerPolicy="no-referrer"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 filter brightness-95 hover:brightness-105"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+                <div className="absolute bottom-3 left-4 right-4 flex justify-between items-end">
+                  <div>
+                    <span className="text-[9px] font-mono text-amber-300 uppercase tracking-widest font-black">Curated Collection</span>
+                    <h4 className="text-white text-sm font-serif font-semibold">Januzen Master Suite</h4>
+                  </div>
+                  <span className="text-[9px] text-[#2DD4BF] font-mono bg-teal-950/80 border border-teal-500/30 px-2 py-0.5 rounded-full uppercase">
+                    Authorized
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-4">
                 {/* Division 1 Line */}
                 <div 
                   onClick={() => onNavigate("medicals")}
-                  className="flex items-start gap-4 p-3 rounded-lg hover:bg-white/5 border border-transparent hover:border-teal-500/20 transition-all group cursor-pointer"
+                  className="flex items-center gap-4 p-3 rounded-xl bg-white/5 border border-white/5 hover:border-teal-500/30 hover:bg-teal-950/20 transition-all group cursor-pointer"
                 >
-                  <div className="h-10 w-10 text-teal-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                    <NuthanMedicalsLogo size={32} />
+                  <div className="h-10 w-10 text-teal-400 bg-teal-950/40 border border-teal-500/10 rounded-lg flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                    <NuthanMedicalsLogo size={28} />
                   </div>
-                  <div>
-                    <h4 className="text-sm font-semibold text-white flex items-center gap-1.5 group-hover:text-teal-300">
+                  <div className="flex-grow">
+                    <h4 className="text-sm font-bold text-white flex items-center gap-1.5 group-hover:text-teal-300">
                       Nuthan Medicals
-                      <ArrowRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <ArrowRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
                     </h4>
-                    <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">WHO-GMP standard prescription medicines & devices.</p>
+                    <p className="text-[11px] text-gray-300 mt-0.5 leading-relaxed font-serif">WHO-GMP prescription medicines & diagnostic devices.</p>
                   </div>
                 </div>
 
                 {/* Division 2 Line */}
                 <div 
                   onClick={() => onNavigate("stationery")}
-                  className="flex items-start gap-4 p-3 rounded-lg hover:bg-white/5 border border-transparent hover:border-amber-500/20 transition-all group cursor-pointer"
+                  className="flex items-center gap-4 p-3 rounded-xl bg-white/5 border border-white/5 hover:border-amber-500/30 hover:bg-amber-950/20 transition-all group cursor-pointer"
                 >
-                  <div className="h-10 w-10 text-amber-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                    <JaStationeryLogo size={32} />
+                  <div className="h-10 w-10 text-amber-400 bg-amber-950/40 border border-amber-500/10 rounded-lg flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                    <JaStationeryLogo size={28} />
                   </div>
-                  <div>
-                    <h4 className="text-sm font-semibold text-white flex items-center gap-1.5 group-hover:text-amber-300">
+                  <div className="flex-grow">
+                    <h4 className="text-sm font-bold text-white flex items-center gap-1.5 group-hover:text-amber-300">
                       JA Stationery
-                      <ArrowRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <ArrowRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
                     </h4>
-                    <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">Fine premium writing instruments, archival files & papers.</p>
+                    <p className="text-[11px] text-gray-300 mt-0.5 leading-relaxed font-serif">Fine premium writing instruments, archival planners & papers.</p>
                   </div>
                 </div>
               </div>
 
-              <div className="border-t border-white/5 pt-4 flex justify-between items-center text-[9px] font-mono text-gray-500 tracking-wide">
+              <div className="border-t border-white/5 pt-4 flex justify-between items-center text-[9px] font-mono text-gray-400 tracking-wide">
                 <span>ESTABLISHED 2005</span>
-                <span>•</span>
+                <span className="text-amber-500">* TRUSTED PORTAL *</span>
                 <span>TELANGANA, IN</span>
               </div>
             </div>
@@ -256,15 +276,22 @@ export default function HomeView({
 
         <div className="grid md:grid-cols-2 gap-10">
           {/* Card 1: Nuthan Medicals */}
-          <div className="gsap-division-card bg-card-theme border rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between group">
+          <div className="gsap-division-card bg-card-theme border-2 border-teal-500/20 rounded-2xl overflow-hidden shadow-md hover:shadow-2xl hover:border-teal-500/50 transition-all duration-300 flex flex-col justify-between group relative">
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-teal-400 to-[#0F9B8E]"></div>
+            
             <div className="p-8 lg:p-12 space-y-6">
-              <div className="inline-flex h-16 w-16 text-teal-600 items-center justify-center">
-                <NuthanMedicalsLogo size={56} className="group-hover:scale-110 transition-transform duration-350" />
+              <div className="flex justify-between items-start">
+                <div className="inline-flex h-16 w-16 text-teal-600 bg-teal-50 rounded-2xl items-center justify-center p-2.5 border border-teal-100 shadow-sm transition-all duration-300 group-hover:bg-[#0F9B8E] group-hover:text-white">
+                  <NuthanMedicalsLogo size={56} className="group-hover:scale-110 transition-transform duration-350" />
+                </div>
+                <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#0F9B8E] bg-[#0F9B8E]/10 border border-[#0F9B8E]/20 px-2.5 py-1 rounded-full">
+                  WHO-GMP Vetted
+                </span>
               </div>
               
               <div className="space-y-2">
-                <span className="text-[10px] font-mono tracking-widest text-teal-600 uppercase font-bold block">Pharmacological Dispensary</span>
-                <h3 className="font-serif text-3xl font-bold tracking-tight">Nuthan Medicals</h3>
+                <span className="text-[10px] font-mono tracking-widest text-teal-600 uppercase font-black block">Pharmacological Dispensary</span>
+                <h3 className="font-serif text-3xl font-regular tracking-tight text-slate-900 group-hover:text-teal-900 transition-colors">Nuthan Medicals</h3>
               </div>
 
               <p className="text-gray-500 text-sm leading-relaxed font-serif">
@@ -273,7 +300,7 @@ export default function HomeView({
 
               <div className="flex flex-wrap gap-2 pt-2">
                 {["Formulations", "Diagnostic Monitors", "WHO Certified", "Trauma kits"].map((tag) => (
-                  <span key={tag} className="text-[10px] font-sans font-semibold border border-teal-100 bg-teal-50/50 text-teal-800 px-3 py-1 rounded-full">
+                  <span key={tag} className="text-[10px] font-sans font-bold border border-teal-100 bg-teal-50/50 text-teal-800 px-3 py-1 rounded-full group-hover:bg-teal-100 transition-colors">
                     {tag}
                   </span>
                 ))}
@@ -283,24 +310,31 @@ export default function HomeView({
             <div className="px-8 lg:px-12 pb-8 lg:pb-12">
               <button
                 onClick={() => onNavigate("medicals")}
-                className="w-full py-4 px-6 bg-[#0F9B8E] hover:bg-[#0c7f74] text-white font-mono text-xs font-bold uppercase tracking-wider rounded-lg flex items-center justify-center gap-3 transition-colors cursor-pointer"
+                className="w-full py-4 px-6 bg-[#0F9B8E] hover:bg-[#0c7f74] text-white font-mono text-xs font-bold uppercase tracking-wider rounded-lg flex items-center justify-center gap-3 transition-colors cursor-pointer shadow-md hover:shadow-teal-500/25 active:scale-98"
               >
                 Enter Medicals Division
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </button>
             </div>
           </div>
 
           {/* Card 2: JA Stationery */}
-          <div className="gsap-division-card bg-card-theme border rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between group">
+          <div className="gsap-division-card bg-card-theme border-2 border-amber-500/20 rounded-2xl overflow-hidden shadow-md hover:shadow-2xl hover:border-amber-500/50 transition-all duration-300 flex flex-col justify-between group relative">
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-amber-400 to-[#D4820A]"></div>
+            
             <div className="p-8 lg:p-12 space-y-6">
-              <div className="inline-flex h-16 w-16 text-amber-600 items-center justify-center">
-                <JaStationeryLogo size={56} className="group-hover:scale-110 transition-transform duration-350" />
+              <div className="flex justify-between items-start">
+                <div className="inline-flex h-16 w-16 text-amber-600 bg-amber-50 rounded-2xl items-center justify-center p-2.5 border border-amber-100 shadow-sm transition-all duration-300 group-hover:bg-[#D4820A] group-hover:text-white">
+                  <JaStationeryLogo size={56} className="group-hover:scale-110 transition-transform duration-350" />
+                </div>
+                <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#D4820A] bg-[#D4820A]/10 border border-[#D4820A]/20 px-2.5 py-1 rounded-full">
+                  Archival Premium
+                </span>
               </div>
 
               <div className="space-y-2">
-                <span className="text-[10px] font-mono tracking-widest text-amber-600 uppercase font-bold block">Fine Writing & Archives</span>
-                <h3 className="font-serif text-3xl font-bold tracking-tight">JA Stationery</h3>
+                <span className="text-[10px] font-mono tracking-widest text-amber-600 uppercase font-black block">Fine Writing & Archives</span>
+                <h3 className="font-serif text-3xl font-regular tracking-tight text-slate-900 group-hover:text-amber-900 transition-colors">JA Stationery</h3>
               </div>
 
               <p className="text-gray-500 text-sm leading-relaxed font-serif">
@@ -309,7 +343,7 @@ export default function HomeView({
 
               <div className="flex flex-wrap gap-2 pt-2">
                 {["Fine Stationery", "Drawing Reams", "Leather Notebooks", "Studio Pens"].map((tag) => (
-                  <span key={tag} className="text-[10px] font-sans font-semibold border border-amber-100 bg-amber-50/50 text-amber-800 px-3 py-1 rounded-full">
+                  <span key={tag} className="text-[10px] font-sans font-bold border border-amber-100 bg-amber-50/50 text-amber-800 px-3 py-1 rounded-full group-hover:bg-amber-100 transition-colors">
                     {tag}
                   </span>
                 ))}
@@ -319,10 +353,10 @@ export default function HomeView({
             <div className="px-8 lg:px-12 pb-8 lg:pb-12">
               <button
                 onClick={() => onNavigate("stationery")}
-                className="w-full py-4 px-6 bg-[#D4820A] hover:bg-[#b56e07] text-white font-mono text-xs font-bold uppercase tracking-wider rounded-lg flex items-center justify-center gap-3 transition-colors cursor-pointer"
+                className="w-full py-4 px-6 bg-[#D4820A] hover:bg-[#b56e07] text-white font-mono text-xs font-bold uppercase tracking-wider rounded-lg flex items-center justify-center gap-3 transition-colors cursor-pointer shadow-md hover:shadow-amber-500/25 active:scale-98"
               >
                 Enter Stationery Division
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </button>
             </div>
           </div>
