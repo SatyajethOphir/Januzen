@@ -135,10 +135,10 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
 
   return (
     <nav className="sticky top-0 z-50 bg-[#0D1B2A] text-white border-b border-[#1E293B] shadow-md">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-4 xl:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo Brand */}
-          <div className="flex items-center gap-2 sm:gap-3 cursor-pointer" onClick={() => { onNavigate("home"); setMobileMenuOpen(false); }}>
+          <div className="flex items-center gap-2 xl:gap-3 cursor-pointer" onClick={() => { onNavigate("home"); setMobileMenuOpen(false); }}>
             <JanuzenLogo size={36} className="hover:rotate-6" />
             <div className="flex flex-col">
               <span className="font-serif text-base sm:text-lg font-bold tracking-widest text-[#ffffff] leading-tight">JANUZEN</span>
@@ -147,7 +147,7 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
 
             {/* Division-specific indicator logo next to main company label */}
             {currentView === "medicals" && (
-              <div className="hidden sm:flex items-center gap-2 border-l border-white/20 pl-3 ml-1 animate-fade-in">
+              <div className="hidden xl:flex items-center gap-2 border-l border-white/20 pl-3 ml-1 animate-fade-in">
                 <NuthanMedicalsLogo size={28} />
                 <div className="flex flex-col">
                   <span className="font-serif text-[11px] font-bold text-[#3FE9D9] uppercase tracking-wider leading-none">Nuthan</span>
@@ -156,7 +156,7 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
               </div>
             )}
             {currentView === "stationery" && (
-              <div className="hidden sm:flex items-center gap-2 border-l border-white/20 pl-3 ml-1 animate-fade-in">
+              <div className="hidden xl:flex items-center gap-2 border-l border-white/20 pl-3 ml-1 animate-fade-in">
                 <JaStationeryLogo size={28} />
                 <div className="flex flex-col">
                   <span className="font-serif text-[11px] font-bold text-[#F5B041] uppercase tracking-wider leading-none">JA</span>
@@ -167,14 +167,14 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
           </div>
 
           {/* Desktop Navigation links */}
-          <div className="hidden lg:flex items-center space-x-1">
+          <div className="hidden lg:flex items-center space-x-0.5 xl:space-x-1.5">
             {navItems.map((item) => {
               const isActive = currentView === item.view;
               return (
                 <button
                   key={item.view}
                   onClick={() => onNavigate(item.view)}
-                  className={`px-3 py-2 rounded-md text-sm font-medium tracking-wide transition-all ${
+                  className={`px-2 py-1.5 xl:px-3 xl:py-2 rounded-md text-xs xl:text-sm font-medium tracking-wide transition-all ${
                     isActive
                       ? "text-white bg-[#1E293B]"
                       : "text-gray-300 hover:text-white hover:bg-[#1E293B]/50"
@@ -187,7 +187,7 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
           </div>
 
           {/* Right Action Widgets */}
-          <div className="hidden lg:flex items-center space-x-4">
+          <div className="hidden lg:flex items-center space-x-1.5 xl:space-x-4">
             {/* Cart Widget */}
             <button
               ref={cartIconRef}
@@ -200,7 +200,7 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
               }}
               onMouseEnter={() => handleCartMouseEnter(false)}
               onMouseLeave={() => handleCartMouseLeave(false)}
-              className="relative p-2 text-gray-300 hover:text-white transition-all cursor-pointer transform"
+              className="relative p-1.5 xl:p-2 text-gray-300 hover:text-white transition-all cursor-pointer transform"
               title="Shopping Cart"
             >
               <ShoppingBag className="h-5 w-5" />
@@ -216,7 +216,7 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
               <div className="relative">
                 <button
                   onClick={() => setNotifOpen(!notifOpen)}
-                  className="relative p-2 text-gray-300 hover:text-white transition-colors cursor-pointer"
+                  className="relative p-1.5 xl:p-2 text-gray-300 hover:text-white transition-colors cursor-pointer"
                   title="Notifications Alert Panel"
                 >
                   <Bell className="h-5 w-5" />
@@ -273,10 +273,11 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
             {currentUser && currentUser.role === "admin" && (
               <button
                 onClick={() => onNavigate("admin")}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#D4820A] text-white rounded text-xs font-medium tracking-wide hover:bg-opacity-90 transition-all border border-[#ffffff]/10 cursor-pointer"
+                className="flex items-center gap-1 xl:gap-1.5 px-2 py-1.5 xl:px-3 xl:py-1.5 bg-[#D4820A] text-white rounded text-[11px] xl:text-xs font-medium tracking-wide hover:bg-opacity-90 transition-all border border-[#ffffff]/10 cursor-pointer"
+                title="Admin Suite"
               >
-                <Settings className="h-3.5 w-3.5" />
-                Admin Suite
+                <Settings className="h-3.5 w-3.5 shrink-0" />
+                <span className="hidden xl:inline">Admin Suite</span>
               </button>
             )}
 
@@ -284,25 +285,27 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
             {currentUser && (
               <button
                 onClick={() => onNavigate("orders")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium tracking-wide transition-all border border-[#ffffff]/10 cursor-pointer ${
+                className={`flex items-center gap-1 xl:gap-1.5 px-2 py-1.5 xl:px-3 xl:py-1.5 rounded text-[11px] xl:text-xs font-medium tracking-wide transition-all border border-[#ffffff]/10 cursor-pointer ${
                   currentView === "orders" 
                     ? "bg-[#1E293B] text-white" 
                     : "text-gray-300 hover:text-white hover:bg-gray-800"
                 }`}
+                title="My Order History"
               >
-                <ShoppingBag className="h-3.5 w-3.5" />
-                My Orders
+                <ShoppingBag className="h-3.5 w-3.5 shrink-0" />
+                <span className="hidden xl:inline">My Orders</span>
               </button>
             )}
 
             {/* Theme Thematic Modes dropdown selection */}
             <div className="relative group">
               <button 
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1E293B] hover:bg-[#2D3748] text-white rounded text-xs font-mono font-bold tracking-wide transition-all border border-[#ffffff]/10 cursor-pointer"
+                className="flex items-center gap-1 xl:gap-1.5 px-2 py-1.5 xl:px-3 xl:py-1.5 bg-[#1E293B] hover:bg-[#2D3748] text-white rounded text-[11px] xl:text-xs font-mono font-bold tracking-wide transition-all border border-[#ffffff]/10 cursor-pointer"
                 title="Switch Januzen Theme Mode"
               >
-                <Palette className="h-3.5 w-3.5 text-amber-400" />
-                Mode: <span className="capitalize text-teal-400 font-bold">{theme}</span>
+                <Palette className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                <span className="hidden xl:inline">Mode: </span>
+                <span className="capitalize text-teal-400 font-bold">{theme}</span>
               </button>
               
               {/* Seam-free pointer hover helper bridge (with padding instead of margins) to prevent dropdown from vanishing */}
@@ -352,10 +355,10 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
 
             {/* User Widget / Auth Control */}
             {currentUser ? (
-              <div className="flex items-center gap-3 pl-2 border-l border-gray-700">
+              <div className="flex items-center gap-1.5 xl:gap-3 pl-1.5 xl:pl-2 border-l border-gray-700">
                 <button
                   onClick={() => onNavigate("profile")}
-                  className="flex items-center gap-2 group text-left cursor-pointer"
+                  className="flex items-center gap-1.5 xl:gap-2 group text-left cursor-pointer"
                   title="View Secure Profile Parameters"
                 >
                   {currentUser.image ? (
@@ -363,14 +366,14 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
                       src={currentUser.image}
                       alt={currentUser.name}
                       referrerPolicy="no-referrer"
-                      className="h-8 w-8 rounded-full border border-gray-600 object-cover group-hover:border-[#0F9B8E] transition-colors"
+                      className="h-7 w-7 xl:h-8 xl:w-8 rounded-full border border-gray-600 object-cover group-hover:border-[#0F9B8E] transition-colors shrink-0"
                     />
                   ) : (
-                    <div className="h-8 w-8 rounded-full bg-teal-600 text-white flex items-center justify-center font-serif text-xs font-bold group-hover:bg-teal-500 transition-colors">
+                    <div className="h-7 w-7 xl:h-8 xl:w-8 rounded-full bg-teal-600 text-white flex items-center justify-center font-serif text-[10px] xl:text-xs font-bold group-hover:bg-teal-500 transition-colors shrink-0">
                       {currentUser.name.substring(0, 2).toUpperCase()}
                     </div>
                   )}
-                  <div className="text-right">
+                  <div className="hidden xl:block text-right">
                     <span className="block text-xs font-medium text-gray-200 group-hover:text-teal-300 transition-colors">{currentUser.name}</span>
                     <span className="block text-[10px] text-gray-400 capitalize bg-gray-800/60 px-1.5 py-0.5 rounded inline-block">
                       {currentUser.role}
@@ -379,7 +382,7 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
                 </button>
                 <button
                   onClick={onLogout}
-                  className="p-2 text-gray-400 hover:text-red-400 transition-colors rounded hover:bg-red-500/10 cursor-pointer"
+                  className="p-1.5 xl:p-2 text-gray-400 hover:text-red-400 transition-colors rounded hover:bg-red-500/10 cursor-pointer shrink-0"
                   title="Logout Session"
                 >
                   <LogOut className="h-4 w-4" />
@@ -388,9 +391,9 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
             ) : (
               <button
                 onClick={() => onNavigate("login")}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium tracking-wide border border-gray-600 rounded-md hover:text-white hover:bg-gray-800 transition-all"
+                className="flex items-center gap-1.5 px-3 py-1.5 xl:px-4 xl:py-2 text-xs xl:text-sm font-medium tracking-wide border border-gray-600 rounded-md hover:text-white hover:bg-gray-800 transition-all shrink-0"
               >
-                <User className="h-4 w-4" />
+                <User className="h-4 w-4 shrink-0" />
                 Portal Access
               </button>
             )}
