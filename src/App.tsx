@@ -19,9 +19,10 @@ import OrdersHistoryView from "./components/OrdersHistoryView";
 import ProfileView from "./components/ProfileView";
 import DeliveryHubView from "./components/DeliveryHubView";
 import SideCartDrawer from "./components/SideCartDrawer";
+import Error404View from "./components/Error404View";
 
 interface NavState {
-  page: "home" | "medicals" | "stationery" | "product-detail" | "cart" | "checkout" | "about" | "contact" | "login" | "admin" | "orders" | "profile" | "delivery";
+  page: "home" | "medicals" | "stationery" | "product-detail" | "cart" | "checkout" | "about" | "contact" | "login" | "admin" | "orders" | "profile" | "delivery" | "error" | string;
   params: Record<string, any>;
 }
 
@@ -445,6 +446,13 @@ export default function App() {
         <Suspense fallback={
           <OfficialLoader fullScreen={false} message="Streaming verified partner view modules..." />
         }>
+          {!["home", "medicals", "stationery", "product-detail", "cart", "checkout", "about", "contact", "login", "admin", "profile", "orders", "delivery"].includes(nav.page) && (
+            <Error404View 
+              onNavigate={handleNavigate} 
+              searchedTerm={(nav.params && nav.params.query) || ""}
+            />
+          )}
+
           {nav.page === "home" && (
             <HomeView
               onNavigate={handleNavigate}

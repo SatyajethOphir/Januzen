@@ -1277,9 +1277,9 @@ export const dbClient = {
   },
 
   createNotification: async (notif: Notification): Promise<Notification> => {
-    // 90 days default unread TTL
-    const ninetyDays = 90 * 24 * 60 * 60 * 1000;
-    const expiry = new Date(Date.now() + ninetyDays);
+    // 14 days default unread TTL for optimized MongoDB storage
+    const fourteenDays = 14 * 24 * 60 * 60 * 1000;
+    const expiry = new Date(Date.now() + fourteenDays);
     notif.expiresAt = expiry.toISOString();
 
     validateModelData("Notification", notif);
@@ -1300,8 +1300,9 @@ export const dbClient = {
   },
 
   markNotificationRead: async (id: string): Promise<boolean> => {
-    const thirtyDays = 30 * 24 * 60 * 60 * 1000;
-    const expiry = new Date(Date.now() + thirtyDays);
+    // 3 days read TTL for optimized MongoDB storage
+    const threeDays = 3 * 24 * 60 * 60 * 1000;
+    const expiry = new Date(Date.now() + threeDays);
 
     if (isMongo) {
       const res = await MongoNotification.updateOne({ id }, { $set: { isRead: true, expiresAt: expiry } });

@@ -9,9 +9,7 @@ import multer from "multer";
 import fs from "fs";
 import { Product, User, Order, Message } from "./src/types";
 import { dbClient, connectAndSeedDB, isMongo } from "./server/db";
-import sitemapRouter from "./server/routes/sitemap";  // ← add at top of file instead
 
-  
 const PORT = 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "JANUZEN_JWT_SECRET_KEY";
 const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY || "phoenix123&";
@@ -1336,10 +1334,6 @@ async function startServer() {
     }
   });
 
-  // Sitemap
-
-  app.use(sitemapRouter);
-
   // --- VITE DEV AND PROD MIDDLEWARE ---
 
   if (process.env.NODE_ENV !== "production") {
@@ -1362,6 +1356,27 @@ async function startServer() {
     console.log(`===========================================================`);
     console.log(`🔌 Database Mode: ${isMongo ? "MongoDB Connected Cluster" : "Local JSON Offline Database"}`);
     console.log(`===========================================================`);
+
+    // Run custom storage retention sweep immediately on boot to prune old MongoDB notifications and sessions
+    dbClient.runStorageRetention()
+      .then(purged => {
+        console.log(`⏱️ Initial Storage Retention Sweep Completed: Purged ${purged.notificationPurged} Notifications, ${purged.sessionPurged} Sessions`);
+      })
+      .catch(err => {
+        console.error("⚠️ Failed to execute initial database storage sweep:", err);
+      });
+
+    // Set a recurring interval to clean old database entries every 6 hours
+    setInterval(() => {
+      console.log("⏱️ Executing scheduled database storage retention sweep...");
+      dbClient.runStorageRetention()
+        .then(purged => {
+          console.log(`⏱️ Purged ${purged.notificationPurged} Notifications, ${purged.sessionPurged} Sessions`);
+        })
+        .catch(err => {
+          console.error("⚠️ Failure during scheduled database retention sweep:", err);
+        });
+    }, 6 * 60 * 60 * 1000);
   });
 }
 
