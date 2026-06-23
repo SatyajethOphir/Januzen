@@ -105,7 +105,7 @@ export default function ContactView() {
               <Briefcase className="h-4 w-4 text-[#D4820A] shrink-0 mt-0.5" />
               <div>
                 <p className="text-[9px] uppercase text-gray-400 font-bold">Corporate HQ Office</p>
-                <p className="text-gray-500 font-serif text-xs">P.No- P-12, Mahadevpuram, Gajularamaram, Telangana.</p>
+                <p className="text-gray-500 font-serif text-xs">P.No- P-12, Mahadevpuram, Gajularamaram, Hyderabad, Telangana.</p>
               </div>
             </div>
             <div className="flex items-center gap-2.5 pt-2 border-t border-gray-200/50">
@@ -130,7 +130,7 @@ export default function ContactView() {
             </div>
 
             <p className="text-xs text-gray-500 leading-relaxed font-serif">
-              Supplying vital pharmaceutical substances, clinical heart-pressure devices, and emergency first-aid assemblies under drug license ref: BLR-DL-55419. Started June 6th, 2005.
+              Supplying vital pharmaceutical substances, clinical heart-pressure devices, and emergency first-aid assemblies. Established June 6th, 2005.
             </p>
 
             <div className="space-y-3.5 text-xs text-gray-500 font-mono">

@@ -1,4 +1,5 @@
 import React from "react";
+import { safeLocalStorage as localStorage, safeSessionStorage as sessionStorage } from "../utils/storage";
 import { CheckCircle, Truck, ShoppingBag, ArrowRight, ArrowLeft, Loader2, CreditCard, Lock, ShieldCheck } from "lucide-react";
 import { CartItem } from "./CartView";
 import { User, ShippingAddress, Order } from "../types";
@@ -40,13 +41,34 @@ export default function CheckoutView({ cartItems, currentUser, onNavigate, onCle
   const [razorpayCvv, setRazorpayCvv] = React.useState("");
   const [razorpayUpiId, setRazorpayUpiId] = React.useState("");
   const [razorpayBank, setRazorpayBank] = React.useState("State Bank of India");
-  const [razorpayStage, setRazorpayStage] = React.useState<"input" | "processing" | "success">("input");
+  const [razorpayStage, setRazorpayStage] = React.useState<"input" | "processing" | "success" >("input");
+
+  // Dynamics configuration settings fetched from server
+  const [shippingCostPerKm, setShippingCostPerKm] = React.useState(15);
+  const [deliveryDistanceKms, setDeliveryDistanceKms] = React.useState(10);
+  const [gstPercentage, setGstPercentage] = React.useState(5);
+
+  React.useEffect(() => {
+    let active = true;
+    fetch("/api/settings")
+      .then(r => r.json())
+      .then(data => {
+        if (active && data) {
+          if (data.shippingCostPerKm) setShippingCostPerKm(data.shippingCostPerKm);
+          if (data.deliveryDistanceKms) setDeliveryDistanceKms(data.deliveryDistanceKms);
+          if (data.gstPercentage) setGstPercentage(data.gstPercentage);
+        }
+      })
+      .catch(e => console.error("Error loading settings at checkout:", e));
+    return () => { active = false; };
+  }, []);
 
   // Sum calculations
   const subtotal = cartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-  const shipping = subtotal >= 1000 || subtotal === 0 ? 0 : 150; // free standard delivery above ₹1000 inside India, else ₹150 freight fee
+  const calculatedShipping = deliveryDistanceKms * shippingCostPerKm;
+  const shipping = subtotal >= 1000 || subtotal === 0 ? 0 : calculatedShipping;
   const postDiscountSubtotal = Math.max(0, subtotal - discountAmount);
-  const tax = Math.round((postDiscountSubtotal * 0.05) * 100) / 100; // 5% CGST
+  const tax = Math.round((postDiscountSubtotal * (gstPercentage / 100)) * 100) / 100;
   const total = Math.round((postDiscountSubtotal + tax + shipping) * 100) / 100;
 
   const handleValidateCoupon = async () => {
@@ -418,7 +440,7 @@ export default function CheckoutView({ cartItems, currentUser, onNavigate, onCle
                 </div>
               )}
               <div className="flex justify-between">
-                <span>Regulatory SGST (5%)</span>
+                <span>Regulatory SGST ({gstPercentage}%)</span>
                 <span>₹{tax.toFixed(2)}</span>
               </div>
               <div className="flex justify-between border-b border-gray-100 pb-2">
@@ -497,7 +519,7 @@ export default function CheckoutView({ cartItems, currentUser, onNavigate, onCle
               </div>
             )}
             <div className="flex justify-between items-baseline pt-2.5">
-              <span>GST Tax invoice (5%)</span>
+              <span>GST Tax invoice ({gstPercentage}%)</span>
               <span>₹{(placedOrder.totals.tax || 0).toFixed(2)}</span>
             </div>
             <div className="flex justify-between items-baseline pt-2.5">

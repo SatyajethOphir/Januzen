@@ -1,5 +1,6 @@
 import React, { Suspense } from "react";
 import { gsap } from "gsap";
+import { safeLocalStorage as localStorage, safeSessionStorage as sessionStorage } from "./utils/storage";
 import Navbar from "./components/Navbar";
 import { Product, User } from "./types";
 import type { CartItem } from "./components/CartView";
@@ -16,96 +17,19 @@ import LoginView from "./components/LoginView";
 import AdminDashboardView from "./components/AdminDashboardView";
 import OrdersHistoryView from "./components/OrdersHistoryView";
 import ProfileView from "./components/ProfileView";
+import DeliveryHubView from "./components/DeliveryHubView";
+import SideCartDrawer from "./components/SideCartDrawer";
 
 interface NavState {
-  page: "home" | "medicals" | "stationery" | "product-detail" | "cart" | "checkout" | "about" | "contact" | "login" | "admin" | "orders" | "profile";
+  page: "home" | "medicals" | "stationery" | "product-detail" | "cart" | "checkout" | "about" | "contact" | "login" | "admin" | "orders" | "profile" | "delivery";
   params: Record<string, any>;
 }
 
-// ---------------------------------------------------------------------------
-// URL <-> NavState helpers
-// ---------------------------------------------------------------------------
-
-// Maps a URL pathname/search to a NavState.
-// Clean paths we publish in the sitemap:
-//   /                  → home
-//   /medicals          → medicals
-//   /stationery        → stationery
-//   /product/:id       → product-detail
-//   /cart              → cart
-//   /checkout          → checkout
-//   /about             → about
-//   /contact           → contact
-//   /login             → login
-//   /orders            → orders
-//   /profile           → profile
-//   /admin             → admin
-// Legacy query-param deep links (?product=m1) are still supported for
-// backward compatibility with any existing shared links.
-function urlToNav(location: Location): NavState {
-  const path = location.pathname;
-  const params = new URLSearchParams(location.search);
-
-  // Legacy deep-link support — old /?product=m1 links still work
-  const legacyProduct = params.get("product");
-  if (legacyProduct) {
-    return { page: "product-detail", params: { productId: legacyProduct } };
-  }
-
-  if (path === "/" || path === "") return { page: "home", params: {} };
-  if (path === "/medicals") return { page: "medicals", params: {} };
-  if (path === "/stationery") return { page: "stationery", params: {} };
-  if (path === "/cart") return { page: "cart", params: {} };
-  if (path === "/checkout") return { page: "checkout", params: {} };
-  if (path === "/about") return { page: "about", params: {} };
-  if (path === "/contact") return { page: "contact", params: {} };
-  if (path === "/login") return { page: "login", params: {} };
-  if (path === "/orders") return { page: "orders", params: {} };
-  if (path === "/profile") return { page: "profile", params: {} };
-  if (path === "/admin") return { page: "admin", params: {} };
-
-  // /product/:id
-  const productMatch = path.match(/^\/product\/(.+)$/);
-  if (productMatch) {
-    return { page: "product-detail", params: { productId: decodeURIComponent(productMatch[1]) } };
-  }
-
-  // Fallback — unknown path → home
-  return { page: "home", params: {} };
-}
-
-// Maps a NavState to the canonical clean URL we want in the address bar.
-function navToUrl(nav: NavState): string {
-  switch (nav.page) {
-    case "home":        return "/";
-    case "medicals":    return "/medicals";
-    case "stationery":  return "/stationery";
-    case "cart":        return "/cart";
-    case "checkout":    return "/checkout";
-    case "about":       return "/about";
-    case "contact":     return "/contact";
-    case "login":       return "/login";
-    case "orders":      return "/orders";
-    case "profile":     return "/profile";
-    case "admin":       return "/admin";
-    case "product-detail":
-      return nav.params.productId
-        ? `/product/${encodeURIComponent(nav.params.productId)}`
-        : "/";
-    default:            return "/";
-  }
-}
-
-// ---------------------------------------------------------------------------
-// App
-// ---------------------------------------------------------------------------
-
 export default function App() {
-  // Initialise nav from the current URL on first load
-  const [nav, setNav] = React.useState<NavState>(() => urlToNav(window.location));
-
+  const [nav, setNav] = React.useState<NavState>({ page: "home", params: {} });
   const [currentUser, setCurrentUser] = React.useState<User | null>(null);
   const [cart, setCart] = React.useState<CartItem[]>([]);
+  const [sideCartOpen, setSideCartOpen] = React.useState(false);
   const [featuredProducts, setFeaturedProducts] = React.useState<Product[]>([]);
   const [toast, setToast] = React.useState<string | null>(null);
   const [wishlistProductIds, setWishlistProductIds] = React.useState<string[]>([]);
@@ -118,32 +42,23 @@ export default function App() {
   
   // Theme state: light, dark, emerald (clinical), amber (stationery), device
   const [theme, setTheme] = React.useState<"light" | "dark" | "emerald" | "amber" | "device">(() => {
-    return (localStorage.getItem("januzen_theme") as any) || "light";
+    try {
+      return (localStorage.getItem("januzen_theme") as any) || "light";
+    } catch (e) {
+      return "light";
+    }
   });
 
   const [resolvedTheme, setResolvedTheme] = React.useState<"light" | "dark" | "emerald" | "amber">("light");
 
-  // -------------------------------------------------------------------------
-  // Sync URL → nav when user hits Back / Forward
-  // -------------------------------------------------------------------------
+  // Deep Link product parsing on mount
   React.useEffect(() => {
-    const handlePopState = () => {
-      setNav(urlToNav(window.location));
-    };
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
-
-  // -------------------------------------------------------------------------
-  // Sync nav → URL whenever nav state changes (push clean URL into history)
-  // -------------------------------------------------------------------------
-  React.useEffect(() => {
-    const targetUrl = navToUrl(nav);
-    // Only push if the URL actually differs (avoid duplicate history entries)
-    if (window.location.pathname + window.location.search !== targetUrl) {
-      window.history.pushState({ page: nav.page, params: nav.params }, "", targetUrl);
+    const params = new URLSearchParams(window.location.search);
+    const prodId = params.get("product");
+    if (prodId) {
+      setNav({ page: "product-detail", params: { productId: prodId } });
     }
-  }, [nav]);
+  }, []);
 
   // Sync Wishlist Product IDs on Auth State shift
   React.useEffect(() => {
@@ -204,13 +119,17 @@ export default function App() {
 
   React.useEffect(() => {
     if (theme === "device") {
-      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-      const handleChange = () => {
-        setResolvedTheme(mediaQuery.matches ? "dark" : "light");
-      };
-      handleChange();
-      mediaQuery.addEventListener("change", handleChange);
-      return () => mediaQuery.removeEventListener("change", handleChange);
+      if (typeof window !== "undefined" && window.matchMedia) {
+        const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+        const handleChange = () => {
+          setResolvedTheme(mediaQuery.matches ? "dark" : "light");
+        };
+        handleChange();
+        mediaQuery.addEventListener("change", handleChange);
+        return () => mediaQuery.removeEventListener("change", handleChange);
+      } else {
+        setResolvedTheme("light");
+      }
     } else {
       setResolvedTheme(theme);
     }
@@ -428,6 +347,7 @@ export default function App() {
         return [...prev, { product, quantity: qty }];
       }
     });
+    setSideCartOpen(true);
   };
 
   const handleUpdateCartQty = (productId: string, quantity: number) => {
@@ -493,6 +413,17 @@ export default function App() {
         cartCount={cartTotalCount}
         theme={theme}
         onThemeChange={handleThemeChange}
+        onCartClick={() => setSideCartOpen(true)}
+      />
+
+      {/* 🔮 Side-Cart Slider Drawer (GSAP-powered entry and micro-animations) */}
+      <SideCartDrawer
+        isOpen={sideCartOpen}
+        onClose={() => setSideCartOpen(false)}
+        cartItems={cart}
+        onUpdateQty={handleUpdateCartQty}
+        onRemoveItem={handleRemoveCartItem}
+        onNavigate={handleNavigate}
       />
 
       {/* Main visual view renders wrapped with complete brand Suspense or loading transitions */}
@@ -601,6 +532,8 @@ export default function App() {
               currentUser={currentUser}
             />
           )}
+
+          {nav.page === "delivery" && <DeliveryHubView />}
         </Suspense>
       </main>
 

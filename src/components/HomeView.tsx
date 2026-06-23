@@ -506,24 +506,24 @@ export default function HomeView({
           <div className="grid md:grid-cols-3 gap-10">
             {[
               {
-                text: "Nuthan Medicals is incredibly reliable. As a community elder home nurse, finding a portal where I can order professional diagnostics and urgent OTC comfort remedies with a single invoice is marvelous.",
-                author: "Dr. Ranjini Prasad",
-                role: "Greenfields Clinic Manager",
-                avatar: "Dr",
+                text: "Nuthan Medicals is incredibly reliable. As a professional builder coordination lead, finding a portal where I can order authenticated workplace sanitization items and diagnostic safety indicators with a single invoice is marvelous.",
+                author: "Nageshwar Reddy",
+                role: "Builder",
+                avatar: "NR",
                 color: "bg-teal-50 border-teal-200 text-teal-800"
               },
               {
-                text: "Our design workspace orders heavyweight A4 drawing reams and fine fountain ink batches constant. JA Stationery has always delivered crisp fine archival inventories with pristine packaging.",
-                author: "Madan Kumar",
-                role: "Lead Designer, Icon Architects",
-                avatar: "MK",
+                text: "Our campus departments order heavyweight A4 drawing reams, archival files, and fine writing sets constantly. JA Stationery has always delivered crisp fine archival inventories with pristine packaging and extreme care.",
+                author: "Bikshapathy Peruka",
+                role: "Professor",
+                avatar: "BP",
                 color: "bg-amber-50 border-amber-200 text-amber-800"
               },
               {
-                text: "Consolidated partnership billing saves our operations countless steps. I buy face shields for store floor crew and executive planners for office corporate leads in a single purchase cycle.",
-                author: "Sujata Sharma",
-                role: "Operations Director, Titan Corp",
-                avatar: "SS",
+                text: "Consolidated partnership billing saves our high-end construction programs countless steps. I buy certified medical supplies for corporate sites and executive stationery portfolios in a single, clean checkout portal.",
+                author: "jagadeeshwar Reddy",
+                role: "Builder",
+                avatar: "JR",
                 color: "bg-slate-100 border-slate-200 text-slate-800"
               },
             ].map((t, idx) => (
@@ -604,16 +604,14 @@ export default function HomeView({
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 text-left text-sm">
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-[#0D1B2A] text-white font-serif font-bold text-xl">
-                JZ
-              </div>
+              <JanuzenLogo size={40} className="rounded-lg shadow-sm" />
               <span className="font-serif text-lg font-bold tracking-widest text-[#0D1B2A]">JANUZEN</span>
             </div>
             <p className="text-xs text-gray-500 leading-relaxed font-serif">
               <strong>Januzen Global LLP</strong>, founded by <strong>Vinuthan Reddy Kongara</strong>, coordinates premier, verified physical standards in clinical healthcare and fine workstation archives.
             </p>
             <p className="text-[10px] text-gray-400 font-mono">
-              HQ: P.No- P-12, Mahadevpuram, Gajularamaram, Telangana.
+              HQ: P.No- P-12, Mahadevpuram, Gajularamaram, Hyderabad, Telangana.
             </p>
           </div>
 
@@ -623,7 +621,6 @@ export default function HomeView({
               <li>📞 Helpline: 09666588553</li>
               <li>📍 Phase-2, Pno 46 street no 5, Samskruthi Avenues Rd., Dwaraka Nagar, Gajularamaram, Hyderabad, Telangana 500117</li>
               <li>🕒 Estd: June 6th, 2005</li>
-              <li>🏥 Drug License: BLR-DL-55419</li>
             </ul>
           </div>
 

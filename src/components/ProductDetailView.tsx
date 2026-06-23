@@ -1,4 +1,5 @@
 import React from "react";
+import { safeLocalStorage as localStorage, safeSessionStorage as sessionStorage } from "../utils/storage";
 import { ChevronLeft, ShoppingBag, Truck, ShieldCheck, Heart, Share2, Plus, Minus, Tag, Star, Check } from "lucide-react";
 import { Product } from "../types";
 

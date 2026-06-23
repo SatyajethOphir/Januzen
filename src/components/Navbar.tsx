@@ -1,4 +1,6 @@
 import React from "react";
+import { gsap } from "gsap";
+import { safeLocalStorage as localStorage, safeSessionStorage as sessionStorage } from "../utils/storage";
 import { ShoppingBag, User, LogOut, ShieldAlert, Activity, BookOpen, Menu, X, Settings, Palette, Bell } from "lucide-react";
 import { User as UserType } from "../types";
 import { JanuzenLogo, NuthanMedicalsLogo, JaStationeryLogo } from "./Logos";
@@ -11,12 +13,73 @@ interface NavbarProps {
   cartCount: number;
   theme?: "light" | "dark" | "emerald" | "amber" | "device";
   onThemeChange?: (theme: "light" | "dark" | "emerald" | "amber" | "device") => void;
+  onCartClick?: () => void;
 }
 
-export default function Navbar({ currentView, onNavigate, currentUser, onLogout, cartCount, theme = "light", onThemeChange }: NavbarProps) {
+export default function Navbar({ currentView, onNavigate, currentUser, onLogout, cartCount, theme = "light", onThemeChange, onCartClick }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const [notifications, setNotifications] = React.useState<any[]>([]);
   const [notifOpen, setNotifOpen] = React.useState(false);
+
+  const cartIconRef = React.useRef<HTMLButtonElement>(null);
+  const cartIconRefMobile = React.useRef<HTMLButtonElement>(null);
+
+  // Cart Icon GSAP hover effects (elite-themed)
+  const handleCartMouseEnter = (isMobile: boolean) => {
+    const targetRef = isMobile ? cartIconRefMobile : cartIconRef;
+    if (targetRef.current) {
+      gsap.to(targetRef.current, {
+        scale: 1.15,
+        rotate: -8,
+        duration: 0.3,
+        ease: "back.out(1.7)"
+      });
+      const icon = targetRef.current.querySelector("svg");
+      if (icon) {
+        gsap.to(icon, {
+          color: "#3FE9D9",
+          duration: 0.2
+        });
+      }
+    }
+  };
+
+  const handleCartMouseLeave = (isMobile: boolean) => {
+    const targetRef = isMobile ? cartIconRefMobile : cartIconRef;
+    if (targetRef.current) {
+      gsap.to(targetRef.current, {
+        scale: 1,
+        rotate: 0,
+        duration: 0.3,
+        ease: "power2.out"
+      });
+      const icon = targetRef.current.querySelector("svg");
+      if (icon) {
+        gsap.to(icon, {
+          color: "currentColor",
+          duration: 0.2
+        });
+      }
+    }
+  };
+
+  // Bounce and elastic effect when items increment
+  React.useEffect(() => {
+    if (cartCount > 0) {
+      if (cartIconRef.current) {
+        gsap.fromTo(cartIconRef.current,
+          { scale: 0.8, rotate: -15 },
+          { scale: 1.25, rotate: 0, duration: 0.45, ease: "elastic.out(1.1, 0.45)", clearProps: "scale,rotate" }
+        );
+      }
+      if (cartIconRefMobile.current) {
+        gsap.fromTo(cartIconRefMobile.current,
+          { scale: 0.8, rotate: -15 },
+          { scale: 1.25, rotate: 0, duration: 0.45, ease: "elastic.out(1.1, 0.45)", clearProps: "scale,rotate" }
+        );
+      }
+    }
+  }, [cartCount]);
 
   const fetchNotifications = React.useCallback(async () => {
     if (!currentUser) return;
@@ -67,6 +130,7 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
     { label: "JA Stationery", view: "stationery" },
     { label: "About", view: "about" },
     { label: "Contact", view: "contact" },
+    { label: "Delivery Portal", view: "delivery" },
   ];
 
   return (
@@ -126,13 +190,22 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
           <div className="hidden lg:flex items-center space-x-4">
             {/* Cart Widget */}
             <button
-              onClick={() => onNavigate("cart")}
-              className="relative p-2 text-gray-300 hover:text-white transition-colors cursor-pointer"
+              ref={cartIconRef}
+              onClick={() => {
+                if (onCartClick) {
+                  onCartClick();
+                } else {
+                  onNavigate("cart");
+                }
+              }}
+              onMouseEnter={() => handleCartMouseEnter(false)}
+              onMouseLeave={() => handleCartMouseLeave(false)}
+              className="relative p-2 text-gray-300 hover:text-white transition-all cursor-pointer transform"
               title="Shopping Cart"
             >
               <ShoppingBag className="h-5 w-5" />
               {cartCount > 0 && (
-                <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-[#0F9B8E] rounded-full scale-75 animate-bounce">
+                <span className="absolute top-0 right-0 inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold leading-none text-white bg-[#0F9B8E] rounded-full shadow-md select-none">
                   {cartCount}
                 </span>
               )}
@@ -326,12 +399,21 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
           {/* Mobile menu toggle */}
           <div className="lg:hidden flex items-center gap-3">
             <button
-              onClick={() => onNavigate("cart")}
-              className="relative p-2 text-gray-300"
+              ref={cartIconRefMobile}
+              onClick={() => {
+                if (onCartClick) {
+                  onCartClick();
+                } else {
+                  onNavigate("cart");
+                }
+              }}
+              onMouseEnter={() => handleCartMouseEnter(true)}
+              onMouseLeave={() => handleCartMouseLeave(true)}
+              className="relative p-2 text-gray-300 pointer-events-auto transform"
             >
               <ShoppingBag className="h-5 w-5" />
               {cartCount > 0 && (
-                <span className="absolute top-0 right-0 inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-[#0F9B8E] rounded-full">
+                <span className="absolute top-0 right-0 inline-flex items-center justify-center px-1.5 py-0.5 text-[9px] font-bold leading-none text-white bg-[#0F9B8E] rounded-full shadow-md select-none">
                   {cartCount}
                 </span>
               )}

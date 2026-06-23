@@ -1,4 +1,5 @@
 import React from "react";
+import { safeLocalStorage as localStorage, safeSessionStorage as sessionStorage } from "../utils/storage";
 import { 
   TrendingUp, Activity, BookOpen, AlertCircle, Eye, Trash2, Check, CreditCard, 
   Settings, Users, ShoppingBag, MessageSquare, PlusCircle, Search, Edit2, RotateCcw,
@@ -7,7 +8,7 @@ import {
 import { Product, Order, Message, User } from "../types";
 
 export default function AdminDashboardView() {
-  const [activeTab, setActiveTab] = React.useState<"stats" | "products" | "orders" | "messages" | "users" | "coupons" | "marquee" | "storage">("stats");
+  const [activeTab, setActiveTab] = React.useState<"stats" | "products" | "orders" | "messages" | "users" | "coupons" | "marquee" | "storage" | "settings">("stats");
   const [token, setToken] = React.useState<string | null>(null);
 
   // States
@@ -17,6 +18,13 @@ export default function AdminDashboardView() {
   const [messages, setMessages] = React.useState<Message[]>([]);
   const [users, setUsers] = React.useState<User[]>([]);
   const [loading, setLoading] = React.useState(true);
+
+  // Dynamic Settings States managed by administrator
+  const [shippingCostPerKm, setShippingCostPerKm] = React.useState(15);
+  const [deliveryDistanceKms, setDeliveryDistanceKms] = React.useState(10);
+  const [gstPercentage, setGstPercentage] = React.useState(5);
+  const [settingsLoading, setSettingsLoading] = React.useState(false);
+  const [settingsSuccess, setSettingsSuccess] = React.useState("");
 
   // Storage Guardrail & Purge states
   const [storageData, setStorageData] = React.useState<any>(null);
@@ -65,8 +73,10 @@ export default function AdminDashboardView() {
   const [uploadError, setUploadError] = React.useState("");
 
   // Load everything
-  const fetchAllData = React.useCallback(async (userToken: string) => {
-    setLoading(true);
+  const fetchAllData = React.useCallback(async (userToken: string, skipSpinner = false) => {
+    if (!skipSpinner) {
+      setLoading(true);
+    }
     try {
       const headers = { "Authorization": `Bearer ${userToken}` };
       
@@ -126,10 +136,21 @@ export default function AdminDashboardView() {
         setAuditLogs(await auditRes.json());
       }
 
+      // Load cost & GST system settings
+      const settingsRes = await fetch("/api/settings");
+      if (settingsRes.ok) {
+        const settingsData = await settingsRes.json();
+        setShippingCostPerKm(settingsData.shippingCostPerKm || 15);
+        setDeliveryDistanceKms(settingsData.deliveryDistanceKms || 10);
+        setGstPercentage(settingsData.gstPercentage || 5);
+      }
+
     } catch (err) {
       console.error("Critical: failed to fetch admin stats data grids:", err);
     } finally {
-      setLoading(false);
+      if (!skipSpinner) {
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -137,7 +158,12 @@ export default function AdminDashboardView() {
     const savedToken = localStorage.getItem("januzen_token") || sessionStorage.getItem("januzen_token");
     setToken(savedToken);
     if (savedToken) {
-      fetchAllData(savedToken);
+      fetchAllData(savedToken, false);
+      // Real-time auto-refresh admin stats, items, and orders data grids every 4 seconds to listen for cancellations/updates
+      const interval = setInterval(() => {
+        fetchAllData(savedToken, true);
+      }, 4000);
+      return () => clearInterval(interval);
     }
   }, [fetchAllData]);
 
@@ -533,7 +559,7 @@ export default function AdminDashboardView() {
         
         {/* Rapid selectors menu */}
         <div className="flex flex-wrap gap-1 bg-slate-100 p-1 rounded-xl">
-          {(["stats", "products", "orders", "messages", "users", "coupons", "marquee", "storage"] as const).map((tab) => (
+          {(["stats", "products", "orders", "messages", "users", "coupons", "marquee", "storage", "settings"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -543,7 +569,7 @@ export default function AdminDashboardView() {
                   : "text-gray-500 hover:text-black hover:bg-white/50"
               }`}
             >
-              {tab === "stats" ? "Analytics Stats" : tab === "marquee" ? "Edit Marquee" : tab === "storage" ? "Storage Guardrails" : tab}
+              {tab === "stats" ? "Analytics Stats" : tab === "marquee" ? "Edit Marquee" : tab === "storage" ? "Storage Guardrails" : tab === "settings" ? "GST & Shipping" : tab}
             </button>
           ))}
         </div>
@@ -1523,6 +1549,124 @@ export default function AdminDashboardView() {
                 )}
               </div>
 
+            </div>
+          )}
+
+          {/* TAB 9: DYNAMIC SYSTEM CONFIGURATION (GST & SHIPPING) */}
+          {activeTab === "settings" && (
+            <div className="bg-white border border-gray-150 p-6 sm:p-8 rounded-2xl shadow-sm space-y-8">
+              <div>
+                <span className="text-xs font-mono uppercase tracking-widest text-[#D4820A] font-bold">LEDGER SETTINGS PANEL</span>
+                <h2 className="font-serif text-xl font-black text-[#0D1B2A] mt-1">GST & Shipping Rates Configuration</h2>
+                <p className="text-xs text-gray-500 mt-1">Configure live variables that calculate order pricing, surcharge taxes, and shipping expenses globally.</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* GST Rate Control */}
+                <div className="border border-gray-150 p-5 rounded-xl space-y-3 bg-slate-50">
+                  <label className="block text-xs font-mono font-bold uppercase tracking-wider text-gray-650">GST Percentage (%)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-mono font-bold font-sans"
+                    value={gstPercentage}
+                    onChange={(e) => setGstPercentage(parseFloat(e.target.value) || 0)}
+                  />
+                  <p className="text-[11px] text-gray-500 font-sans leading-relaxed">
+                    Set the dynamic percentage of surcharge GST added in checkout payments. Under current drug regulatory protocols, standard medical supplies calculate at 5-12%.
+                  </p>
+                </div>
+
+                {/* Shipping Rate per KM */}
+                <div className="border border-gray-150 p-5 rounded-xl space-y-3 bg-slate-50">
+                  <label className="block text-xs font-mono font-bold uppercase tracking-wider text-gray-650">Shipping Rate (₹ per KM)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-mono font-bold font-sans"
+                    value={shippingCostPerKm}
+                    onChange={(e) => setShippingCostPerKm(parseFloat(e.target.value) || 0)}
+                  />
+                  <p className="text-[11px] text-gray-500 font-sans leading-relaxed">
+                    Set the charge per unit distance inside Hyderabad municipal boundaries. Final shipping cost equals <b>Rate × Delivery KMs</b> (unless cart subtotal qualifies for free shipping).
+                  </p>
+                </div>
+
+                {/* Default Delivery KMs */}
+                <div className="border border-gray-150 p-5 rounded-xl space-y-3 bg-slate-50">
+                  <label className="block text-xs font-mono font-bold uppercase tracking-wider text-gray-650">Service Range Distance (KM)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-mono font-bold font-sans"
+                    value={deliveryDistanceKms}
+                    onChange={(e) => setDeliveryDistanceKms(parseFloat(e.target.value) || 0)}
+                  />
+                  <p className="text-[11px] text-gray-500 font-sans leading-relaxed">
+                    The default radius of dispatches originating from Gajularamaram, Hyderabad. Adjust this to expand our physical delivery range.
+                  </p>
+                </div>
+              </div>
+
+              {/* Display of simulated results */}
+              <div className="bg-slate-900 text-slate-300 p-5 rounded-xl font-mono text-xs space-y-2">
+                <span className="text-[9px] uppercase tracking-wider text-amber-400 font-bold">LIVE INVOICE PROJECTION SOLVER</span>
+                <p className="text-white">• Base Delivery Cost: <span className="font-bold text-amber-300">₹{(deliveryDistanceKms * shippingCostPerKm).toFixed(2)}</span> (for orders &lt; ₹1000)</p>
+                <p className="text-white">• GST Rate Surcharge: <span className="font-bold text-amber-300">{gstPercentage}%</span> of post-discount subtotal</p>
+                <p className="text-gray-400 leading-normal text-[10px] pt-1 font-sans">
+                  💡 Customers during checkout will instantly receive these exact rates. Let's save the settings to update the transaction engine immediately!
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  style={{ cursor: "pointer" }}
+                  onClick={async () => {
+                    setSettingsLoading(true);
+                    setSettingsSuccess("");
+                    const adminToken = localStorage.getItem("januzen_token") || sessionStorage.getItem("januzen_token");
+                    try {
+                      const r = await fetch("/api/admin/settings", {
+                        method: "PUT",
+                        headers: {
+                          "Authorization": `Bearer ${adminToken}`,
+                          "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                          shippingCostPerKm,
+                          deliveryDistanceKms,
+                          gstPercentage
+                        })
+                      });
+                      if (r.ok) {
+                        setSettingsSuccess("System parameter settings updated and serialized to settings.json successfully!");
+                        setTimeout(() => setSettingsSuccess(""), 5000);
+                      } else {
+                        alert("Failed to write system settings.");
+                      }
+                    } catch (e) {
+                      console.error(e);
+                    } finally {
+                      setSettingsLoading(false);
+                    }
+                  }}
+                  disabled={settingsLoading}
+                  className="px-6 py-2.5 bg-[#0D1B2A] text-white hover:bg-black font-bold uppercase text-xs rounded-xl flex items-center gap-2 tracking-widest cursor-pointer shadow"
+                >
+                  {settingsLoading && <Loader2 className="h-4 w-4 animate-spin text-white" />}
+                  Save Settings & Update Ledger
+                </button>
+              </div>
+
+              {settingsSuccess && (
+                <p className="text-xs text-center font-mono font-black text-emerald-600 bg-emerald-50 border border-emerald-250 p-4 rounded-xl animate-pulse">
+                  ✓ {settingsSuccess}
+                </p>
+              )}
             </div>
           )}
 

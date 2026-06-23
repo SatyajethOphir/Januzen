@@ -1,4 +1,5 @@
 import React from "react";
+import { safeLocalStorage as localStorage, safeSessionStorage as sessionStorage } from "../utils/storage";
 import { User as UserIcon, Lock, ShieldCheck, Mail, Phone, Book, KeyRound, Check, HelpCircle } from "lucide-react";
 import { User } from "../types";
 import { JanuzenLogo } from "./Logos";

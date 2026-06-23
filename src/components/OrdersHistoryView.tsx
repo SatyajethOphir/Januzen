@@ -1,4 +1,5 @@
 import React from "react";
+import { safeLocalStorage as localStorage, safeSessionStorage as sessionStorage } from "../utils/storage";
 import { 
   ShoppingBag, Clock, Truck, CheckCircle, AlertTriangle, ArrowLeft, 
   Calendar, CreditCard, MapPin, Sparkles, RefreshCw 
@@ -14,10 +15,15 @@ export default function OrdersHistoryView({ onNavigate, currentUser }: OrdersHis
   const [orders, setOrders] = React.useState<Order[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState("");
+  const [cancellingId, setCancellingId] = React.useState<string | null>(null);
+  const [actionSuccess, setActionSuccess] = React.useState<string | null>(null);
+  const [actionError, setActionError] = React.useState<string | null>(null);
 
-  const fetchUserOrders = React.useCallback(async () => {
-    setLoading(true);
-    setError("");
+  const fetchUserOrders = React.useCallback(async (skipSpinner = false) => {
+    if (!skipSpinner) {
+      setLoading(true);
+      setError("");
+    }
     const token = localStorage.getItem("januzen_token") || sessionStorage.getItem("januzen_token");
     if (!token) {
       setError("Please log in to view your orders.");
@@ -33,25 +39,60 @@ export default function OrdersHistoryView({ onNavigate, currentUser }: OrdersHis
       });
       if (res.ok) {
         const data = await res.json();
-        // Sort orders descending by date (newest first)
         const sorted = data.sort((a: Order, b: Order) => {
           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         });
         setOrders(sorted);
-      } else {
+      } else if (!skipSpinner) {
         setError("Failed to retrieve order history from JANUZEN servers.");
       }
     } catch (err) {
       console.error(err);
-      setError("Network error. Please try again later.");
+      if (!skipSpinner) {
+        setError("Network error. Please try again later.");
+      }
     } finally {
-      setLoading(false);
+      if (!skipSpinner) {
+        setLoading(false);
+      }
     }
   }, []);
 
   React.useEffect(() => {
-    fetchUserOrders();
+    fetchUserOrders(false);
+    // Real-time auto-refresh customer panel every 4 seconds to listen for admin changes
+    const interval = setInterval(() => {
+      fetchUserOrders(true);
+    }, 4000);
+    return () => clearInterval(interval);
   }, [fetchUserOrders]);
+
+  const handleCancelOrder = async (orderId: string) => {
+    setCancellingId(orderId);
+    setActionSuccess(null);
+    const token = localStorage.getItem("januzen_token") || sessionStorage.getItem("januzen_token");
+    try {
+      const res = await fetch(`/api/orders/${orderId}/cancel`, {
+        method: "PUT",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      if (res.ok) {
+        setActionSuccess(`Order cancelled successfully.`);
+        fetchUserOrders(true);
+        setTimeout(() => setActionSuccess(null), 5000);
+      } else {
+        const errData = await res.json();
+        setActionError(errData.error || "Failed to cancel order.");
+        setTimeout(() => setActionError(null), 6000);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setCancellingId(null);
+    }
+  };
 
   const getStatusStyle = (status: string) => {
     switch (status) {
@@ -325,6 +366,35 @@ export default function OrdersHistoryView({ onNavigate, currentUser }: OrdersHis
                             ₹{(order.totals?.total || 0).toFixed(2)}
                           </span>
                         </div>
+
+                        {/* Customer Cancel action button */}
+                        {order.status !== "Delivered" && order.status !== "Cancelled" && order.status !== "Dispatched" && order.status !== "out_for_delivery" && (
+                          <div className="pt-2">
+                            <button
+                              onClick={() => handleCancelOrder(order.id)}
+                              disabled={cancellingId === order.id}
+                              style={{ cursor: "pointer" }}
+                              className="w-full py-2 px-3 border border-red-200 hover:border-red-300 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-mono font-bold uppercase rounded-lg transition-all shadow-xs flex items-center justify-center gap-1.5"
+                            >
+                              {cancellingId === order.id ? (
+                                <>
+                                  <span className="animate-spin h-3.5 w-3.5 border-2 border-red-700 border-t-transparent rounded-full"></span>
+                                  Cancelling...
+                                </>
+                              ) : "Cancel This Order"}
+                            </button>
+                          </div>
+                        )}
+                        {actionSuccess && (
+                          <p className="text-[10px] text-center text-emerald-600 font-mono font-bold mt-1 bg-emerald-50 py-1 rounded">
+                            {actionSuccess}
+                          </p>
+                        )}
+                        {actionError && (
+                          <div className="text-[10px] text-center text-red-650 font-mono font-bold mt-1 bg-red-50 py-1 rounded px-1 max-w-full overflow-hidden text-ellipsis">
+                            {actionError}
+                          </div>
+                        )}
                       </div>
                     </div>
 

@@ -6,13 +6,54 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { v2 as cloudinary } from "cloudinary";
 import multer from "multer";
+import fs from "fs";
 import { Product, User, Order, Message } from "./src/types";
 import { dbClient, connectAndSeedDB, isMongo } from "./server/db";
-import sitemapRouter from "./server/routes/sitemap";
 
 const PORT = 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "JANUZEN_JWT_SECRET_KEY";
 const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY || "phoenix123&";
+
+const SETTINGS_FILE = path.join(process.cwd(), "data", "settings.json");
+
+interface SystemSettings {
+  shippingCostPerKm: number;
+  deliveryDistanceKms: number;
+  gstPercentage: number;
+}
+
+let systemSettings: SystemSettings = {
+  shippingCostPerKm: 15,
+  deliveryDistanceKms: 10,
+  gstPercentage: 5,
+};
+
+function loadSystemSettings() {
+  try {
+    const parentDir = path.dirname(SETTINGS_FILE);
+    if (!fs.existsSync(parentDir)) {
+      fs.mkdirSync(parentDir, { recursive: true });
+    }
+    if (fs.existsSync(SETTINGS_FILE)) {
+      const data = fs.readFileSync(SETTINGS_FILE, "utf-8");
+      systemSettings = { ...systemSettings, ...JSON.parse(data) };
+      console.log("💾 Hydrated dynamic settings from settings.json:", systemSettings);
+    } else {
+      fs.writeFileSync(SETTINGS_FILE, JSON.stringify(systemSettings, null, 2), "utf-8");
+    }
+  } catch (err) {
+    console.error("Failed to load settings.json, defaults active:", err);
+  }
+}
+loadSystemSettings();
+
+function saveSystemSettings() {
+  try {
+    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(systemSettings, null, 2), "utf-8");
+  } catch (err) {
+    console.error("Failed to save settings.json:", err);
+  }
+}
 
 // In-memory file upload middleware
 const filterMulter = multer({
@@ -22,14 +63,6 @@ const filterMulter = multer({
 
 async function startServer() {
   const app = express();
-
-app.use((req, res, next) => {
-    if (process.env.NODE_ENV === "production" && req.headers["x-forwarded-proto"] !== "https") {
-      return res.redirect(301, "https://" + req.headers.host + req.url);
-    }
-    next();
-  });
-
   app.use(express.json({ limit: "10mb" }));
   app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
@@ -43,23 +76,6 @@ app.use((req, res, next) => {
     }
     next();
   });
-
-// Explicitly serve robots.txt before the SPA catch-all can intercept it
-app.get("/robots.txt", (req, res) => {
-  res.setHeader("Content-Type", "text/plain");
-  res.send(`User-agent: *
-Allow: /
-Disallow: /admin
-Disallow: /account
-Disallow: /checkout
-Disallow: /cart
-
-Sitemap: https://januzen.in/sitemap.xml`);
-});
-
-  // Sitemap route — mounted FIRST before express.static and catch-all
-  // so /sitemap.xml returns XML and not index.html
-  app.use("/", sitemapRouter);
 
   // Authentication Middleware
   const authenticateToken = (req: any, res: any, next: any) => {
@@ -137,8 +153,10 @@ Sitemap: https://januzen.in/sitemap.xml`);
         { expiresIn: "7d" }
       );
 
+      // Track the session write
       await dbClient.createSession(newUser.id, newUser.name, newUser.email, token);
 
+      // Dynamic Nodemailer Simulator Alert log
       console.log(`[EMAIL DISPATCH] TO: ${email} | SUBJECT: Welcome to JANUZEN Enterprise | CONTENT: Thank you for registering, ${name}! Your account is active. Welcome to Nuthan Medicals & JA Stationery.`);
 
       res.status(201).json({
@@ -177,6 +195,7 @@ Sitemap: https://januzen.in/sitemap.xml`);
         { expiresIn: "7d" }
       );
 
+      // Track the session write
       await dbClient.createSession(user.id, user.name, user.email, token);
 
       res.json({
@@ -300,6 +319,7 @@ Sitemap: https://januzen.in/sitemap.xml`);
     }
 
     try {
+      // Lazy config just before uploading
       cloudinary.config({
         cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
         api_key: process.env.CLOUDINARY_API_KEY,
@@ -309,7 +329,10 @@ Sitemap: https://januzen.in/sitemap.xml`);
       const uploadToCloudinary = (buffer: Buffer) => {
         return new Promise<any>((resolve, reject) => {
           const writeStream = cloudinary.uploader.upload_stream(
-            { folder: "januzen_products", resource_type: "auto" },
+            {
+              folder: "januzen_products",
+              resource_type: "auto"
+            },
             (error, result) => {
               if (error) return reject(error);
               resolve(result);
@@ -348,14 +371,26 @@ Sitemap: https://januzen.in/sitemap.xml`);
 
       let result = await dbClient.getProducts(filterArgs);
 
-      if (priceMin) result = result.filter(p => p.price >= parseFloat(priceMin as string));
-      if (priceMax) result = result.filter(p => p.price <= parseFloat(priceMax as string));
+      // In-memory filter bounds representation if defined
+      if (priceMin) {
+        result = result.filter(p => p.price >= parseFloat(priceMin as string));
+      }
+      if (priceMax) {
+        result = result.filter(p => p.price <= parseFloat(priceMax as string));
+      }
 
-      if (sort === "price-asc") result.sort((a, b) => a.price - b.price);
-      else if (sort === "price-desc") result.sort((a, b) => b.price - a.price);
-      else if (sort === "name-asc") result.sort((a, b) => a.name.localeCompare(b.name));
-      else if (sort === "name-desc") result.sort((a, b) => b.name.localeCompare(a.name));
+      // Sort matching
+      if (sort === "price-asc") {
+        result.sort((a, b) => a.price - b.price);
+      } else if (sort === "price-desc") {
+        result.sort((a, b) => b.price - a.price);
+      } else if (sort === "name-asc") {
+        result.sort((a, b) => a.name.localeCompare(b.name));
+      } else if (sort === "name-desc") {
+        result.sort((a, b) => b.name.localeCompare(a.name));
+      }
 
+      // Pagination
       const pageNum = parseInt(page as string, 10);
       const limitNum = parseInt(limit as string, 10);
       const total = result.length;
@@ -363,7 +398,13 @@ Sitemap: https://januzen.in/sitemap.xml`);
       const offset = (pageNum - 1) * limitNum;
       const paginatedProducts = result.slice(offset, offset + limitNum);
 
-      res.json({ products: paginatedProducts, total, page: pageNum, pages, limit: limitNum });
+      res.json({
+        products: paginatedProducts,
+        total,
+        page: pageNum,
+        pages,
+        limit: limitNum
+      });
     } catch (e) {
       console.error(e);
       res.status(500).json({ error: "Internal server error listing products." });
@@ -421,7 +462,11 @@ Sitemap: https://januzen.in/sitemap.xml`);
       };
 
       await dbClient.createProduct(newProduct);
-      res.status(201).json({ message: "Product added successfully", product: newProduct });
+
+      res.status(201).json({
+        message: "Product added successfully",
+        product: newProduct
+      });
     } catch (e) {
       console.error(e);
       res.status(500).json({ error: "Internal server error creating product." });
@@ -432,7 +477,9 @@ Sitemap: https://januzen.in/sitemap.xml`);
   app.put("/api/admin/products/:id", authenticateAdmin, async (req, res) => {
     try {
       const current = await dbClient.getProductById(req.params.id, true);
-      if (!current) return res.status(404).json({ error: "Product not found" });
+      if (!current) {
+        return res.status(404).json({ error: "Product not found" });
+      }
 
       const { name, description, price, category, shop, stock, image, tags, featured } = req.body;
 
@@ -449,20 +496,30 @@ Sitemap: https://januzen.in/sitemap.xml`);
       };
 
       const updated = await dbClient.updateProduct(req.params.id, updates);
-      res.json({ message: "Product updated successfully", product: updated });
+      res.json({
+        message: "Product updated successfully",
+        product: updated
+      });
     } catch (e) {
       console.error(e);
       res.status(500).json({ error: "Internal server error updating product." });
     }
   });
 
-  // Admin CRUD: Delete product (soft delete)
+  // Admin CRUD: Delete product (soft delete as requested)
   app.delete("/api/admin/products/:id", authenticateAdmin, async (req, res) => {
     try {
       const current = await dbClient.getProductById(req.params.id, true);
-      if (!current) return res.status(404).json({ error: "Product not found" });
+      if (!current) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+
       await dbClient.updateProduct(req.params.id, { isActive: false });
-      res.json({ message: "Product soft-deleted successfully", id: req.params.id });
+
+      res.json({
+        message: "Product soft-deleted successfully",
+        id: req.params.id
+      });
     } catch (e) {
       console.error(e);
       res.status(500).json({ error: "Internal server error deleting product." });
@@ -471,6 +528,7 @@ Sitemap: https://januzen.in/sitemap.xml`);
 
   // --- ORDERS ---
 
+  // Order Placement
   app.post("/api/orders", authenticateToken, async (req: any, res) => {
     const { items, shippingAddress, paymentMethod, couponCode } = req.body;
 
@@ -482,30 +540,52 @@ Sitemap: https://januzen.in/sitemap.xml`);
       const orderItems: any[] = [];
       let subtotal = 0;
 
+      // Validate elements stock
       for (const item of items) {
         const prod = await dbClient.getProductById(item.productId);
-        if (!prod) return res.status(400).json({ error: `Product variant with id [${item.productId}] could not be retrieved.` });
-        if (prod.stock < item.quantity) return res.status(400).json({ error: `Insufficient stock for product [${prod.name}]. Currently only ${prod.stock} items left.` });
+        if (!prod) {
+          return res.status(400).json({ error: `Product variant with id [${item.productId}] could not be retrieved.` });
+        }
+        if (prod.stock < item.quantity) {
+          return res.status(400).json({ error: `Insufficient stock for product [${prod.name}]. Currently only ${prod.stock} items left.` });
+        }
+
         subtotal += prod.price * item.quantity;
-        orderItems.push({ productId: prod.id, name: prod.name, price: prod.price, quantity: item.quantity, image: prod.image, shop: prod.shop });
+        
+        orderItems.push({
+          productId: prod.id,
+          name: prod.name,
+          price: prod.price,
+          quantity: item.quantity,
+          image: prod.image,
+          shop: prod.shop
+        });
       }
 
+      // Compute Coupon discount
       let discount = 0;
       if (couponCode) {
         const coupons = await dbClient.getCoupons();
         const matched = coupons.find(c => c.code.toUpperCase() === couponCode.trim().toUpperCase() && c.isActive);
-        if (matched && subtotal >= matched.minBasketValue) {
-          discount = matched.discountType === "percentage"
-            ? Math.round((subtotal * (matched.discountValue / 100)) * 100) / 100
-            : Math.min(subtotal, matched.discountValue);
+        if (matched) {
+          if (subtotal >= matched.minBasketValue) {
+            if (matched.discountType === "percentage") {
+              discount = Math.round((subtotal * (matched.discountValue / 100)) * 100) / 100;
+            } else {
+              discount = Math.min(subtotal, matched.discountValue);
+            }
+          }
         }
       }
 
       const postDiscountSubtotal = Math.max(0, subtotal - discount);
-      const tax = Math.round((postDiscountSubtotal * 0.05) * 100) / 100;
-      const shipping = subtotal >= 1000 ? 0 : 150;
+
+      // Taxes & Deliver pricing calculations
+      const shipping = subtotal >= 1000 ? 0 : (systemSettings.deliveryDistanceKms * systemSettings.shippingCostPerKm);
+      const tax = Math.round((postDiscountSubtotal * (systemSettings.gstPercentage / 100)) * 100) / 100;
       const total = Math.round((postDiscountSubtotal + tax + shipping) * 100) / 100;
 
+      // Formatting date
       const today = new Date();
       const yyyy = today.getFullYear();
       const mm = String(today.getMonth() + 1).padStart(2, "0");
@@ -521,21 +601,34 @@ Sitemap: https://januzen.in/sitemap.xml`);
         userEmail: req.user.email,
         items: orderItems,
         shippingAddress,
-        totals: { subtotal, discount, shipping, tax, total },
+        totals: {
+          subtotal,
+          discount,
+          shipping,
+          tax,
+          total
+        },
         status: "placed",
         paymentMethod: paymentMethod || "Cash on Delivery",
         createdAt: new Date().toISOString()
       };
 
       await dbClient.createOrder(newOrder);
-      console.log(`[EMAIL DISPATCH] TO: ${req.user.email} | SUBJECT: JANUZEN Order Confirmed | CONTENT: Rest easy, your purchase ${orderIdCode} has been placed. Grand Total: ₹${total}`);
-      res.status(201).json({ message: "Order placed successfully!", order: newOrder });
+
+      // Nodemailer Simulator Console Logging
+      console.log(`[EMAIL DISPATCH] TO: ${req.user.email} | SUBJECT: JANUZEN Order Confirmed | CONTENT: Rest easy, your purchase ${orderIdCode} has been placed. Deep thank you for supporting Nuthan Medicals & JA Stationery! Grand Total: ₹${total}`);
+
+      res.status(201).json({
+        message: "Order placed successfully!",
+        order: newOrder
+      });
     } catch (e) {
       console.error(e);
       res.status(500).json({ error: "Internal server error during order checkout." });
     }
   });
 
+  // View Customer's own orders
   app.get("/api/orders", authenticateToken, async (req: any, res) => {
     try {
       const results = await dbClient.getOrders(req.user.id);
@@ -546,6 +639,7 @@ Sitemap: https://januzen.in/sitemap.xml`);
     }
   });
 
+  // Admin get all orders
   app.get("/api/admin/orders", authenticateAdmin, async (req, res) => {
     try {
       const results = await dbClient.getOrders();
@@ -556,15 +650,24 @@ Sitemap: https://januzen.in/sitemap.xml`);
     }
   });
 
+  // Admin update order status
   app.put("/api/admin/orders/:id/status", authenticateAdmin, async (req, res) => {
     const { status, note } = req.body;
-    const allowedStatuses = ["placed","confirmed","processing","dispatched","out_for_delivery","delivered","cancelled","returned","Pending","Dispatched","Delivered","Cancelled"];
-    if (!status || !allowedStatuses.includes(status)) return res.status(400).json({ error: "Invalid or missing order status code provided" });
+    const allowedStatuses = [
+      "placed", "confirmed", "processing", "dispatched", "out_for_delivery", 
+      "delivered", "cancelled", "returned", "Pending", "Dispatched", "Delivered", "Cancelled"
+    ];
+    if (!status || !allowedStatuses.includes(status)) {
+      return res.status(400).json({ error: "Invalid or missing order status code provided" });
+    }
 
     try {
       const updatedOrder = await dbClient.updateOrderStatus(req.params.id, status, note);
-      if (!updatedOrder) return res.status(404).json({ error: "Order details could not be retrieved" });
+      if (!updatedOrder) {
+        return res.status(404).json({ error: "Order details could not be retrieved" });
+      }
 
+      // Generate custom personalized notification
       await dbClient.createNotification({
         id: "notif_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
         userId: updatedOrder.userId,
@@ -574,19 +677,115 @@ Sitemap: https://januzen.in/sitemap.xml`);
         createdAt: new Date().toISOString()
       });
 
-      console.log(`[EMAIL DISPATCH] TO: ${updatedOrder.userEmail} | SUBJECT: JANUZEN Order Status Update | CONTENT: Your purchase status has updated to: [${status}] for order ID ${updatedOrder.orderId}.`);
-      res.json({ message: `Status updated successfully to ${status}`, order: updatedOrder });
+      // Nodemailer Simulator Console Logging
+      console.log(`[EMAIL DISPATCH] TO: ${updatedOrder.userEmail} | SUBJECT: JANUZEN Order Status Update | CONTENT: Your purchase status has updated to: [${status}] for order ID ${updatedOrder.orderId}. Description: ${note || 'None'}`);
+
+      res.json({
+        message: `Status updated successfully to ${status}`,
+        order: updatedOrder
+      });
     } catch (e) {
       console.error(e);
       res.status(500).json({ error: "Internal server error updating order status." });
     }
   });
 
+  // --- SYSTEM SETTINGS CONTROLS (GST & Shipping Control) ---
+  
+  // Public get settings
+  app.get("/api/settings", async (req, res) => {
+    res.json(systemSettings);
+  });
+
+  // Admin update settings
+  app.put("/api/admin/settings", authenticateAdmin, async (req, res) => {
+    const { shippingCostPerKm, deliveryDistanceKms, gstPercentage } = req.body;
+    
+    if (shippingCostPerKm !== undefined && typeof shippingCostPerKm === "number") {
+      systemSettings.shippingCostPerKm = shippingCostPerKm;
+    }
+    if (deliveryDistanceKms !== undefined && typeof deliveryDistanceKms === "number") {
+      systemSettings.deliveryDistanceKms = deliveryDistanceKms;
+    }
+    if (gstPercentage !== undefined && typeof gstPercentage === "number") {
+      systemSettings.gstPercentage = gstPercentage;
+    }
+
+    saveSystemSettings();
+    res.json({ message: "System configurations updated successfully", settings: systemSettings });
+  });
+
+  // Client request cancel order
+  app.put("/api/orders/:id/cancel", authenticateToken, async (req: any, res) => {
+    try {
+      const orders = await dbClient.getOrders(req.user.id);
+      const find = orders.find(o => o.id === req.params.id);
+      if (!find) {
+        return res.status(404).json({ error: "Order details could not be found." });
+      }
+
+      const normalizedStatus = find.status.toLowerCase();
+      if (normalizedStatus === "delivered" || normalizedStatus === "dispatched" || normalizedStatus === "out_for_delivery" || normalizedStatus === "cancelled") {
+        return res.status(400).json({ error: "Order cannot be cancelled at this stage of delivery. Please contact helpline." });
+      }
+
+      const updatedOrder = await dbClient.updateOrderStatus(req.params.id, "cancelled", "Cancelled by client auto-request.");
+      if (!updatedOrder) {
+        return res.status(404).json({ error: "Failed to apply cancellation status." });
+      }
+
+      await dbClient.createNotification({
+        id: "notif_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
+        userId: updatedOrder.userId,
+        title: "Order Cancelled",
+        content: `Hi ${updatedOrder.userName}, your order ${updatedOrder.orderId} was successfully cancelled.`,
+        isRead: false,
+        createdAt: new Date().toISOString()
+      });
+
+      res.json({ message: "Order cancelled successfully.", order: updatedOrder });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Internal server error applying cancellation." });
+    }
+  });
+
+  // Delivery Agent update order status (Public/Driver Hub helper - no strict Admin token required so delivery associates can run it)
+  app.put("/api/orders/:id/status-driver", async (req, res) => {
+    const { status, note } = req.body;
+    const allowed = ["dispatched", "out_for_delivery", "delivered", "cancelled"];
+    if (!allowed.includes(status.toLowerCase())) {
+      return res.status(400).json({ error: "Status must be: dispatched, out_for_delivery, delivered, or cancelled" });
+    }
+    try {
+      const updatedOrder = await dbClient.updateOrderStatus(req.params.id, status, note || `Status updated by Delivery Assistant.`);
+      if (!updatedOrder) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+      await dbClient.createNotification({
+        id: "notif_" + Date.now() + "_" + Math.floor(Math.random() * 1050),
+        userId: updatedOrder.userId,
+        title: `Delivery Dispatch: ${status}`,
+        content: `Your order ${updatedOrder.orderId} is now updated to: ${status}. Note: ${note || ""}`,
+        isRead: false,
+        createdAt: new Date().toISOString()
+      });
+      res.json({ message: "Delivery stage updated", order: updatedOrder });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Internal server error updating delivery driver status." });
+    }
+  });
+
   // --- CONTACTS & NEWSLETTERS ---
 
+  // Post message
   app.post("/api/messages", async (req, res) => {
     const { name, email, subject, shop, message } = req.body;
-    if (!name || !email || !subject || !message) return res.status(400).json({ error: "Missing required contact form fields." });
+
+    if (!name || !email || !subject || !message) {
+      return res.status(400).json({ error: "Missing required contact form fields." });
+    }
 
     try {
       const newMsg: Message = {
@@ -599,15 +798,23 @@ Sitemap: https://januzen.in/sitemap.xml`);
         isRead: false,
         createdAt: new Date().toISOString()
       };
+
       await dbClient.createMessage(newMsg);
-      console.log(`[ADMIN NOTIFICATION ALERTS] TO: admin@januzen.com | SUBJECT: New Inquiry on JANUZEN Portal | CONTENT: Received message from ${name} (<${email}>) relating to division ${shop || "General"}: Subject: ${subject}.`);
-      res.status(201).json({ message: "Message dispatched and logged successfully!", messageDetails: newMsg });
+
+      // Nodemailer Administrator Alert log simulation
+      console.log(`[ADMIN NOTIFICATION ALERTS] TO: admin@januzen.com | SUBJECT: New Inquiry on JANUZEN Portal | CONTENT: Recieved message from ${name} (<${email}>) relating to division ${shop || "General"}: Subject: ${subject}. Content: ${message}`);
+
+      res.status(201).json({
+        message: "Message dispatched and logged successfully! JANUZEN representatives are reviewing your dispatch.",
+        messageDetails: newMsg
+      });
     } catch (e) {
       console.error(e);
       res.status(500).json({ error: "Internal server error transmitting inquiry." });
     }
   });
 
+  // Admin view all messages
   app.get("/api/admin/messages", authenticateAdmin, async (req, res) => {
     try {
       const messages = await dbClient.getMessages();
@@ -618,21 +825,30 @@ Sitemap: https://januzen.in/sitemap.xml`);
     }
   });
 
+  // Admin mark message read
   app.put("/api/admin/messages/:id/read", authenticateAdmin, async (req, res) => {
     try {
       const updated = await dbClient.markMessageRead(req.params.id);
-      if (!updated) return res.status(404).json({ error: "Inquiry ID is invalid" });
-      res.json({ message: "Inquiry logged as read.", messageDetails: updated });
+      if (!updated) {
+        return res.status(404).json({ error: "Inquiry ID is invalid" });
+      }
+      res.json({
+        message: "Inquiry logged as read.",
+        messageDetails: updated
+      });
     } catch (e) {
       console.error(e);
       res.status(500).json({ error: "Internal server error marking message read." });
     }
   });
 
+  // Admin delete message
   app.delete("/api/admin/messages/:id", authenticateAdmin, async (req, res) => {
     try {
       const success = await dbClient.deleteMessage(req.params.id);
-      if (!success) return res.status(404).json({ error: "Inquiry ID is invalid" });
+      if (!success) {
+        return res.status(404).json({ error: "Inquiry ID is invalid" });
+      }
       res.json({ message: "Inquiry purged successfully." });
     } catch (e) {
       console.error(e);
@@ -640,19 +856,29 @@ Sitemap: https://januzen.in/sitemap.xml`);
     }
   });
 
+  // Newsletter email collection
   app.post("/api/newsletter", async (req, res) => {
     const { email } = req.body;
-    if (!email) return res.status(400).json({ error: "Email is required to join newsletter insights." });
+    if (!email) {
+      return res.status(400).json({ error: "Email is required to join newsletter insights." });
+    }
+
     try {
       const isNew = await dbClient.addNewsletter(email);
-      if (!isNew) return res.status(200).json({ message: "You are already in our premium list!" });
-      res.status(201).json({ message: "Subscription log successful! Deep gratitude." });
+      if (!isNew) {
+        return res.status(200).json({ message: "You are already in our premium list! Prepare for exclusive updates." });
+      }
+
+      res.status(201).json({
+        message: "Subscription log successful! Deep gratitude."
+      });
     } catch (e) {
       console.error(e);
       res.status(500).json({ error: "Internal server error registering feed subscription." });
     }
   });
 
+  // Admin view newsletter list
   app.get("/api/admin/newsletter", authenticateAdmin, async (req, res) => {
     try {
       const list = await dbClient.getNewsletter();
@@ -663,6 +889,7 @@ Sitemap: https://januzen.in/sitemap.xml`);
     }
   });
 
+  // Admin view all registered users list
   app.get("/api/admin/users", authenticateAdmin, async (req, res) => {
     try {
       const users = await dbClient.getUsers();
@@ -673,16 +900,26 @@ Sitemap: https://januzen.in/sitemap.xml`);
     }
   });
 
+  // Admin delete a customer with all their corresponding storage
   app.delete("/api/admin/users/:id", authenticateAdmin, async (req, res) => {
     const { id } = req.params;
-    if (!id) return res.status(400).json({ error: "User ID is required." });
+    if (!id) {
+      return res.status(400).json({ error: "User ID is required." });
+    }
     try {
       const users = await dbClient.getUsers();
       const targetUser = users.find(u => u.id === id);
-      if (!targetUser) return res.status(404).json({ error: "User profile not found." });
-      if (targetUser.role === "admin") return res.status(403).json({ error: "Cannot delete an administrator account." });
+      if (!targetUser) {
+        return res.status(404).json({ error: "User profile not found." });
+      }
+      if (targetUser.role === "admin") {
+        return res.status(403).json({ error: "Cannot delete an administrator account." });
+      }
+
       const success = await dbClient.deleteUserWithData(id);
-      if (!success) return res.status(404).json({ error: "User not found or deletion failed." });
+      if (!success) {
+        return res.status(404).json({ error: "User not found or deletion failed." });
+      }
       res.json({ message: "User profile, associated orders, reviews, and notifications permanently purged to save space." });
     } catch (e) {
       console.error(e);
@@ -690,6 +927,7 @@ Sitemap: https://januzen.in/sitemap.xml`);
     }
   });
 
+  // Fetch notifications for the authenticated user
   app.get("/api/notifications", authenticateToken, async (req: any, res) => {
     try {
       const list = await dbClient.getNotifications(req.user.id);
@@ -700,10 +938,13 @@ Sitemap: https://januzen.in/sitemap.xml`);
     }
   });
 
+  // Mark specific notification as read
   app.put("/api/notifications/:id/read", authenticateToken, async (req: any, res) => {
     try {
       const success = await dbClient.markNotificationRead(req.params.id);
-      if (!success) return res.status(404).json({ error: "Notification not found or update failed." });
+      if (!success) {
+        return res.status(404).json({ error: "Notification not found or update failed." });
+      }
       res.json({ message: "Notification marked read." });
     } catch (e) {
       console.error(e);
@@ -711,6 +952,7 @@ Sitemap: https://januzen.in/sitemap.xml`);
     }
   });
 
+  // Fetch Wishlist for active authenticated customer
   app.get("/api/wishlist", authenticateToken, async (req: any, res) => {
     try {
       const list = await dbClient.getWishlist(req.user.id);
@@ -721,9 +963,12 @@ Sitemap: https://januzen.in/sitemap.xml`);
     }
   });
 
+  // Toggle Wishlist item status (add/remove)
   app.post("/api/wishlist/toggle", authenticateToken, async (req: any, res) => {
     const { productId, productType } = req.body;
-    if (!productId || !productType) return res.status(400).json({ error: "Missing product identifiers for wishlist modification." });
+    if (!productId || !productType) {
+      return res.status(400).json({ error: "Missing product identifiers for wishlist modification." });
+    }
     try {
       const result = await dbClient.toggleWishlistItem(req.user.id, productId, productType);
       res.json(result);
@@ -733,30 +978,41 @@ Sitemap: https://januzen.in/sitemap.xml`);
     }
   });
 
+  // Admin broadcast notification to all customers, automatically customized with the customer's name
   app.post("/api/admin/notifications/broadcast", authenticateAdmin, async (req, res) => {
     const { matter, title } = req.body;
-    if (!matter) return res.status(400).json({ error: "Notification body matter is required." });
+    if (!matter) {
+      return res.status(400).json({ error: "Notification body matter is required." });
+    }
     try {
       const users = await dbClient.getUsers();
       const customers = users.filter(u => u.role === "customer" || u.role === undefined);
       const titleText = title || "Urgent Store Announcement";
+
       for (const customer of customers) {
-        await dbClient.createNotification({
+        const content = `Dear ${customer.name},\n\n${matter}`;
+        const notif = {
           id: "notif_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7),
           userId: customer.id,
           title: titleText,
-          content: `Dear ${customer.name},\n\n${matter}`,
+          content,
           isRead: false,
           createdAt: new Date().toISOString()
-        });
+        };
+        await dbClient.createNotification(notif);
       }
-      res.status(201).json({ message: `Dynamic dispatch broadcast completed! Sent personalized alerts addressing ${customers.length} customer names.`, count: customers.length });
+
+      res.status(201).json({
+        message: `Dynamic dispatch broadcast completed! Sent personalized alerts addressing ${customers.length} customer names.`,
+        count: customers.length
+      });
     } catch (e) {
       console.error(e);
       res.status(500).json({ error: "Internal server error broadcasting alerts." });
     }
   });
 
+  // Fetch reviews for a product
   app.get("/api/products/:productId/reviews", async (req, res) => {
     try {
       const list = await dbClient.getReviews(req.params.productId);
@@ -767,12 +1023,17 @@ Sitemap: https://januzen.in/sitemap.xml`);
     }
   });
 
+  // Submit a review for a product
   app.post("/api/products/:productId/reviews", authenticateToken, async (req: any, res) => {
     const { rating, comment } = req.body;
     const { productId } = req.params;
-    if (!rating || !comment) return res.status(400).json({ error: "Rating and review comment text are required." });
+    if (!rating || !comment) {
+      return res.status(400).json({ error: "Rating and review comment text are required." });
+    }
     const ratingNum = parseInt(rating);
-    if (isNaN(ratingNum) || ratingNum < 1 || ratingNum > 5) return res.status(400).json({ error: "Rating must be an integer between 1 and 5." });
+    if (isNaN(ratingNum) || ratingNum < 1 || ratingNum > 5) {
+      return res.status(400).json({ error: "Rating must be an integer between 1 and 5." });
+    }
     try {
       const fullUser = await dbClient.getUserByEmail(req.user.email);
       const review = {
@@ -793,7 +1054,7 @@ Sitemap: https://januzen.in/sitemap.xml`);
     }
   });
 
-  // --- MARQUEE ---
+  // --- MARQUEE TEXT ENDPOINTS ---
   app.get("/api/public/marquee", async (req, res) => {
     try {
       const text = await dbClient.getMarquee();
@@ -806,7 +1067,9 @@ Sitemap: https://januzen.in/sitemap.xml`);
 
   app.put("/api/admin/marquee", authenticateAdmin, async (req, res) => {
     const { text } = req.body;
-    if (text === undefined) return res.status(400).json({ error: "Marquee text missing from payload." });
+    if (text === undefined) {
+      return res.status(400).json({ error: "Marquee text missing from payload." });
+    }
     try {
       const updated = await dbClient.updateMarquee(text);
       res.json({ message: "Marquee content updated successfully", marquee: updated });
@@ -816,22 +1079,33 @@ Sitemap: https://januzen.in/sitemap.xml`);
     }
   });
 
-  // --- COUPONS ---
+  // --- COUPON ENDPOINTS ---
   app.get("/api/admin/coupons", authenticateAdmin, async (req, res) => {
-    try { res.json({ coupons: await dbClient.getCoupons() }); }
-    catch (e) { console.error(e); res.status(500).json({ error: "Failed to fetch coupons list." }); }
+    try {
+      const coupons = await dbClient.getCoupons();
+      res.json({ coupons });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Failed to fetch coupons list." });
+    }
   });
 
+  // Public/Customer active list for reference (only active ones)
   app.get("/api/public/coupons", async (req, res) => {
     try {
       const coupons = await dbClient.getCoupons();
       res.json({ coupons: coupons.filter(c => c.isActive) });
-    } catch (e) { console.error(e); res.status(500).json({ error: "Failed to fetch active coupons." }); }
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Failed to fetch active coupons." });
+    }
   });
 
   app.post("/api/admin/coupons", authenticateAdmin, async (req, res) => {
     const { code, discountType, discountValue, minBasketValue } = req.body;
-    if (!code || !discountType || discountValue === undefined) return res.status(400).json({ error: "Missing required coupon fields." });
+    if (!code || !discountType || discountValue === undefined) {
+      return res.status(400).json({ error: "Missing required coupon fields (code, discountType, discountValue)." });
+    }
     try {
       const newCoupon = {
         id: "c_" + Date.now(),
@@ -843,116 +1117,225 @@ Sitemap: https://januzen.in/sitemap.xml`);
       };
       const created = await dbClient.createCoupon(newCoupon);
       res.status(201).json({ message: "Coupon created successfully", coupon: created });
-    } catch (e) { console.error(e); res.status(500).json({ error: "Failed to create new coupon." }); }
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Failed to create new coupon." });
+    }
   });
 
   app.put("/api/admin/coupons/:id", authenticateAdmin, async (req, res) => {
     try {
       const updated = await dbClient.updateCoupon(req.params.id, req.body);
-      if (!updated) return res.status(404).json({ error: "Coupon not found" });
+      if (!updated) {
+        return res.status(404).json({ error: "Coupon not found" });
+      }
       res.json({ message: "Coupon updated successfully", coupon: updated });
-    } catch (e) { console.error(e); res.status(500).json({ error: "Failed to update coupon." }); }
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Failed to update coupon." });
+    }
   });
 
   app.delete("/api/admin/coupons/:id", authenticateAdmin, async (req, res) => {
     try {
       const success = await dbClient.deleteCoupon(req.params.id);
-      if (!success) return res.status(404).json({ error: "Coupon not found" });
+      if (!success) {
+        return res.status(404).json({ error: "Coupon not found" });
+      }
       res.json({ message: "Coupon eliminated successfully" });
-    } catch (e) { console.error(e); res.status(500).json({ error: "Failed to delete coupon." }); }
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Failed to delete coupon." });
+    }
   });
 
   app.post("/api/public/coupons/validate", async (req, res) => {
     const { code, basketValue } = req.body;
-    if (!code) return res.status(400).json({ error: "Coupon code is required for validation." });
+    if (!code) {
+      return res.status(400).json({ error: "Coupon code is required for validation." });
+    }
     try {
       const coupons = await dbClient.getCoupons();
       const match = coupons.find(c => c.code.toUpperCase() === code.toUpperCase().trim() && c.isActive);
-      if (!match) return res.status(404).json({ valid: false, message: "Invalid or inactive coupon code." });
+      if (!match) {
+        return res.status(404).json({ valid: false, message: "Invalid or inactive coupon code." });
+      }
       const val = parseFloat(basketValue || "0");
-      if (val < match.minBasketValue) return res.status(400).json({ valid: false, message: `Minimum basket value of ₹${match.minBasketValue} is required.` });
-      const discountAmount = match.discountType === "percentage"
-        ? Math.round((val * (match.discountValue / 100)) * 100) / 100
-        : Math.min(val, match.discountValue);
-      res.json({ valid: true, discountAmount, discountType: match.discountType, discountValue: match.discountValue, message: `Success! Coupon applied. You save ₹${discountAmount}.` });
-    } catch (e) { console.error(e); res.status(500).json({ error: "Coupon validation execution error." }); }
+      if (val < match.minBasketValue) {
+        return res.status(400).json({
+          valid: false,
+          message: `Minimum basket value of ₹${match.minBasketValue} is required to use this coupon.`
+        });
+      }
+      let discountAmount = 0;
+      if (match.discountType === "percentage") {
+        discountAmount = Math.round((val * (match.discountValue / 100)) * 100) / 100;
+      } else {
+        discountAmount = Math.min(val, match.discountValue);
+      }
+      res.json({
+        valid: true,
+        discountAmount,
+        discountType: match.discountType,
+        discountValue: match.discountValue,
+        message: `Success! Coupon applied. You save ₹${discountAmount}.`
+      });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Coupon validation execution error." });
+    }
   });
 
-  // --- ADMIN STATS & DATA MANAGEMENT ---
+  // Admin Multi-dashboard panel stats calculation
   app.get("/api/admin/stats", authenticateAdmin, async (req, res) => {
     try {
       const orders = await dbClient.getOrders();
       const users = await dbClient.getUsers();
       const products = await dbClient.getProducts({ includeInactive: false });
       const messages = await dbClient.getMessages();
+      
       const relevantOrders = orders.filter(o => o.status !== "Cancelled");
       const totalRevenue = relevantOrders.reduce((sum, order) => sum + order.totals.subtotal, 0);
-      const lowStockAlerts = products.filter(p => p.stock < 5).map(p => ({ id: p.id, name: p.name, stock: p.stock, image: p.image, shop: p.shop }));
+      
+      const countUsers = users.length;
+      const countOrders = orders.length;
+      const countProducts = products.length;
+
+      // Low stock warnings (stock < 5)
+      const lowStockAlerts = products.filter(p => p.stock < 5).map(p => ({
+        id: p.id,
+        name: p.name,
+        stock: p.stock,
+        image: p.image,
+        shop: p.shop
+      }));
+
+      // Count unread incoming messages queries
+      const unreadMessagesCount = messages.filter(m => !m.isRead).length;
+
+      // Retrieve last 5 orders
+      const recentOrders = orders.slice(0, 5);
+
       res.json({
         metrics: {
-          totalProducts: products.length,
-          totalOrders: orders.length,
-          totalUsers: users.length,
+          totalProducts: countProducts,
+          totalOrders: countOrders,
+          totalUsers: countUsers,
           revenue: Math.round(totalRevenue * 100) / 100,
-          unreadMessages: messages.filter(m => !m.isRead).length,
+          unreadMessages: unreadMessagesCount,
           lowStockCount: lowStockAlerts.length
         },
         lowStockAlerts,
-        recentOrders: orders.slice(0, 5)
+        recentOrders
       });
-    } catch (e) { console.error(e); res.status(500).json({ error: "Internal server error aggregating metrics." }); }
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Internal server error aggregating metrics." });
+    }
   });
 
+  // Admin Storage Usage Breakdown & Obeservability
   app.get("/api/admin/storage-usage", authenticateAdmin, async (req, res) => {
-    try { res.json(await dbClient.getStorageUsage()); }
-    catch (e) { console.error(e); res.status(500).json({ error: "Failed to gather storage breakdown info." }); }
+    try {
+      const stats = await dbClient.getStorageUsage();
+      res.json(stats);
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Failed to gather storage breakdown info." });
+    }
   });
 
+  // Manual Trigger for Storage Retention Rules
   app.post("/api/admin/run-retention", authenticateAdmin, async (req, res) => {
     try {
       const purged = await dbClient.runStorageRetention();
-      res.json({ message: "Manual storage retention sweep completed successfully.", purged });
-    } catch (e) { console.error(e); res.status(500).json({ error: "Retention engine encountered an error." }); }
+      res.json({
+        message: "Manual storage retention sweep completed successfully.",
+        purged
+      });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Retention engine encountered an error." });
+    }
   });
 
+  // Retrieve Cascade Purge Audit Trails
   app.get("/api/admin/audit-logs", authenticateAdmin, async (req, res) => {
-    try { res.json(await dbClient.getAuditLogs()); }
-    catch (e) { console.error(e); res.status(500).json({ error: "Failed to load purge audit logs." }); }
+    try {
+      const logs = await dbClient.getAuditLogs();
+      res.json(logs);
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Failed to load purge audit logs." });
+    }
   });
 
+  // User Cascade Delete Dry-run Analysis
   app.get("/api/admin/purge-user/:id/dry-run", authenticateAdmin, async (req, res) => {
-    try { res.json(await dbClient.purgeUser(req.params.id, { dryRun: true })); }
-    catch (e) { console.error(e); res.status(500).json({ error: "Dry-run analysis failed." }); }
+    try {
+      const result = await dbClient.purgeUser(req.params.id, { dryRun: true });
+      res.json(result);
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Dry-run analysis failed." });
+    }
   });
 
+  // Execute User Cascade Delete Purge
   app.post("/api/admin/purge-user/:id/execute", authenticateAdmin, async (req, res: any) => {
     try {
       const purgingAdmin = (req as any).user?.name || "admin";
       const result = await dbClient.purgeUser(req.params.id, { dryRun: false, purgedBy: purgingAdmin });
-      res.json({ success: true, message: "User and all associated accounts/event arrays purged successfully.", result });
-    } catch (e) { console.error(e); res.status(500).json({ error: "Permanent cascade user deletion failed." }); }
+      res.json({
+        success: true,
+        message: "User and all associated accounts/event arrays purged successfully.",
+        result
+      });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Permanent cascade user deletion failed." });
+    }
   });
 
+  // Product Cascade Delete Dry-run Analysis
   app.get("/api/admin/purge-product/:id/dry-run", authenticateAdmin, async (req, res) => {
-    try { res.json(await dbClient.purgeProduct(req.params.id, { dryRun: true })); }
-    catch (e) { console.error(e); res.status(500).json({ error: "Product dry-run analysis failed." }); }
+    try {
+      const result = await dbClient.purgeProduct(req.params.id, { dryRun: true });
+      res.json(result);
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Product dry-run analysis failed." });
+    }
   });
 
+  // Execute Product Cascade Delete Purge
   app.post("/api/admin/purge-product/:id/execute", authenticateAdmin, async (req, res: any) => {
     try {
       const purgingAdmin = (req as any).user?.name || "admin";
       const result = await dbClient.purgeProduct(req.params.id, { dryRun: false, purgedBy: purgingAdmin });
-      res.json({ success: true, message: "Product and matching review/wishlist indices purged successfully.", result });
-    } catch (e) { console.error(e); res.status(500).json({ error: "Permanent cascade product deletion failed." }); }
+      res.json({
+        success: true,
+        message: "Product and matching review/wishlist indices purged successfully.",
+        result
+      });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Permanent cascade product deletion failed." });
+    }
   });
 
+  // Seed / Reset Database Trigger specifically for Dev panel
   app.post("/api/dev/reset-seed", async (req, res) => {
-    try { await dbClient.resetDB(); res.json({ message: "Database reset to pristine initial seeded values." }); }
-    catch (e) { res.status(500).json({ error: "Failed to reset seed database." }); }
+    try {
+      await dbClient.resetDB();
+      res.json({ message: "Database reset to pristine initial seeded values." });
+    } catch (e) {
+      res.status(500).json({ error: "Failed to reset seed database." });
+    }
   });
 
   // --- VITE DEV AND PROD MIDDLEWARE ---
-  // NOTE: This must stay LAST — after sitemap and all API routes
+
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -960,78 +1343,12 @@ Sitemap: https://januzen.in/sitemap.xml`);
     });
     app.use(vite.middlewares);
   } else {
-  const distPath = path.join(process.cwd(), "dist");
-  app.use(express.static(distPath));
-
-  app.get("*", async (req, res) => {
-    const fs = await import("fs");
-    let html = fs.readFileSync(path.join(distPath, "index.html"), "utf-8");
-
-    // Inject product-specific meta tags for /product/:id routes
-    const productMatch = req.path.match(/^\/product\/(.+)$/);
-    if (productMatch) {
-      try {
-        const productId = decodeURIComponent(productMatch[1]);
-        const product = await dbClient.getProductById(productId);
-
-        if (product) {
-          const title = `${product.name} | JANUZEN Global LLP`;
-          const desc = `${product.description} — ₹${product.price}. ${product.stock > 0 ? "In Stock" : "Out of Stock"}. Available at JANUZEN Global LLP.`;
-          const image = product.image || "https://januzen.in/logo.png";
-          const url = `https://januzen.in/product/${encodeURIComponent(product.id)}`;
-
-          html = html
-            .replace(
-              /<title>[\s\S]*?<\/title>/,
-              `<title>${title}</title>`
-            )
-            .replace(
-              /<meta name="description" content="[^"]*"/,
-              `<meta name="description" content="${desc.replace(/"/g, "&quot;")}"`
-            )
-            .replace(
-              /<link rel="canonical" href="[^"]*"/,
-              `<link rel="canonical" href="${url}"`
-            )
-            .replace(
-              /<meta property="og:title" content="[^"]*"/,
-              `<meta property="og:title" content="${title}"`
-            )
-            .replace(
-              /<meta property="og:description" content="[^"]*"/,
-              `<meta property="og:description" content="${desc.replace(/"/g, "&quot;")}"`
-            )
-            .replace(
-              /<meta property="og:image" content="[^"]*"/,
-              `<meta property="og:image" content="${image}"`
-            )
-            .replace(
-              /<meta property="og:url" content="[^"]*"/,
-              `<meta property="og:url" content="${url}"`
-            )
-            .replace(
-              /<meta name="twitter:title" content="[^"]*"/,
-              `<meta name="twitter:title" content="${title}"`
-            )
-            .replace(
-              /<meta name="twitter:description" content="[^"]*"/,
-              `<meta name="twitter:description" content="${desc.replace(/"/g, "&quot;")}"`
-            )
-            .replace(
-              /<meta name="twitter:image" content="[^"]*"/,
-              `<meta name="twitter:image" content="${image}"`
-            );
-        }
-      } catch (e) {
-        console.error("Meta injection failed for product route:", e);
-        // Falls through and serves default index.html — safe fallback
-      }
-    }
-
-    res.setHeader("Content-Type", "text/html");
-    res.send(html);
-  });
-}
+    const distPath = path.join(process.cwd(), "dist");
+    app.use(express.static(distPath));
+    app.get("*", (req, res) => {
+      res.sendFile(path.join(distPath, "index.html"));
+    });
+  }
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`===========================================================`);
@@ -1040,19 +1357,6 @@ Sitemap: https://januzen.in/sitemap.xml`);
     console.log(`🔌 Database Mode: ${isMongo ? "MongoDB Connected Cluster" : "Local JSON Offline Database"}`);
     console.log(`===========================================================`);
   });
-}
-
-// Keep-alive self-ping — prevents Render free tier spin-down
-// Runs every 10 minutes in production as a secondary layer to UptimeRobot
-if (process.env.NODE_ENV === "production") {
-  setInterval(async () => {
-    try {
-      await fetch("https://januzen.in/api/public/marquee");
-      console.log("[KEEP-ALIVE] Self-ping successful");
-    } catch (e) {
-      console.error("[KEEP-ALIVE] Self-ping failed:", e);
-    }
-  }, 10 * 60 * 1000);
 }
 
 // Initialise DB sync before booting up Express

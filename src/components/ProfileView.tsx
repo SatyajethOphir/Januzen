@@ -1,4 +1,5 @@
 import React from "react";
+import { safeLocalStorage as localStorage, safeSessionStorage as sessionStorage } from "../utils/storage";
 import { 
   User as UserIcon, Mail, Phone, MapPin, Lock, Camera, Save, ArrowLeft, 
   Sparkles, ShieldCheck, Heart, Trash2, Eye, EyeOff, Upload, Image as ImageIcon,

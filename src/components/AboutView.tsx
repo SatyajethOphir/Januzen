@@ -32,7 +32,7 @@ export default function AboutView() {
   const timeline = [
     {
       year: "2005",
-      title: "Nuthan Medicals Inception",
+      title: "Nuthan Medicals",
       desc: "Founded by Vinuthan Reddy Kongara, launching Nuthan Medicals on June 6th to deliver critical clinical diagnostics and pharmaceutical care."
     },
     {
@@ -49,11 +49,6 @@ export default function AboutView() {
       year: "2024",
       title: "Inception of JA Stationery",
       desc: "Launching JA Stationery on September 10th, 2024 under the trusted Januzen umbrella to offer premium leather diaries and archival desk essentials."
-    },
-    {
-      year: "2026",
-      title: "Integrated Digital Logistics",
-      desc: "Partnered with premium courier services to route high-fidelity dispatches across India, serving over 10,000 corporate clients."
     }
   ];
 
