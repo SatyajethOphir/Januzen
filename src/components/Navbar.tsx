@@ -138,16 +138,16 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-4 xl:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo Brand */}
-          <div className="flex items-center gap-2 xl:gap-3 cursor-pointer" onClick={() => { onNavigate("home"); setMobileMenuOpen(false); }}>
-            <JanuzenLogo size={36} className="hover:rotate-6" />
+          <div className="flex items-center gap-2 xl:gap-3 cursor-pointer shrink-0" onClick={() => { onNavigate("home"); setMobileMenuOpen(false); }}>
+            <JanuzenLogo size={36} className="hover:rotate-6 transition-transform" />
             <div className="flex flex-col">
               <span className="font-serif text-base sm:text-lg font-bold tracking-widest text-[#ffffff] leading-tight">JANUZEN</span>
               <span className="block text-[8px] uppercase tracking-[#0.2em] text-gray-400 font-mono">Global LLP</span>
             </div>
 
-            {/* Division-specific indicator logo next to main company label */}
+            {/* Division-specific indicator logo next to main company label (only on 2xl+ to avoid layout overlaps) */}
             {currentView === "medicals" && (
-              <div className="hidden xl:flex items-center gap-2 border-l border-white/20 pl-3 ml-1 animate-fade-in">
+              <div className="hidden 2xl:flex items-center gap-2 border-l border-white/20 pl-3 ml-1 animate-fade-in">
                 <NuthanMedicalsLogo size={28} />
                 <div className="flex flex-col">
                   <span className="font-serif text-[11px] font-bold text-[#3FE9D9] uppercase tracking-wider leading-none">Nuthan</span>
@@ -156,7 +156,7 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
               </div>
             )}
             {currentView === "stationery" && (
-              <div className="hidden xl:flex items-center gap-2 border-l border-white/20 pl-3 ml-1 animate-fade-in">
+              <div className="hidden 2xl:flex items-center gap-2 border-l border-white/20 pl-3 ml-1 animate-fade-in">
                 <JaStationeryLogo size={28} />
                 <div className="flex flex-col">
                   <span className="font-serif text-[11px] font-bold text-[#F5B041] uppercase tracking-wider leading-none">JA</span>
@@ -167,7 +167,7 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
           </div>
 
           {/* Desktop Navigation links */}
-          <div className="hidden lg:flex items-center space-x-0.5 xl:space-x-1.5">
+          <div className="hidden lg:flex items-center space-x-1 xl:space-x-2 shrink-0">
             {navItems.map((item) => {
               const isActive = currentView === item.view;
               return (
@@ -187,7 +187,7 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
           </div>
 
           {/* Right Action Widgets */}
-          <div className="hidden lg:flex items-center space-x-1.5 xl:space-x-4">
+          <div className="hidden lg:flex items-center space-x-1.5 xl:space-x-3 shrink-0">
             {/* Cart Widget */}
             <button
               ref={cartIconRef}
@@ -244,7 +244,7 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
                         </div>
                       ) : (
                         notifications.map((notif) => (
-                          <div key={notif.id} className={`p-3 text-xs leading-relaxed transition-colors ${notif.isRead ? "bg-slate-50/50" : "bg-emerald-50/30"}`}>
+                           <div key={notif.id} className={`p-3 text-xs leading-relaxed transition-colors ${notif.isRead ? "bg-slate-50/50" : "bg-emerald-50/30"}`}>
                             <div className="flex justify-between items-start gap-1">
                               <span className="font-serif font-bold text-slate-900 block">{notif.title}</span>
                               <span className="text-[9px] text-gray-400 shrink-0 font-mono">
@@ -273,11 +273,11 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
             {currentUser && currentUser.role === "admin" && (
               <button
                 onClick={() => onNavigate("admin")}
-                className="flex items-center gap-1 xl:gap-1.5 px-2 py-1.5 xl:px-3 xl:py-1.5 bg-[#D4820A] text-white rounded text-[11px] xl:text-xs font-medium tracking-wide hover:bg-opacity-90 transition-all border border-[#ffffff]/10 cursor-pointer"
+                className="flex items-center gap-1 xl:gap-1.5 px-2 py-1.5 xl:px-3 xl:py-1.5 bg-[#D4820A] text-white rounded text-[11px] xl:text-xs font-medium tracking-wide hover:bg-opacity-90 transition-all border border-[#ffffff]/10 cursor-pointer animate-pulse"
                 title="Admin Suite"
               >
                 <Settings className="h-3.5 w-3.5 shrink-0" />
-                <span className="hidden xl:inline">Admin Suite</span>
+                <span className="hidden 2xl:inline">Admin Suite</span>
               </button>
             )}
 
@@ -293,7 +293,7 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
                 title="My Order History"
               >
                 <ShoppingBag className="h-3.5 w-3.5 shrink-0" />
-                <span className="hidden xl:inline">My Orders</span>
+                <span className="hidden 2xl:inline">My Orders</span>
               </button>
             )}
 
@@ -304,7 +304,7 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
                 title="Switch Januzen Theme Mode"
               >
                 <Palette className="h-3.5 w-3.5 text-amber-400 shrink-0" />
-                <span className="hidden xl:inline">Mode: </span>
+                <span className="hidden 2xl:inline">Mode: </span>
                 <span className="capitalize text-teal-400 font-bold">{theme}</span>
               </button>
               
