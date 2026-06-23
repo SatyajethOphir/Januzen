@@ -9,7 +9,9 @@ import multer from "multer";
 import fs from "fs";
 import { Product, User, Order, Message } from "./src/types";
 import { dbClient, connectAndSeedDB, isMongo } from "./server/db";
+import sitemapRouter from "./server/routes/sitemap";  // ← add at top of file instead
 
+  
 const PORT = 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "JANUZEN_JWT_SECRET_KEY";
 const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY || "phoenix123&";
@@ -1333,6 +1335,10 @@ async function startServer() {
       res.status(500).json({ error: "Failed to reset seed database." });
     }
   });
+
+  // Sitemap
+
+  app.use(sitemapRouter);
 
   // --- VITE DEV AND PROD MIDDLEWARE ---
 
