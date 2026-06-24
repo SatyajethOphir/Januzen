@@ -34,6 +34,8 @@ export default function App() {
   const [featuredProducts, setFeaturedProducts] = React.useState<Product[]>([]);
   const [toast, setToast] = React.useState<string | null>(null);
   const [wishlistProductIds, setWishlistProductIds] = React.useState<string[]>([]);
+  const [marquee, setMarquee] = React.useState<string>("");
+  const [marqueeSpeed, setMarqueeSpeed] = React.useState<number>(30);
   
   // Custom secure elite loading managers
   const [sessionLoading, setSessionLoading] = React.useState(true);
@@ -117,6 +119,22 @@ export default function App() {
       showToastMsg("Error updating wishlist.");
     }
   };
+
+  React.useEffect(() => {
+    fetch("/api/public/marquee")
+      .then(res => res.json())
+      .then(data => {
+        if (data) {
+          if (data.marquee) {
+            setMarquee(data.marquee);
+          }
+          if (data.speed !== undefined) {
+            setMarqueeSpeed(data.speed);
+          }
+        }
+      })
+      .catch(err => console.error("Failed to load marquee announcement:", err));
+  }, []);
 
   React.useEffect(() => {
     if (theme === "device") {
@@ -402,6 +420,29 @@ export default function App() {
           }`}
         >
           <OfficialLoader fullScreen={true} progress={loadProgress} />
+        </div>
+      )}
+
+      {/* 📢 Dynamic Scrolling Marquee Announcement Banner */}
+      {marquee && (
+        <div className="w-full bg-slate-900 text-amber-300 py-1.5 border-b border-slate-800 overflow-hidden relative z-50 flex items-center h-8 select-none">
+          <div 
+            className="animate-marquee font-mono text-[10px] font-bold tracking-wider flex items-center gap-6 whitespace-nowrap"
+            style={{ animationDuration: `${marqueeSpeed}s` }}
+          >
+            <span>⚡ ANNOUNCEMENT: {marquee} ⚡</span>
+            <span className="opacity-40">|</span>
+            <span>⚡ ANNOUNCEMENT: {marquee} ⚡</span>
+            <span className="opacity-40">|</span>
+            <span>⚡ ANNOUNCEMENT: {marquee} ⚡</span>
+            <span className="opacity-40">|</span>
+            <span>⚡ ANNOUNCEMENT: {marquee} ⚡</span>
+            <span className="opacity-40">|</span>
+            <span>⚡ ANNOUNCEMENT: {marquee} ⚡</span>
+            <span className="opacity-40">|</span>
+            <span>⚡ ANNOUNCEMENT: {marquee} ⚡</span>
+            <span className="opacity-40">|</span>
+          </div>
         </div>
       )}
 

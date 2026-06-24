@@ -1069,7 +1069,8 @@ async function startServer() {
   app.get("/api/public/marquee", async (req, res) => {
     try {
       const text = await dbClient.getMarquee();
-      res.json({ marquee: text });
+      const speed = await dbClient.getMarqueeSpeed();
+      res.json({ marquee: text, speed });
     } catch (e) {
       console.error(e);
       res.status(500).json({ error: "Failed to fetch marquee text." });
@@ -1077,13 +1078,19 @@ async function startServer() {
   });
 
   app.put("/api/admin/marquee", authenticateAdmin, async (req, res) => {
-    const { text } = req.body;
+    const { text, speed } = req.body;
     if (text === undefined) {
       return res.status(400).json({ error: "Marquee text missing from payload." });
     }
     try {
       const updated = await dbClient.updateMarquee(text);
-      res.json({ message: "Marquee content updated successfully", marquee: updated });
+      let updatedSpeed = 30;
+      if (speed !== undefined) {
+        updatedSpeed = await dbClient.updateMarqueeSpeed(Number(speed));
+      } else {
+        updatedSpeed = await dbClient.getMarqueeSpeed();
+      }
+      res.json({ message: "Marquee content updated successfully", marquee: updated, speed: updatedSpeed });
     } catch (e) {
       console.error(e);
       res.status(500).json({ error: "Failed to update marquee text." });

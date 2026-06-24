@@ -41,6 +41,7 @@ export default function AdminDashboardView() {
   const [coupons, setCoupons] = React.useState<any[]>([]);
   const [marqueeText, setMarqueeText] = React.useState("");
   const [marqueeSavedMsg, setMarqueeSavedMsg] = React.useState("");
+  const [marqueeSpeed, setMarqueeSpeed] = React.useState<number>(30);
 
   // Coupon Form state
   const [newCouponCode, setNewCouponCode] = React.useState("");
@@ -118,11 +119,16 @@ export default function AdminDashboardView() {
         setCoupons(couponsData.coupons || []);
       }
 
-      // Load marquee text
-      const marqueeRes = await fetch("/api/public/marquee");
-      if (marqueeRes.ok) {
-        const marqueeData = await marqueeRes.json();
-        setMarqueeText(marqueeData.text || "");
+      // Load marquee text (only on initial load or manual refresh, never during background interval to avoid losing typing drafts)
+      if (!skipSpinner) {
+        const marqueeRes = await fetch("/api/public/marquee");
+        if (marqueeRes.ok) {
+          const marqueeData = await marqueeRes.json();
+          setMarqueeText(marqueeData.marquee || "");
+          if (marqueeData.speed !== undefined) {
+            setMarqueeSpeed(marqueeData.speed);
+          }
+        }
       }
 
       // Load storage usage info
@@ -410,7 +416,7 @@ export default function AdminDashboardView() {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         },
-        body: JSON.stringify({ text: marqueeText })
+        body: JSON.stringify({ text: marqueeText, speed: marqueeSpeed })
       });
       if (res.ok) {
         setMarqueeSavedMsg("Marquee statement successfully published and saved!");
@@ -1177,6 +1183,24 @@ export default function AdminDashboardView() {
                   </p>
                 </div>
 
+                <div className="space-y-2">
+                  <label className="text-gray-400 uppercase font-bold tracking-widest block">Scrolling Duration / Speed (seconds)</label>
+                  <div className="flex items-center gap-4 bg-slate-50 border border-gray-200 p-3 rounded-xl">
+                    <input
+                      type="range"
+                      min={5}
+                      max={120}
+                      value={marqueeSpeed}
+                      onChange={(e) => setMarqueeSpeed(Number(e.target.value))}
+                      className="w-full accent-[#036666] cursor-pointer"
+                    />
+                    <span className="font-bold text-sm text-gray-700 w-24 shrink-0 text-right">{marqueeSpeed} seconds</span>
+                  </div>
+                  <p className="text-[10px] text-gray-400">
+                    * Controls how long a full scroll cycle takes. Lower values (e.g. 15s) make text scroll quickly; higher values (e.g. 60s) make it slide slowly and legibly.
+                  </p>
+                </div>
+
                 {marqueeSavedMsg && (
                   <div className="bg-emerald-50 text-emerald-700 border border-emerald-200 p-3 rounded-lg text-xs font-semibold text-center">
                     {marqueeSavedMsg}
@@ -1196,7 +1220,10 @@ export default function AdminDashboardView() {
                 <div className="border border-gray-100 rounded-xl p-4 bg-slate-50 space-y-2">
                   <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Live Banner Simulation</span>
                   <div className="bg-black text-amber-300 py-1.5 px-4 rounded-md overflow-hidden relative">
-                    <div className="whitespace-nowrap inline-block animate-[marquee_20s_linear_infinite] font-semibold text-xs tracking-wide">
+                    <div 
+                      className="whitespace-nowrap inline-block font-semibold text-xs tracking-wide animate-marquee"
+                      style={{ animationDuration: `${marqueeSpeed}s` }}
+                    >
                       {marqueeText || "No active message logged — fallback placeholder marquee text"}
                     </div>
                   </div>

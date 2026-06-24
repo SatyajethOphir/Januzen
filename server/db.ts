@@ -21,6 +21,7 @@ interface DBStructure {
   newsletter: string[];
   coupons: Coupon[];
   marquee: string;
+  marqueeSpeed?: number;
   reviews?: Review[];
   notifications?: Notification[];
   wishlist?: WishlistItem[];
@@ -649,6 +650,10 @@ export function loadLocalDB(): DBStructure {
         parsed.marquee = "🇮🇳 Authorized Corporate Logistics & Pharmacy Dispatches. High-opacity copypaper and certified standard healthcare kits available. Enjoy Free Secure Freight Delivery on all basket orders above ₹1000!";
         dirty = true;
       }
+      if (parsed.marqueeSpeed === undefined) {
+        parsed.marqueeSpeed = 30;
+        dirty = true;
+      }
       if (dirty) {
         fs.writeFileSync(DB_FILE, JSON.stringify(parsed, null, 2), "utf-8");
       }
@@ -657,7 +662,7 @@ export function loadLocalDB(): DBStructure {
     }
   } catch (error) {
     console.error("Critical: Failed to read/write JSON database file:", error);
-    return { users: [], passwords: {}, products: [], orders: [], messages: [], newsletter: [], coupons: [], marquee: "", reviews: [], notifications: [], wishlist: [], sessions: [], couponUsages: [], auditLogs: [] };
+    return { users: [], passwords: {}, products: [], orders: [], messages: [], newsletter: [], coupons: [], marquee: "", marqueeSpeed: 30, reviews: [], notifications: [], wishlist: [], sessions: [], couponUsages: [], auditLogs: [] };
   }
 }
 
@@ -1218,6 +1223,18 @@ export const dbClient = {
     db.marquee = text;
     saveLocalDB(db);
     return text;
+  },
+
+  getMarqueeSpeed: async (): Promise<number> => {
+    const db = loadLocalDB();
+    return db.marqueeSpeed !== undefined ? db.marqueeSpeed : 30;
+  },
+
+  updateMarqueeSpeed: async (speed: number): Promise<number> => {
+    const db = loadLocalDB();
+    db.marqueeSpeed = speed;
+    saveLocalDB(db);
+    return speed;
   },
 
   // Reviews Methods
