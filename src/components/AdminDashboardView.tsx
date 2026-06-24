@@ -49,6 +49,132 @@ export default function AdminDashboardView() {
   const [newCouponValue, setNewCouponValue] = React.useState("");
   const [newMinBasketValue, setNewMinBasketValue] = React.useState("");
 
+  // Draft Changes engine states
+  interface DraftChange {
+    id: string;
+    type: "add_product" | "edit_product" | "delete_product" | "add_coupon" | "delete_coupon" | "delete_user" | "update_marquee" | "update_settings" | "update_order_status" | "mark_message_read" | "delete_message";
+    description: string;
+    payload: any;
+  }
+  const [draftChanges, setDraftChanges] = React.useState<DraftChange[]>([]);
+  const [isSubmittingDrafts, setIsSubmittingDrafts] = React.useState(false);
+  const [draftSubmitProgress, setDraftSubmitProgress] = React.useState("");
+
+  const draftChangesRef = React.useRef<DraftChange[]>([]);
+  React.useEffect(() => {
+    draftChangesRef.current = draftChanges;
+  }, [draftChanges]);
+
+  const addDraftChange = (change: Omit<DraftChange, "id">) => {
+    const newChange: DraftChange = {
+      ...change,
+      id: `draft-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    };
+    setDraftChanges(prev => [...prev, newChange]);
+  };
+
+  const handleRemoveDraftChange = (id: string) => {
+    setDraftChanges(prev => prev.filter(c => c.id !== id));
+  };
+
+  const handleDiscardAllDrafts = () => {
+    if (!confirm("Are you sure you want to discard all your unsaved local draft changes? This will reload the dashboard state from the master server.")) return;
+    setDraftChanges([]);
+    fetchAllData(token || "");
+  };
+
+  const handleSubmitDraftChanges = async () => {
+    if (draftChanges.length === 0) return;
+    setIsSubmittingDrafts(true);
+    setDraftSubmitProgress("Initializing bulk serialized dispatch...");
+    
+    try {
+      const headers = { 
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}` 
+      };
+
+      for (let i = 0; i < draftChanges.length; i++) {
+        const change = draftChanges[i];
+        setDraftSubmitProgress(`Processing (${i + 1}/${draftChanges.length}): ${change.description}`);
+
+        if (change.type === "add_product") {
+          await fetch("/api/admin/products", {
+            method: "POST",
+            headers,
+            body: JSON.stringify(change.payload)
+          });
+        } else if (change.type === "edit_product") {
+          await fetch(`/api/admin/products/${change.payload.id}`, {
+            method: "PUT",
+            headers,
+            body: JSON.stringify(change.payload.data)
+          });
+        } else if (change.type === "delete_product") {
+          await fetch(`/api/admin/products/${change.payload.id}`, {
+            method: "DELETE",
+            headers
+          });
+        } else if (change.type === "add_coupon") {
+          await fetch("/api/admin/coupons", {
+            method: "POST",
+            headers,
+            body: JSON.stringify(change.payload)
+          });
+        } else if (change.type === "delete_coupon") {
+          await fetch(`/api/admin/coupons/${change.payload.id}`, {
+            method: "DELETE",
+            headers
+          });
+        } else if (change.type === "delete_user") {
+          await fetch(`/api/admin/purge-user/${change.payload.id}/execute`, {
+            method: "POST",
+            headers
+          });
+        } else if (change.type === "update_marquee") {
+          await fetch("/api/admin/marquee", {
+            method: "PUT",
+            headers,
+            body: JSON.stringify(change.payload)
+          });
+        } else if (change.type === "update_settings") {
+          await fetch("/api/admin/settings", {
+            method: "PUT",
+            headers,
+            body: JSON.stringify(change.payload)
+          });
+        } else if (change.type === "update_order_status") {
+          await fetch(`/api/admin/orders/${change.payload.id}/status`, {
+            method: "PUT",
+            headers,
+            body: JSON.stringify({ status: change.payload.status })
+          });
+        } else if (change.type === "mark_message_read") {
+          await fetch(`/api/admin/messages/${change.payload.id}/read`, {
+            method: "PUT",
+            headers
+          });
+        } else if (change.type === "delete_message") {
+          await fetch(`/api/admin/messages/${change.payload.id}`, {
+            method: "DELETE",
+            headers
+          });
+        }
+      }
+
+      setDraftSubmitProgress("Syncing final updated database parameters...");
+      setDraftChanges([]);
+      await fetchAllData(token || "");
+      alert("All pending changes have been successfully committed and published to the database!");
+    } catch (err) {
+      console.error(err);
+      alert("An error occurred while publishing some changes. Please refresh to synchronize current database state.");
+    } finally {
+      setIsSubmittingDrafts(false);
+      setDraftSubmitProgress("");
+    }
+  };
+
   // Broadcast Notification Form State
   const [broadcastTitle, setBroadcastTitle] = React.useState("");
   const [broadcastMatter, setBroadcastMatter] = React.useState("");
@@ -166,10 +292,13 @@ export default function AdminDashboardView() {
     setToken(savedToken);
     if (savedToken) {
       fetchAllData(savedToken, false);
-      // Real-time auto-refresh admin stats, items, and orders data grids every 4 seconds to listen for cancellations/updates
+      // Real-time auto-refresh admin stats, items, and orders data grids every 6 seconds, but pause if draft changes exist
       const interval = setInterval(() => {
+        if (draftChangesRef.current.length > 0) {
+          return; // pause background auto-refresh to prevent overwriting local drafts
+        }
         fetchAllData(savedToken, true);
-      }, 4000);
+      }, 6000);
       return () => clearInterval(interval);
     }
   }, [fetchAllData]);
@@ -185,52 +314,33 @@ export default function AdminDashboardView() {
   }
 
   // --- ORDER MODIFICATION ---
-  const handleOrderStatusUpdate = async (orderId: string, status: string) => {
-    try {
-      const res = await fetch(`/api/admin/orders/${orderId}/status`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({ status })
-      });
-      if (res.ok) {
-        fetchAllData(token);
-      }
-    } catch (err) {
-      alert("Failed to modify order status specifications.");
-    }
+  const handleOrderStatusUpdate = (orderId: string, status: string) => {
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
+    addDraftChange({
+      type: "update_order_status",
+      description: `📦 Update order status for #${orderId.substring(0, 8)} to "${status}"`,
+      payload: { id: orderId, status }
+    });
   };
 
   // --- MESSAGES READ/DELETE ---
-  const handleMarkMessageRead = async (msgId: string) => {
-    try {
-      const res = await fetch(`/api/admin/messages/${msgId}/read`, {
-        method: "PUT",
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      if (res.ok) {
-        fetchAllData(token);
-      }
-    } catch (err) {
-      console.error(err);
-    }
+  const handleMarkMessageRead = (msgId: string) => {
+    setMessages(prev => prev.map(m => m.id === msgId ? { ...m, isRead: true } : m));
+    addDraftChange({
+      type: "mark_message_read",
+      description: `✉️ Mark message as read (Ref: #${msgId.substring(0, 8)})`,
+      payload: { id: msgId }
+    });
   };
 
-  const handleDeleteMessage = async (msgId: string) => {
-    if (!confirm("Are you sure you want to permanently purge this message enquiry?")) return;
-    try {
-      const res = await fetch(`/api/admin/messages/${msgId}`, {
-        method: "DELETE",
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      if (res.ok) {
-        fetchAllData(token);
-      }
-    } catch (err) {
-      console.error(err);
-    }
+  const handleDeleteMessage = (msgId: string) => {
+    if (!confirm("Are you sure you want to queue this message enquiry for deletion?")) return;
+    setMessages(prev => prev.filter(m => m.id !== msgId));
+    addDraftChange({
+      type: "delete_message",
+      description: `🗑️ Delete message enquiry (Ref: #${msgId.substring(0, 8)})`,
+      payload: { id: msgId }
+    });
   };
 
   // --- PRODUCT CRUD OPERATIONS ---
@@ -299,134 +409,117 @@ export default function AdminDashboardView() {
     setShowFormModal(true);
   };
 
-  const handleSaveProduct = async (e: React.FormEvent) => {
+  const handleSaveProduct = (e: React.FormEvent) => {
     e.preventDefault();
     const payload = {
       name: formName,
       description: formDesc,
-      price: formPrice,
+      price: Number(formPrice),
       category: formCategory,
       shop: formShop,
-      stock: formStock,
-      image: formImage,
-      tags: formTags.split(",").map(t => t.trim()),
-      featured: formFeatured
+      stock: Number(formStock),
+      image: formImage || "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?q=80&w=600",
+      tags: formTags.split(",").map(t => t.trim()).filter(Boolean),
+      featured: formFeatured,
+      isActive: true
     };
 
-    try {
-      const endpoint = editingProduct ? `/api/admin/products/${editingProduct.id}` : "/api/admin/products";
-      const method = editingProduct ? "PUT" : "POST";
-
-      const res = await fetch(endpoint, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
+    if (editingProduct) {
+      const updatedProduct: Product = {
+        ...editingProduct,
+        ...payload
+      };
+      setProducts(prev => prev.map(p => p.id === editingProduct.id ? updatedProduct : p));
+      addDraftChange({
+        type: "edit_product",
+        description: `📝 Edit product: "${formName}"`,
+        payload: { id: editingProduct.id, data: updatedProduct }
       });
-
-      if (res.ok) {
-        setShowFormModal(false);
-        fetchAllData(token);
-      } else {
-        const errorData = await res.json();
-        alert(errorData.error || "Save operation failed.");
-      }
-    } catch (err) {
-      alert("Failed to communicate with master warehouse registry database.");
+    } else {
+      const tempId = `temp-prod-${Date.now()}`;
+      const newProduct: Product = {
+        id: tempId,
+        ...payload
+      };
+      setProducts(prev => [newProduct, ...prev]);
+      addDraftChange({
+        type: "add_product",
+        description: `➕ Add new product: "${formName}" (${formShop})`,
+        payload
+      });
     }
+    setShowFormModal(false);
   };
 
-  const handleSoftDeleteProduct = async (pid: string) => {
+  const handleSoftDeleteProduct = (pid: string) => {
     if (!confirm("Are you sure you want to soft delete this item? It will be marked inactive and hidden from shop displays.")) return;
-    try {
-      const res = await fetch(`/api/admin/products/${pid}`, {
-        method: "DELETE",
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      if (res.ok) {
-        fetchAllData(token);
-      }
-    } catch (err) {
-      console.error(err);
-    }
+    const prod = products.find(p => p.id === pid);
+    const prodName = prod ? prod.name : pid;
+    setProducts(prev => prev.map(p => p.id === pid ? { ...p, isActive: false } : p));
+    addDraftChange({
+      type: "delete_product",
+      description: `🗑️ Soft delete product: "${prodName}"`,
+      payload: { id: pid }
+    });
   };
 
-  const handleCreateCoupon = async (e: React.FormEvent) => {
+  const handleCreateCoupon = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCouponCode || !newCouponValue) {
       alert("Please fill in both Code and Value fields.");
       return;
     }
-    try {
-      const res = await fetch("/api/admin/coupons", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          code: newCouponCode.toUpperCase().trim(),
-          discountType: newCouponType,
-          discountValue: Number(newCouponValue),
-          minBasketValue: Number(newMinBasketValue || 0),
-          isActive: true
-        })
-      });
-      if (res.ok) {
-        setNewCouponCode("");
-        setNewCouponValue("");
-        setNewMinBasketValue("");
-        fetchAllData(token);
-      } else {
-        const errorData = await res.json();
-        alert(errorData.error || "Failed to create new promotional coupon.");
+    const code = newCouponCode.toUpperCase().trim();
+    const discountValue = Number(newCouponValue);
+    const minBasketValue = Number(newMinBasketValue || 0);
+
+    const newCoupon = {
+      id: `temp-coupon-${Date.now()}`,
+      code,
+      discountType: newCouponType,
+      discountValue,
+      minBasketValue,
+      isActive: true
+    };
+
+    setCoupons(prev => [newCoupon, ...prev]);
+    addDraftChange({
+      type: "add_coupon",
+      description: `🎟️ Create promotional coupon: "${code}" (${newCouponType}: ${discountValue})`,
+      payload: {
+        code,
+        discountType: newCouponType,
+        discountValue,
+        minBasketValue,
+        isActive: true
       }
-    } catch (err) {
-      console.error(err);
-      alert("Netsync issues adding coupon.");
-    }
+    });
+
+    setNewCouponCode("");
+    setNewCouponValue("");
+    setNewMinBasketValue("");
   };
 
-  const handleDeleteCoupon = async (cid: string) => {
+  const handleDeleteCoupon = (cid: string) => {
     if (!confirm("Are you sure you want to delete this coupon code register entry?")) return;
-    try {
-      const res = await fetch(`/api/admin/coupons/${cid}`, {
-        method: "DELETE",
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      });
-      if (res.ok) {
-        fetchAllData(token);
-      } else {
-        alert("Failed to delete coupon.");
-      }
-    } catch (err) {
-      console.error(err);
-    }
+    const couponObj = coupons.find(c => c.id === cid);
+    const couponCode = couponObj ? couponObj.code : cid;
+    setCoupons(prev => prev.filter(c => c.id !== cid));
+    addDraftChange({
+      type: "delete_coupon",
+      description: `🗑️ Delete coupon: "${couponCode}"`,
+      payload: { id: cid }
+    });
   };
 
-  const handleSaveMarqueeText = async () => {
-    try {
-      const res = await fetch("/api/admin/marquee", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({ text: marqueeText, speed: marqueeSpeed })
-      });
-      if (res.ok) {
-        setMarqueeSavedMsg("Marquee statement successfully published and saved!");
-        setTimeout(() => setMarqueeSavedMsg(""), 3000);
-      } else {
-        alert("Failed to update marquee text.");
-      }
-    } catch (err) {
-      console.error(err);
-    }
+  const handleSaveMarqueeText = () => {
+    addDraftChange({
+      type: "update_marquee",
+      description: `📢 Update marquee announcement: "${marqueeText}"`,
+      payload: { text: marqueeText, speed: marqueeSpeed }
+    });
+    setMarqueeSavedMsg("Marquee draft saved in pending queue! Click 'Save & Submit All Changes' to publish.");
+    setTimeout(() => setMarqueeSavedMsg(""), 4000);
   };
 
   const handleBroadcastNotification = async (e: React.FormEvent) => {
@@ -466,9 +559,14 @@ export default function AdminDashboardView() {
     }
   };
 
-  const handleDeleteUser = async (userId: string, userName: string) => {
-    setActiveTab("storage");
-    handleAnalyzeDryRun(userId, "user", userName);
+  const handleDeleteUser = (userId: string, userName: string) => {
+    if (!confirm(`Are you sure you want to delete user "${userName}"? This will queue a complete cascade purge in your pending draft changes.`)) return;
+    setUsers(prev => prev.filter(u => u.id !== userId));
+    addDraftChange({
+      type: "delete_user",
+      description: `👤 Cascade purge customer user: "${userName}"`,
+      payload: { id: userId, name: userName }
+    });
   };
 
   const handleRunRetentionCleanSweep = async () => {
@@ -553,6 +651,68 @@ export default function AdminDashboardView() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 font-sans">
+
+      {/* ⚠️ Unsaved Draft Changes Header Alert Stripe */}
+      {draftChanges.length > 0 && (
+        <div className="bg-amber-50 border border-amber-250 rounded-2xl p-4 mb-8 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-fade-in">
+          <div className="space-y-1 w-full">
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-amber-500 animate-ping" />
+              <span className="text-xs font-mono uppercase font-bold tracking-wider text-amber-700">UNCOMMITTED OFFLINE DRAFT CHANGES REGISTERED</span>
+            </div>
+            <p className="text-xs text-gray-700 font-sans leading-normal">
+              You have <span className="font-bold text-amber-800">{draftChanges.length} pending modification(s)</span>. Background server syncing is paused. Save them to commit.
+            </p>
+            <div className="flex flex-wrap gap-1.5 pt-1.5 max-h-24 overflow-y-auto">
+              {draftChanges.map((change) => (
+                <span key={change.id} className="inline-flex items-center gap-1 bg-amber-100 text-amber-900 border border-amber-200/50 px-2.5 py-1 rounded-md text-[10px] font-mono leading-none shadow-xs">
+                  {change.description}
+                  <button 
+                    onClick={() => handleRemoveDraftChange(change.id)}
+                    className="hover:bg-amber-200 text-amber-800 rounded p-0.5 cursor-pointer ml-1"
+                    title="Discard individual edit"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          </div>
+          <div className="flex gap-2.5 w-full md:w-auto shrink-0 font-sans text-xs">
+            <button
+              onClick={handleDiscardAllDrafts}
+              disabled={isSubmittingDrafts}
+              className="px-4 py-2.5 bg-white hover:bg-slate-50 border border-gray-300 text-gray-700 font-bold rounded-xl cursor-pointer transition shadow-sm w-full md:w-auto text-center"
+            >
+              Discard All
+            </button>
+            <button
+              onClick={handleSubmitDraftChanges}
+              disabled={isSubmittingDrafts}
+              className="px-5 py-2.5 bg-[#036666] hover:bg-[#024F4F] text-white font-extrabold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow transition-all w-full md:w-auto"
+            >
+              <Check className="h-4 w-4" />
+              <span>Save & Submit All Changes ({draftChanges.length})</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Submit Transaction Overlay Loader */}
+      {isSubmittingDrafts && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-2xl max-w-md w-full text-center space-y-4 font-mono">
+            <Loader2 className="h-10 w-10 animate-spin text-teal-600 mx-auto" />
+            <h3 className="font-serif text-lg font-bold text-gray-950">Bulk Committing Pending Drafts</h3>
+            <p className="text-xs text-gray-500 bg-slate-50 p-3 rounded-xl border border-gray-150 break-words leading-relaxed">
+              {draftSubmitProgress}
+            </p>
+            <p className="text-[10px] text-gray-400 font-sans">
+              Please do not close this window while database transactions are executing.
+            </p>
+          </div>
+        </div>
+      )}
       
       {/* Dashboard Top Navigation bar with summary icons */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 border-b border-gray-150 pb-5">
@@ -1653,39 +1813,18 @@ export default function AdminDashboardView() {
                 <button
                   type="button"
                   style={{ cursor: "pointer" }}
-                  onClick={async () => {
-                    setSettingsLoading(true);
+                  onClick={() => {
                     setSettingsSuccess("");
-                    const adminToken = localStorage.getItem("januzen_token") || sessionStorage.getItem("januzen_token");
-                    try {
-                      const r = await fetch("/api/admin/settings", {
-                        method: "PUT",
-                        headers: {
-                          "Authorization": `Bearer ${adminToken}`,
-                          "Content-Type": "application/json"
-                        },
-                        body: JSON.stringify({
-                          shippingCostPerKm,
-                          deliveryDistanceKms,
-                          gstPercentage
-                        })
-                      });
-                      if (r.ok) {
-                        setSettingsSuccess("System parameter settings updated and serialized to settings.json successfully!");
-                        setTimeout(() => setSettingsSuccess(""), 5000);
-                      } else {
-                        alert("Failed to write system settings.");
-                      }
-                    } catch (e) {
-                      console.error(e);
-                    } finally {
-                      setSettingsLoading(false);
-                    }
+                    addDraftChange({
+                      type: "update_settings",
+                      description: `⚙️ Update GST & Shipping: GST (${gstPercentage}%), Rate (₹${shippingCostPerKm}/km), Range (${deliveryDistanceKms}km)`,
+                      payload: { shippingCostPerKm, deliveryDistanceKms, gstPercentage }
+                    });
+                    setSettingsSuccess("System settings added to pending draft queue! Click 'Save & Submit All Changes' above to apply globally.");
+                    setTimeout(() => setSettingsSuccess(""), 5000);
                   }}
-                  disabled={settingsLoading}
                   className="px-6 py-2.5 bg-[#0D1B2A] text-white hover:bg-black font-bold uppercase text-xs rounded-xl flex items-center gap-2 tracking-widest cursor-pointer shadow"
                 >
-                  {settingsLoading && <Loader2 className="h-4 w-4 animate-spin text-white" />}
                   Save Settings & Update Ledger
                 </button>
               </div>
