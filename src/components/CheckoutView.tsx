@@ -32,6 +32,7 @@ export default function CheckoutView({ cartItems, currentUser, onNavigate, onCle
   const [couponError, setCouponError] = React.useState("");
   const [couponSuccess, setCouponSuccess] = React.useState("");
   const [isValidatingCoupon, setIsValidatingCoupon] = React.useState(false);
+  const [availableCoupons, setAvailableCoupons] = React.useState<any[]>([]);
 
   // Razorpay Overlay States
   const [showRazorpay, setShowRazorpay] = React.useState(false);
@@ -60,6 +61,16 @@ export default function CheckoutView({ cartItems, currentUser, onNavigate, onCle
         }
       })
       .catch(e => console.error("Error loading settings at checkout:", e));
+
+    fetch("/api/public/coupons")
+      .then(r => r.json())
+      .then(data => {
+        if (active && data && data.coupons) {
+          setAvailableCoupons(data.coupons);
+        }
+      })
+      .catch(e => console.error("Error loading coupons at checkout:", e));
+
     return () => { active = false; };
   }, []);
 
@@ -423,6 +434,55 @@ export default function CheckoutView({ cartItems, currentUser, onNavigate, onCle
                 <div className="bg-emerald-50 border border-emerald-100 p-2 rounded text-[10px] text-emerald-700 font-mono flex justify-between">
                   <span>Activated Code:</span>
                   <span className="font-bold">{appliedCoupon}</span>
+                </div>
+              )}
+
+              {availableCoupons.length > 0 && !appliedCoupon && (
+                <div className="mt-2 bg-slate-50 border border-slate-100 p-2.5 rounded-lg">
+                  <span className="text-[10px] text-slate-500 font-mono block mb-1.5 uppercase font-bold tracking-wider">Available Coupon Codes:</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {availableCoupons.map((c: any) => (
+                      <button
+                        key={c.id || c.code}
+                        type="button"
+                        onClick={async () => {
+                          setCouponInput(c.code.toUpperCase());
+                          setIsValidatingCoupon(true);
+                          setCouponError("");
+                          setCouponSuccess("");
+                          try {
+                            const res = await fetch("/api/public/coupons/validate", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ code: c.code, basketValue: subtotal })
+                            });
+                            const data = await res.json();
+                            if (res.ok && data.valid) {
+                              setDiscountAmount(data.discountAmount);
+                              setAppliedCoupon(c.code.toUpperCase().trim());
+                              setCouponSuccess(data.message);
+                              setCouponInput(c.code.toUpperCase());
+                            } else {
+                              setCouponError(data.message || "Invalid or inactive discount coupon.");
+                              setDiscountAmount(0);
+                              setAppliedCoupon(null);
+                            }
+                          } catch (err) {
+                            console.error(err);
+                            setCouponError("Unable to validate coupon on host ledger.");
+                          } finally {
+                            setIsValidatingCoupon(false);
+                          }
+                        }}
+                        className="bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-300 text-slate-700 hover:text-teal-700 text-[10px] font-mono px-2 py-1 rounded cursor-pointer transition-colors shadow-sm text-left flex flex-col"
+                      >
+                        <span className="font-bold">{c.code}</span>
+                        <span className="text-[8px] text-gray-400">
+                          {c.discountType === "percentage" ? `${c.discountValue}% off` : `₹${c.discountValue} off`} (min. ₹{c.minBasketValue})
+                        </span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

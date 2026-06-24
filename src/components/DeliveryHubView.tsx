@@ -43,12 +43,7 @@ export default function DeliveryHubView() {
   const loadAllOrders = async (quiet = false) => {
     if (!quiet) setLoading(true);
     try {
-      const res = await fetch("/api/admin/orders", {
-        headers: {
-          // Normal token bypass or standard headers
-          "Authorization": `Bearer ${localStorage.getItem("januzen_token") || sessionStorage.getItem("januzen_token")}`
-        }
-      });
+      const res = await fetch("/api/orders-delivery");
       if (res.ok) {
         const data = await res.json();
         // sort descending

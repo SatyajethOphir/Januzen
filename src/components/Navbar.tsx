@@ -20,6 +20,18 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const [notifications, setNotifications] = React.useState<any[]>([]);
   const [notifOpen, setNotifOpen] = React.useState(false);
+  const [isCompact, setIsCompact] = React.useState<boolean>(() => {
+    const saved = localStorage.getItem("januzen_navbar_compact");
+    return saved !== null ? saved === "true" : true;
+  });
+
+  const toggleCompact = () => {
+    setIsCompact((prev) => {
+      const next = !prev;
+      localStorage.setItem("januzen_navbar_compact", String(next));
+      return next;
+    });
+  };
 
   const cartIconRef = React.useRef<HTMLButtonElement>(null);
   const cartIconRefMobile = React.useRef<HTMLButtonElement>(null);
@@ -167,14 +179,22 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
           </div>
 
           {/* Desktop Navigation links */}
-          <div className="hidden lg:flex items-center space-x-1 xl:space-x-2 shrink-0">
+          <div className={`hidden lg:flex items-center shrink-0 ${
+            isCompact 
+              ? "space-x-0.5 xl:space-x-1" 
+              : "space-x-1 xl:space-x-2"
+          }`}>
             {navItems.map((item) => {
               const isActive = currentView === item.view;
               return (
                 <button
                   key={item.view}
                   onClick={() => onNavigate(item.view)}
-                  className={`px-2 py-1.5 xl:px-3 xl:py-2 rounded-md text-xs xl:text-sm font-medium tracking-wide transition-all ${
+                  className={`rounded-md font-medium tracking-wide transition-all ${
+                    isCompact
+                      ? "px-1.5 py-1 text-[11px] xl:text-xs"
+                      : "px-2 py-1.5 xl:px-3 xl:py-2 text-xs xl:text-sm"
+                  } ${
                     isActive
                       ? "text-white bg-[#1E293B]"
                       : "text-gray-300 hover:text-white hover:bg-[#1E293B]/50"
@@ -187,7 +207,11 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
           </div>
 
           {/* Right Action Widgets */}
-          <div className="hidden lg:flex items-center space-x-1.5 xl:space-x-3 shrink-0">
+          <div className={`hidden lg:flex items-center shrink-0 ${
+            isCompact 
+              ? "space-x-1 xl:space-x-1.5" 
+              : "space-x-1.5 xl:space-x-3"
+          }`}>
             {/* Cart Widget */}
             <button
               ref={cartIconRef}
@@ -273,11 +297,16 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
             {currentUser && currentUser.role === "admin" && (
               <button
                 onClick={() => onNavigate("admin")}
-                className="flex items-center gap-1 xl:gap-1.5 px-2 py-1.5 xl:px-3 xl:py-1.5 bg-[#D4820A] text-white rounded text-[11px] xl:text-xs font-medium tracking-wide hover:bg-opacity-90 transition-all border border-[#ffffff]/10 cursor-pointer animate-pulse"
+                className={`flex items-center gap-1 bg-[#D4820A] text-white rounded font-medium tracking-wide hover:bg-opacity-90 transition-all border border-[#ffffff]/10 cursor-pointer animate-pulse ${
+                  isCompact 
+                    ? "px-1.5 py-1 text-[10px] xl:text-[11px]" 
+                    : "px-2 py-1.5 xl:px-3 xl:py-1.5 text-[11px] xl:text-xs"
+                }`}
                 title="Admin Suite"
               >
                 <Settings className="h-3.5 w-3.5 shrink-0" />
-                <span className="hidden 2xl:inline">Admin Suite</span>
+                {!isCompact && <span className="hidden 2xl:inline">Admin Suite</span>}
+                {isCompact && <span className="hidden xl:inline text-[10px]">Admin</span>}
               </button>
             )}
 
@@ -285,7 +314,11 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
             {currentUser && (
               <button
                 onClick={() => onNavigate("orders")}
-                className={`flex items-center gap-1 xl:gap-1.5 px-2 py-1.5 xl:px-3 xl:py-1.5 rounded text-[11px] xl:text-xs font-medium tracking-wide transition-all border border-[#ffffff]/10 cursor-pointer ${
+                className={`flex items-center gap-1 rounded font-medium tracking-wide transition-all border border-[#ffffff]/10 cursor-pointer ${
+                  isCompact 
+                    ? "px-1.5 py-1 text-[10px] xl:text-[11px]" 
+                    : "px-2 py-1.5 xl:px-3 xl:py-1.5 text-[11px] xl:text-xs"
+                } ${
                   currentView === "orders" 
                     ? "bg-[#1E293B] text-white" 
                     : "text-gray-300 hover:text-white hover:bg-gray-800"
@@ -293,18 +326,23 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
                 title="My Order History"
               >
                 <ShoppingBag className="h-3.5 w-3.5 shrink-0" />
-                <span className="hidden 2xl:inline">My Orders</span>
+                {!isCompact && <span className="hidden 2xl:inline">My Orders</span>}
+                {isCompact && <span className="hidden xl:inline text-[10px]">Orders</span>}
               </button>
             )}
 
             {/* Theme Thematic Modes dropdown selection */}
             <div className="relative group">
               <button 
-                className="flex items-center gap-1 xl:gap-1.5 px-2 py-1.5 xl:px-3 xl:py-1.5 bg-[#1E293B] hover:bg-[#2D3748] text-white rounded text-[11px] xl:text-xs font-mono font-bold tracking-wide transition-all border border-[#ffffff]/10 cursor-pointer"
+                className={`flex items-center gap-1 bg-[#1E293B] hover:bg-[#2D3748] text-white rounded font-mono font-bold tracking-wide transition-all border border-[#ffffff]/10 cursor-pointer ${
+                  isCompact 
+                    ? "px-1.5 py-1 text-[10px] xl:text-[11px]" 
+                    : "px-2 py-1.5 xl:px-3 xl:py-1.5 text-[11px] xl:text-xs"
+                }`}
                 title="Switch Januzen Theme Mode"
               >
                 <Palette className="h-3.5 w-3.5 text-amber-400 shrink-0" />
-                <span className="hidden 2xl:inline">Mode: </span>
+                {!isCompact && <span className="hidden 2xl:inline">Mode: </span>}
                 <span className="capitalize text-teal-400 font-bold">{theme}</span>
               </button>
               
@@ -353,12 +391,35 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
               </div>
             </div>
 
+            {/* Compact Mode Toggle Button */}
+            <button
+              onClick={toggleCompact}
+              className={`flex items-center gap-1 bg-[#1E293B]/80 hover:bg-[#2D3748] text-white rounded font-mono font-bold tracking-wide transition-all border border-[#ffffff]/10 cursor-pointer ${
+                isCompact 
+                  ? "px-1.5 py-1 text-[10px] xl:text-[11px]" 
+                  : "px-2 py-1.5 xl:px-3 xl:py-1.5 text-[11px] xl:text-xs"
+              }`}
+              title={isCompact ? "Expand Navbar (Spacious)" : "Condense Navbar (Compact)"}
+            >
+              {isCompact ? (
+                <>
+                  <span className="text-teal-400">🗜️</span>
+                  <span className="hidden xl:inline text-gray-300">Compact</span>
+                </>
+              ) : (
+                <>
+                  <span className="text-amber-400">↔️</span>
+                  <span className="hidden xl:inline text-gray-300">Spacious</span>
+                </>
+              )}
+            </button>
+
             {/* User Widget / Auth Control */}
             {currentUser ? (
-              <div className="flex items-center gap-1.5 xl:gap-3 pl-1.5 xl:pl-2 border-l border-gray-700">
+              <div className="flex items-center gap-1 pl-1.5 xl:pl-2 border-l border-gray-700">
                 <button
                   onClick={() => onNavigate("profile")}
-                  className="flex items-center gap-1.5 xl:gap-2 group text-left cursor-pointer"
+                  className="flex items-center gap-1 xl:gap-2 group text-left cursor-pointer"
                   title="View Secure Profile Parameters"
                 >
                   {currentUser.image ? (
@@ -373,12 +434,20 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
                       {currentUser.name.substring(0, 2).toUpperCase()}
                     </div>
                   )}
-                  <div className="hidden xl:block text-right">
-                    <span className="block text-xs font-medium text-gray-200 group-hover:text-teal-300 transition-colors">{currentUser.name}</span>
-                    <span className="block text-[10px] text-gray-400 capitalize bg-gray-800/60 px-1.5 py-0.5 rounded inline-block">
-                      {currentUser.role}
-                    </span>
-                  </div>
+                  {isCompact ? (
+                    <div className="hidden xl:block text-left max-w-[80px]">
+                      <span className="block text-[10px] font-bold text-gray-200 group-hover:text-teal-300 transition-colors truncate">
+                        {currentUser.name.split(" ")[0]}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="hidden xl:block text-right">
+                      <span className="block text-xs font-medium text-gray-200 group-hover:text-teal-300 transition-colors">{currentUser.name}</span>
+                      <span className="block text-[10px] text-gray-400 capitalize bg-gray-800/60 px-1.5 py-0.5 rounded inline-block">
+                        {currentUser.role}
+                      </span>
+                    </div>
+                  )}
                 </button>
                 <button
                   onClick={onLogout}

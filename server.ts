@@ -650,6 +650,17 @@ async function startServer() {
     }
   });
 
+  // Delivery agent helper - public list of all orders so delivery associates can process them
+  app.get("/api/orders-delivery", async (req, res) => {
+    try {
+      const results = await dbClient.getOrders();
+      res.json(results);
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Internal server error gathering delivery orders." });
+    }
+  });
+
   // Admin update order status
   app.put("/api/admin/orders/:id/status", authenticateAdmin, async (req, res) => {
     const { status, note } = req.body;

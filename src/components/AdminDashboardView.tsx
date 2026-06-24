@@ -114,7 +114,8 @@ export default function AdminDashboardView() {
       // Load coupons
       const couponsRes = await fetch("/api/admin/coupons", { headers });
       if (couponsRes.ok) {
-        setCoupons(await couponsRes.json());
+        const couponsData = await couponsRes.json();
+        setCoupons(couponsData.coupons || []);
       }
 
       // Load marquee text
