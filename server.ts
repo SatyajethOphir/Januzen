@@ -550,15 +550,22 @@ async function startServer() {
           return res.status(400).json({ error: `Insufficient stock for product [${prod.name}]. Currently only ${prod.stock} items left.` });
         }
 
-        subtotal += prod.price * item.quantity;
+        let price = prod.price;
+        let name = prod.name;
+        if (item.selectedOption) {
+          price = item.selectedOption.price;
+          name = `${prod.name} (${item.selectedOption.name})`;
+        }
+        subtotal += price * item.quantity;
         
         orderItems.push({
           productId: prod.id,
-          name: prod.name,
-          price: prod.price,
+          name: name,
+          price: price,
           quantity: item.quantity,
           image: prod.image,
-          shop: prod.shop
+          shop: prod.shop,
+          selectedOption: item.selectedOption
         });
       }
 
@@ -593,6 +600,8 @@ async function startServer() {
       const randCode = Math.floor(1000 + Math.random() * 9000);
       const orderIdCode = `JAN-${yyyy}${mm}${dd}-${randCode}`;
 
+      const deliveryOTP = String(Math.floor(1000 + Math.random() * 9000));
+
       const newOrder: any = {
         id: "o_" + Date.now(),
         orderId: orderIdCode,
@@ -601,6 +610,7 @@ async function startServer() {
         userEmail: req.user.email,
         items: orderItems,
         shippingAddress,
+        deliveryOTP,
         totals: {
           subtotal,
           discount,
@@ -785,6 +795,44 @@ async function startServer() {
     } catch (e) {
       console.error(e);
       res.status(500).json({ error: "Internal server error updating delivery driver status." });
+    }
+  });
+
+  // Verify Delivery OTP endpoint
+  app.put("/api/orders/:id/verify-otp", async (req, res) => {
+    const { otp } = req.body;
+    if (!otp) {
+      return res.status(400).json({ error: "OTP confirmation is required." });
+    }
+    try {
+      const orders = await dbClient.getOrders();
+      const order = orders.find(o => o.id === req.params.id || o.orderId === req.params.id);
+      if (!order) {
+        return res.status(404).json({ error: "Order record not found." });
+      }
+
+      if (String(order.deliveryOTP) === String(otp).trim()) {
+        const updatedOrder = await dbClient.updateOrderStatus(order.id, "delivered", `OTP confirm code matches. Delivered!`);
+        if (!updatedOrder) {
+          return res.status(500).json({ error: "Failed to update order status." });
+        }
+
+        await dbClient.createNotification({
+          id: "notif_" + Date.now() + "_" + Math.floor(Math.random() * 1050),
+          userId: updatedOrder.userId,
+          title: `Delivery OTP Verified Successfully!`,
+          content: `Your order ${updatedOrder.orderId} was safely handed over using OTP verification code ${otp}. Thank you!`,
+          isRead: false,
+          createdAt: new Date().toISOString()
+        });
+
+        return res.json({ success: true, message: "OTP Verified! Order marked as Delivered.", order: updatedOrder });
+      } else {
+        return res.status(400).json({ error: "Incorrect OTP code! Please double-check with the customer." });
+      }
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Server discrepancy during OTP confirmation check." });
     }
   });
 

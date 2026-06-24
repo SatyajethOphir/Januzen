@@ -11,6 +11,8 @@ export default function DeliveryHubView() {
   const [updatingId, setUpdatingId] = React.useState<string | null>(null);
   const [statusMessage, setStatusMessage] = React.useState("");
   const [selectedDriverName, setSelectedDriverName] = React.useState("Suresh Kumar");
+  const [otpInputs, setOtpInputs] = React.useState<Record<string, string>>({});
+  const [otpErrors, setOtpErrors] = React.useState<Record<string, string>>({});
 
   // Delivery riders database
   const deliveryTeam = [
@@ -89,6 +91,37 @@ export default function DeliveryHubView() {
       }
     } catch (err) {
       console.error(err);
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const handleVerifyOtp = async (orderId: string) => {
+    const code = otpInputs[orderId];
+    if (!code) return;
+    setUpdatingId(orderId);
+    setOtpErrors(prev => ({ ...prev, [orderId]: "" }));
+    try {
+      const res = await fetch(`/api/orders/${orderId}/verify-otp`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ otp: code })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setStatusMessage(`OTP confirmed successfully! Order marked as DELIVERED.`);
+        // clear input
+        setOtpInputs(prev => ({ ...prev, [orderId]: "" }));
+        loadAllOrders(true);
+        setTimeout(() => setStatusMessage(""), 5000);
+      } else {
+        setOtpErrors(prev => ({ ...prev, [orderId]: data.error || "Incorrect OTP." }));
+      }
+    } catch (err) {
+      console.error(err);
+      setOtpErrors(prev => ({ ...prev, [orderId]: "Failed to contact authorization servers." }));
     } finally {
       setUpdatingId(null);
     }
@@ -255,10 +288,21 @@ export default function DeliveryHubView() {
                       {/* Package Shipping Address */}
                       <div className="space-y-1 text-xs">
                         <span className="text-[9px] uppercase tracking-wider text-slate-400 block font-mono font-bold">DELIVERY ADDRESS</span>
-                        <p className="text-gray-700 font-medium italic flex items-start gap-1">
+                        <div className="text-gray-700 font-medium italic flex items-start gap-1">
                           <MapPin className="h-3.5 w-3.5 mt-0.5 text-red-500 shrink-0" />
-                          {order.shippingAddress || "Gajularamaram, Hyderabad, Telangana, India"}
-                        </p>
+                          <div>
+                            {typeof order.shippingAddress === "object" && order.shippingAddress !== null ? (
+                              <>
+                                <p className="font-bold text-gray-900">{order.shippingAddress.fullName || order.userName}</p>
+                                <p>{order.shippingAddress.addressLine}</p>
+                                <p>{order.shippingAddress.city}, {order.shippingAddress.postalCode}</p>
+                                <p className="text-[11px] font-sans text-indigo-600 font-bold mt-0.5">📞 {order.shippingAddress.phone}</p>
+                              </>
+                            ) : (
+                              <p>{String(order.shippingAddress || "Gajularamaram, Hyderabad, Telangana, India")}</p>
+                            )}
+                          </div>
+                        </div>
                       </div>
 
                       {/* Package Item Summary */}
@@ -279,6 +323,36 @@ export default function DeliveryHubView() {
                         <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">NET INVOICED REVENUE</span>
                         <span className="font-mono text-base font-black text-emerald-700">₹{(order.totals?.total || 0).toFixed(2)}</span>
                       </div>
+
+                      {order.status.toLowerCase() !== "delivered" && order.status.toLowerCase() !== "cancelled" && (
+                        <div className="mt-4 p-3 bg-indigo-50 border border-indigo-155 rounded-xl space-y-2">
+                          <p className="text-[10px] text-indigo-800 font-mono font-black uppercase tracking-wider flex items-center gap-1">
+                            <ShieldCheck className="h-3.5 w-3.5 text-indigo-600" />
+                            CUSTOMER HANDOVER OTP VERIFICATION
+                          </p>
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              maxLength={6}
+                              placeholder="Enter Customer OTP"
+                              className="bg-white border border-gray-300 rounded-lg px-3 py-1 text-xs font-mono font-bold tracking-widest text-center flex-grow focus:outline-indigo-500 focus:border-indigo-500"
+                              value={otpInputs[order.id] || ""}
+                              onChange={(e) => setOtpInputs(prev => ({ ...prev, [order.id]: e.target.value }))}
+                            />
+                            <button
+                              onClick={() => handleVerifyOtp(order.id)}
+                              disabled={isUpdating || !otpInputs[order.id]}
+                              style={{ cursor: "pointer" }}
+                              className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white font-mono font-bold uppercase text-[10px] rounded-lg tracking-wider transition-all shadow-xs shrink-0"
+                            >
+                              Verify & Deliver
+                            </button>
+                          </div>
+                          {otpErrors[order.id] && (
+                            <p className="text-[10px] text-red-650 font-mono font-bold">{otpErrors[order.id]}</p>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {/* Status Mutation Action Buttons */}

@@ -1,12 +1,13 @@
 import React from "react";
 import { safeLocalStorage as localStorage, safeSessionStorage as sessionStorage } from "../utils/storage";
 import { ChevronLeft, ShoppingBag, Truck, ShieldCheck, Heart, Share2, Plus, Minus, Tag, Star, Check } from "lucide-react";
-import { Product } from "../types";
+import { Product, ProductOption } from "../types";
+import { getProductOptions } from "../utils/productOptions";
 
 interface ProductDetailViewProps {
   productId: string;
   onNavigate: (view: string, params?: Record<string, any>) => void;
-  onAddToBag: (product: Product, quantity?: number) => void;
+  onAddToBag: (product: Product, quantity?: number, selectedOption?: ProductOption) => void;
   wishlistProductIds?: string[];
   onToggleWishlist?: (productId: string, productType: 'medicals' | 'stationery') => void;
 }
@@ -23,6 +24,7 @@ export default function ProductDetailView({
   const [loading, setLoading] = React.useState(true);
   const [quantity, setQuantity] = React.useState(1);
   const [copied, setCopied] = React.useState(false);
+  const [selectedOption, setSelectedOption] = React.useState<ProductOption | null>(null);
   const [activeTab, setActiveTab] = React.useState<"overview" | "specs" | "reviews">("overview");
 
   const [reviews, setReviews] = React.useState<any[]>([]);
@@ -98,6 +100,8 @@ export default function ProductDetailView({
     }
   };
 
+  const options = product ? getProductOptions(product) : [];
+
   React.useEffect(() => {
     async function loadProduct() {
       setLoading(true);
@@ -107,6 +111,13 @@ export default function ProductDetailView({
           const prodData = await res.json();
           setProduct(prodData);
           setQuantity(1);
+          
+          const opts = getProductOptions(prodData);
+          if (opts.length > 0) {
+            setSelectedOption(opts[1] || opts[0]);
+          } else {
+            setSelectedOption(null);
+          }
 
           // After getting product, fetch related ones in the same shop and category
           const relRes = await fetch(`/api/products?shop=${prodData.shop}&category=${prodData.category}`);
@@ -200,7 +211,9 @@ export default function ProductDetailView({
             
             {/* Price section and active Stock badge */}
             <div className="flex items-center gap-4 py-2 border-y border-gray-100">
-              <span className="font-mono text-2xl font-black text-slate-900">₹{product.price.toFixed(2)}</span>
+              <span className="font-mono text-2xl font-black text-slate-900">
+                ₹{((selectedOption ? selectedOption.price : product.price) * quantity).toFixed(2)}
+              </span>
               {isOutOfStock ? (
                 <span className="bg-red-50 text-red-800 border border-red-200 text-xs font-bold px-3 py-1 rounded-full">
                   Currently Out of Stock
@@ -217,6 +230,39 @@ export default function ProductDetailView({
             </div>
 
             <p className="text-gray-600 text-sm leading-relaxed">{product.description}</p>
+
+            {/* Unit/Option Selection */}
+            {options.length > 0 && (
+              <div className="space-y-2.5 pb-2">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold block">
+                  Select Unit / Packaging Option:
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {options.map((opt) => {
+                    const isSelected = selectedOption?.name === opt.name;
+                    return (
+                      <button
+                        key={opt.name}
+                        type="button"
+                        onClick={() => setSelectedOption(opt)}
+                        className={`text-left p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
+                          isSelected
+                            ? "bg-slate-50 border-slate-950 ring-2 ring-slate-950/10 shadow-sm"
+                            : "bg-white border-gray-200 hover:border-gray-300"
+                        }`}
+                      >
+                        <span className="font-sans text-xs font-bold text-slate-900 leading-snug">
+                          {opt.name}
+                        </span>
+                        <span className="font-mono text-sm font-black text-[#0D1B2A] mt-1">
+                          ₹{opt.price.toFixed(2)}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Tags and Metadata badges */}
             <div className="flex flex-wrap gap-2 pt-2">
@@ -253,7 +299,7 @@ export default function ProductDetailView({
                   </div>
 
                   <button
-                    onClick={() => onAddToBag(product, quantity)}
+                    onClick={() => onAddToBag(product, quantity, selectedOption || undefined)}
                     className={`flex-1 text-white text-sm font-bold tracking-wide py-3 px-6 rounded-lg shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer ${btnColor}`}
                   >
                     <ShoppingBag className="h-4 w-4" />

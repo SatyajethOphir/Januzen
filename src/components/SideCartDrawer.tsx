@@ -7,8 +7,8 @@ interface SideCartDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   cartItems: CartItem[];
-  onUpdateQty: (productId: string, quantity: number) => void;
-  onRemoveItem: (productId: string) => void;
+  onUpdateQty: (productId: string, quantity: number, optionName?: string) => void;
+  onRemoveItem: (productId: string, optionName?: string) => void;
   onNavigate: (view: string, params?: Record<string, any>) => void;
 }
 
@@ -25,7 +25,7 @@ export default function SideCartDrawer({
   const itemsRef = useRef<HTMLDivElement>(null);
   const emptyRef = useRef<HTMLDivElement>(null);
 
-  const subtotal = cartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  const subtotal = cartItems.reduce((sum, item) => sum + (item.selectedOption ? item.selectedOption.price : item.product.price) * item.quantity, 0);
   const tax = Math.round((subtotal * 0.05) * 100) / 100;
   const shipping = subtotal >= 1000 || subtotal === 0 ? 0 : 150;
   const total = Math.round((subtotal + tax + shipping) * 100) / 100;
@@ -158,10 +158,11 @@ export default function SideCartDrawer({
                 const p = item.product;
                 const isMed = p.shop === "medicals";
                 const badgeColor = isMed ? "text-teal-600 bg-teal-50 border-teal-100" : "text-amber-600 bg-amber-50 border-amber-100";
+                const itemPrice = item.selectedOption ? item.selectedOption.price : p.price;
 
                 return (
                   <div 
-                    key={p.id}
+                    key={`${p.id}-${item.selectedOption?.name || "default"}`}
                     className="cart-drawer-item bg-white border border-gray-150 rounded-xl p-3 flex gap-3 shadow-sm hover:shadow-md hover:border-gray-300 transition-all duration-200 transform scale-100 hover:scale-[1.01]"
                   >
                     {/* Thumbnail representation */}
@@ -184,7 +185,7 @@ export default function SideCartDrawer({
                             {isMed ? "Nuthan Medicals" : "JA Stationery"}
                           </span>
                           <button
-                            onClick={() => onRemoveItem(p.id)}
+                            onClick={() => onRemoveItem(p.id, item.selectedOption?.name)}
                             className="text-gray-400 hover:text-red-500 p-0.5 rounded transition-all hover:bg-red-50/80 cursor-pointer transform hover:scale-110 active:scale-90"
                             title="Remove supplies"
                           >
@@ -200,13 +201,18 @@ export default function SideCartDrawer({
                         >
                           {p.name}
                         </h4>
+                        {item.selectedOption && (
+                          <span className="text-[10px] text-teal-700 bg-teal-50/80 px-1.5 py-0.5 rounded border border-teal-150 font-sans mt-1 inline-block font-bold">
+                            Unit: {item.selectedOption.name}
+                          </span>
+                        )}
                       </div>
 
                       {/* Stepper inputs & prices */}
                       <div className="flex justify-between items-center mt-2 pt-1 border-t border-gray-50">
                         <div className="flex items-center gap-2 border border-gray-200 bg-slate-50/55 rounded-md px-1.5 py-0.5">
                           <button
-                            onClick={() => onUpdateQty(p.id, item.quantity - 1)}
+                            onClick={() => onUpdateQty(p.id, item.quantity - 1, item.selectedOption?.name)}
                             disabled={item.quantity <= 1}
                             className="text-gray-400 hover:text-black hover:bg-gray-200 rounded p-0.5 disabled:opacity-40 cursor-pointer transform active:scale-90 transition-transform"
                           >
@@ -214,7 +220,7 @@ export default function SideCartDrawer({
                           </button>
                           <span className="font-mono text-xs font-bold text-slate-800 px-1 min-w-[12px] text-center">{item.quantity}</span>
                           <button
-                            onClick={() => onUpdateQty(p.id, item.quantity + 1)}
+                            onClick={() => onUpdateQty(p.id, item.quantity + 1, item.selectedOption?.name)}
                             disabled={item.quantity >= p.stock}
                             className="text-gray-400 hover:text-black hover:bg-gray-200 rounded p-0.5 disabled:opacity-40 cursor-pointer transform active:scale-90 transition-transform"
                           >
@@ -222,7 +228,7 @@ export default function SideCartDrawer({
                           </button>
                         </div>
                         <span className="font-mono text-xs font-extrabold text-slate-900">
-                          ₹{(p.price * item.quantity).toFixed(2)}
+                          ₹{(itemPrice * item.quantity).toFixed(2)}
                         </span>
                       </div>
                     </div>

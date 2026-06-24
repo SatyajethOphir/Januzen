@@ -95,41 +95,51 @@ export default function OrdersHistoryView({ onNavigate, currentUser }: OrdersHis
   };
 
   const getStatusStyle = (status: string) => {
-    switch (status) {
-      case "Pending":
+    const s = String(status || "").toLowerCase();
+    switch (s) {
+      case "placed":
+      case "pending":
         return {
           bg: "bg-amber-50 text-amber-700 border-amber-200",
           icon: Clock,
           label: "In Preparation",
-          text: "We are currently packing and preparing your items at JANUZEN."
+          text: "Your order is confirmed! We are currently picking and packing your items at JANUZEN Hub."
         };
-      case "Dispatched":
+      case "dispatched":
         return {
           bg: "bg-sky-50 text-sky-700 border-sky-200",
           icon: Truck,
           label: "Dispatched",
-          text: "Out for delivery with the JANUZEN same-day dispatch fleet."
+          text: "Your package is now hand-sorted and dispatched to the courier terminal."
         };
-      case "Delivered":
+      case "out_for_delivery":
+      case "outfordelivery":
+        return {
+          bg: "bg-indigo-50 text-indigo-700 border-indigo-200",
+          icon: Truck,
+          label: "Out For Delivery",
+          text: "Active in-transit: A JANUZEN courier representative is carrying your parcel and heading towards your destination now."
+        };
+      case "delivered":
         return {
           bg: "bg-emerald-50 text-emerald-700 border-emerald-200",
           icon: CheckCircle,
           label: "Delivered",
-          text: "Successfully delivered. Thank you for your support!"
+          text: "Fulfillment complete: Package successfully handed over. Thank you for choosing JANUZEN!"
         };
-      case "Cancelled":
+      case "cancelled":
         return {
           bg: "bg-red-50 text-red-700 border-red-200",
           icon: AlertTriangle,
           label: "Cancelled",
-          text: "This transaction was cancelled by administration or customer."
+          text: "This transaction has been cancelled by administration or customer request."
         };
       default:
         return {
           bg: "bg-gray-50 text-gray-700 border-gray-200",
           icon: Clock,
           label: "Processing",
-          text: ""
+          text: "Preparing your shipment."
         };
     }
   };
@@ -300,6 +310,83 @@ export default function OrdersHistoryView({ onNavigate, currentUser }: OrdersHis
                       <p className="text-xs text-gray-600 leading-normal">
                         {statusConfig.text}
                       </p>
+                      {order.deliveryOTP && order.status !== "delivered" && order.status !== "Delivered" && order.status !== "Cancelled" && (
+                        <div className="mt-3 p-3 bg-teal-50 border border-teal-200 rounded-lg flex items-center justify-between">
+                          <div>
+                            <p className="text-[10px] text-teal-800 uppercase font-mono font-black tracking-wider">🔑 Delivery Handover OTP</p>
+                            <p className="text-xs text-teal-600 font-medium leading-normal mt-0.5">Give this secure code to your delivery agent to confirm receipt.</p>
+                          </div>
+                          <span className="font-mono text-xl font-black text-teal-950 tracking-wider bg-white px-3 py-1 rounded border border-teal-200 shadow-sm ml-2">{order.deliveryOTP}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Visual Progress Stepper Tracker */}
+                    <div className="bg-slate-50 rounded-lg p-5 border border-gray-150/70 space-y-4 mt-4">
+                      <p className="text-[10px] uppercase font-bold text-[#0D1B2A] tracking-wider font-mono">📦 Shipment Transit Milestones</p>
+                      
+                      <div className="relative flex justify-between items-center w-full mt-4 px-2">
+                        {/* Connecting Line */}
+                        <div className="absolute left-4 right-4 top-1/2 -translate-y-1/2 h-1 bg-gray-200 -z-0 rounded"></div>
+                        <div 
+                          className="absolute left-4 top-1/2 -translate-y-1/2 h-1 bg-indigo-600 transition-all duration-500 rounded -z-0"
+                          style={{
+                            width: 
+                              order.status.toLowerCase() === "placed" ? "10%" :
+                              order.status.toLowerCase() === "dispatched" ? "45%" :
+                              order.status.toLowerCase() === "out_for_delivery" ? "80%" :
+                              order.status.toLowerCase() === "delivered" ? "95%" : "0%"
+                          }}
+                        ></div>
+
+                        {/* Milestone 1: Placed */}
+                        <div className="flex flex-col items-center relative z-10">
+                          <div className={`h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs transition-colors duration-300 ${
+                            ["placed", "dispatched", "out_for_delivery", "delivered"].includes(order.status.toLowerCase())
+                              ? "bg-indigo-600 text-white shadow-md shadow-indigo-200 border-2 border-indigo-600"
+                              : "bg-white border-2 border-gray-250 text-gray-400"
+                          }`}>
+                            1
+                          </div>
+                          <span className="text-[9px] font-mono font-extrabold mt-1.5 uppercase text-gray-700 tracking-wider">Placed</span>
+                        </div>
+
+                        {/* Milestone 2: Dispatched */}
+                        <div className="flex flex-col items-center relative z-10">
+                          <div className={`h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs transition-colors duration-300 ${
+                            ["dispatched", "out_for_delivery", "delivered"].includes(order.status.toLowerCase())
+                              ? "bg-indigo-600 text-white shadow-md shadow-indigo-200 border-2 border-indigo-600"
+                              : "bg-white border-2 border-gray-250 text-gray-400"
+                          }`}>
+                            2
+                          </div>
+                          <span className="text-[9px] font-mono font-extrabold mt-1.5 uppercase text-gray-700 tracking-wider">Dispatched</span>
+                        </div>
+
+                        {/* Milestone 3: Out For Delivery */}
+                        <div className="flex flex-col items-center relative z-10">
+                          <div className={`h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs transition-colors duration-300 ${
+                            ["out_for_delivery", "delivered"].includes(order.status.toLowerCase())
+                              ? "bg-indigo-600 text-white shadow-md shadow-indigo-200 border-2 border-indigo-600"
+                              : "bg-white border-2 border-gray-250 text-gray-400"
+                          }`}>
+                            3
+                          </div>
+                          <span className="text-[9px] font-mono font-extrabold mt-1.5 uppercase text-gray-700 tracking-wider">In Transit</span>
+                        </div>
+
+                        {/* Milestone 4: Delivered */}
+                        <div className="flex flex-col items-center relative z-10">
+                          <div className={`h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs transition-colors duration-300 ${
+                            order.status.toLowerCase() === "delivered"
+                              ? "bg-emerald-600 text-white shadow-md shadow-emerald-200 border-2 border-emerald-600"
+                              : "bg-white border-2 border-gray-250 text-gray-400"
+                          }`}>
+                            ✓
+                          </div>
+                          <span className="text-[9px] font-mono font-extrabold mt-1.5 uppercase text-gray-700 tracking-wider">Delivered</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
 

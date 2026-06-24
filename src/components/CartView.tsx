@@ -1,22 +1,23 @@
 import React from "react";
 import { Trash2, ShoppingBag, Plus, Minus, ArrowRight, ArrowLeft } from "lucide-react";
-import { Product } from "../types";
+import { Product, ProductOption } from "../types";
 
 export interface CartItem {
   product: Product;
   quantity: number;
+  selectedOption?: ProductOption;
 }
 
 interface CartViewProps {
   cartItems: CartItem[];
-  onUpdateQty: (productId: string, quantity: number) => void;
-  onRemoveItem: (productId: string) => void;
+  onUpdateQty: (productId: string, quantity: number, optionName?: string) => void;
+  onRemoveItem: (productId: string, optionName?: string) => void;
   onNavigate: (view: string, params?: Record<string, any>) => void;
 }
 
 export default function CartView({ cartItems, onUpdateQty, onRemoveItem, onNavigate }: CartViewProps) {
   
-  const subtotal = cartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  const subtotal = cartItems.reduce((sum, item) => sum + (item.selectedOption ? item.selectedOption.price : item.product.price) * item.quantity, 0);
   const tax = Math.round((subtotal * 0.05) * 100) / 100; // 5% GST scale in India
   const shipping = subtotal >= 1000 || subtotal === 0 ? 0 : 150; // Free shipping above ₹1000, else ₹150
   const total = Math.round((subtotal + tax + shipping) * 100) / 100; // Standard rounding
@@ -62,11 +63,12 @@ export default function CartView({ cartItems, onUpdateQty, onRemoveItem, onNavig
               <div className="divide-y divide-gray-100">
                 {cartItems.map((item) => {
                   const p = item.product;
-                  const itemSub = p.price * item.quantity;
+                  const itemPrice = item.selectedOption ? item.selectedOption.price : p.price;
+                  const itemSub = itemPrice * item.quantity;
                   const itemColor = p.shop === "medicals" ? "text-teal-600 font-bold" : "text-amber-600 font-bold";
 
                   return (
-                    <div key={p.id} className="grid grid-cols-1 sm:grid-cols-12 gap-4 px-6 py-5 items-center">
+                    <div key={`${p.id}-${item.selectedOption?.name || "default"}`} className="grid grid-cols-1 sm:grid-cols-12 gap-4 px-6 py-5 items-center">
                       
                       {/* Product details thumbnail & info */}
                       <div className="col-span-1 sm:col-span-6 flex gap-4">
@@ -86,9 +88,14 @@ export default function CartView({ cartItems, onUpdateQty, onRemoveItem, onNavig
                           >
                             {p.name}
                           </h4>
+                          {item.selectedOption && (
+                            <p className="text-[11px] text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-100 font-sans mt-1 inline-block font-semibold">
+                              Unit: {item.selectedOption.name}
+                            </p>
+                          )}
                           <button
-                            onClick={() => onRemoveItem(p.id)}
-                            className="text-[11px] text-gray-400 hover:text-red-500 transition-colors flex items-center gap-1 mt-1 cursor-pointer font-medium"
+                            onClick={() => onRemoveItem(p.id, item.selectedOption?.name)}
+                            className="text-[11px] text-gray-400 hover:text-red-500 transition-colors flex items-center gap-1 mt-1.5 cursor-pointer font-medium"
                           >
                             <Trash2 className="h-3 w-3" />
                             Remove item
@@ -99,7 +106,7 @@ export default function CartView({ cartItems, onUpdateQty, onRemoveItem, onNavig
                       {/* Unit pricing detail */}
                       <div className="col-span-1 sm:col-span-2 text-center sm:block flex justify-between items-center bg-slate-50/50 sm:bg-transparent p-2 sm:p-0 rounded">
                         <span className="sm:hidden text-xs text-gray-400 uppercase font-mono">Price:</span>
-                        <span className="font-mono text-sm font-bold text-gray-700">₹{p.price.toFixed(2)}</span>
+                        <span className="font-mono text-sm font-bold text-gray-700">₹{itemPrice.toFixed(2)}</span>
                       </div>
 
                       {/* Quantity stepper controller */}
@@ -107,7 +114,7 @@ export default function CartView({ cartItems, onUpdateQty, onRemoveItem, onNavig
                         <span className="sm:hidden text-xs text-gray-400 uppercase font-mono">Qty:</span>
                         <div className="flex items-center gap-2 border border-gray-250 bg-white rounded-lg px-2 py-1">
                           <button
-                            onClick={() => onUpdateQty(p.id, item.quantity - 1)}
+                            onClick={() => onUpdateQty(p.id, item.quantity - 1, item.selectedOption?.name)}
                             disabled={item.quantity <= 1}
                             className="text-gray-400 hover:text-black hover:bg-slate-100 rounded p-0.5 disabled:opacity-40 cursor-pointer"
                           >
@@ -115,7 +122,7 @@ export default function CartView({ cartItems, onUpdateQty, onRemoveItem, onNavig
                           </button>
                           <span className="font-mono text-xs font-bold text-slate-800 px-1">{item.quantity}</span>
                           <button
-                            onClick={() => onUpdateQty(p.id, item.quantity + 1)}
+                            onClick={() => onUpdateQty(p.id, item.quantity + 1, item.selectedOption?.name)}
                             disabled={item.quantity >= p.stock}
                             className="text-gray-400 hover:text-black hover:bg-slate-100 rounded p-0.5 disabled:opacity-40 cursor-pointer"
                           >

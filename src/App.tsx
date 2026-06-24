@@ -2,7 +2,7 @@ import React, { Suspense } from "react";
 import { gsap } from "gsap";
 import { safeLocalStorage as localStorage, safeSessionStorage as sessionStorage } from "./utils/storage";
 import Navbar from "./components/Navbar";
-import { Product, User } from "./types";
+import { Product, User, ProductOption } from "./types";
 import type { CartItem } from "./components/CartView";
 import OfficialLoader from "./components/OfficialLoader";
 
@@ -341,14 +341,14 @@ export default function App() {
   };
 
   // --- CART MANAGEMENT ---
-  const handleAddToBag = (product: Product, qty: number = 1) => {
+  const handleAddToBag = (product: Product, qty: number = 1, selectedOption?: ProductOption) => {
     if (product.stock === 0) {
       showToastMsg("⚠️ Item is currently out of stock!");
       return;
     }
 
     setCart((prev) => {
-      const index = prev.findIndex((item) => item.product.id === product.id);
+      const index = prev.findIndex((item) => item.product.id === product.id && item.selectedOption?.name === selectedOption?.name);
       if (index > -1) {
         const currentQty = prev[index].quantity;
         const newQty = Math.min(currentQty + qty, product.stock);
@@ -363,16 +363,16 @@ export default function App() {
         return updated;
       } else {
         showToastMsg(`Added to bag: ${product.name}!`);
-        return [...prev, { product, quantity: qty }];
+        return [...prev, { product, quantity: qty, selectedOption }];
       }
     });
     setSideCartOpen(true);
   };
 
-  const handleUpdateCartQty = (productId: string, quantity: number) => {
+  const handleUpdateCartQty = (productId: string, quantity: number, optionName?: string) => {
     setCart((prev) => {
       return prev.map((item) => {
-        if (item.product.id === productId) {
+        if (item.product.id === productId && (!optionName || item.selectedOption?.name === optionName)) {
           const clamped = Math.max(1, Math.min(quantity, item.product.stock));
           return { ...item, quantity: clamped };
         }
@@ -381,9 +381,9 @@ export default function App() {
     });
   };
 
-  const handleRemoveCartItem = (productId: string) => {
+  const handleRemoveCartItem = (productId: string, optionName?: string) => {
     setCart((prev) => {
-      const filtered = prev.filter((item) => item.product.id !== productId);
+      const filtered = prev.filter((item) => !(item.product.id === productId && (!optionName || item.selectedOption?.name === optionName)));
       showToastMsg("Removed item from shopping bag.");
       return filtered;
     });

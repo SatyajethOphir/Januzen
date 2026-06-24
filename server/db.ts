@@ -338,6 +338,7 @@ const OrderSchema = new Schema({
   items: { type: Schema.Types.Mixed, required: true },
   shippingAddress: { type: Schema.Types.Mixed, required: true },
   totals: { type: Schema.Types.Mixed, required: true },
+  deliveryOTP: { type: String },
   status: {
     type: String,
     enum: ["Pending", "Dispatched", "Delivered", "Cancelled", "placed", "confirmed", "processing", "dispatched", "out_for_delivery", "delivered", "cancelled", "returned"],

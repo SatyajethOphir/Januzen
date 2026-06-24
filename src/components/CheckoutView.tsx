@@ -75,7 +75,7 @@ export default function CheckoutView({ cartItems, currentUser, onNavigate, onCle
   }, []);
 
   // Sum calculations
-  const subtotal = cartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  const subtotal = cartItems.reduce((sum, item) => sum + (item.selectedOption ? item.selectedOption.price : item.product.price) * item.quantity, 0);
   const calculatedShipping = deliveryDistanceKms * shippingCostPerKm;
   const shipping = subtotal >= 1000 || subtotal === 0 ? 0 : calculatedShipping;
   const postDiscountSubtotal = Math.max(0, subtotal - discountAmount);
@@ -186,7 +186,8 @@ export default function CheckoutView({ cartItems, currentUser, onNavigate, onCle
 
     const orderedItems = cartItems.map(item => ({
       productId: item.product.id,
-      quantity: item.quantity
+      quantity: item.quantity,
+      selectedOption: item.selectedOption
     }));
 
     try {

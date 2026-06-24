@@ -36,16 +36,6 @@ export default function AboutView() {
       desc: "Founded by Vinuthan Reddy Kongara, launching Nuthan Medicals on June 6th to deliver critical clinical diagnostics and pharmaceutical care."
     },
     {
-      year: "2012",
-      title: "Establishment of Gajularamaram Joint Hub",
-      desc: "Consolidated brick-and-mortar operations into our primary Dwaraka Nagar Gajularamaram facility to centralize regional stock pipelines."
-    },
-    {
-      year: "2018",
-      title: "Transition to Januzen Global LLP",
-      desc: "Formally registered as an LLP consortium to support bulk corporate supply chains and certified diagnostics licenses seamlessly."
-    },
-    {
       year: "2024",
       title: "Inception of JA Stationery",
       desc: "Launching JA Stationery on September 10th, 2024 under the trusted Januzen umbrella to offer premium leather diaries and archival desk essentials."

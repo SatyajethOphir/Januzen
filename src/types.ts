@@ -10,6 +10,11 @@ export interface User {
   securityAnswer?: string;
 }
 
+export interface ProductOption {
+  name: string;
+  price: number;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -25,6 +30,7 @@ export interface Product {
   tags: string[];
   featured: boolean;
   isActive: boolean;
+  options?: ProductOption[];
 }
 
 export interface OrderItem {
@@ -34,6 +40,7 @@ export interface OrderItem {
   quantity: number;
   image: string;
   shop: 'medicals' | 'stationery';
+  selectedOption?: ProductOption;
 }
 
 export interface ShippingAddress {
@@ -71,6 +78,7 @@ export interface Order {
   paymentMethod: string;
   createdAt: string;
   hasStatusOverflow?: boolean;
+  deliveryOTP?: string;
 }
 
 export interface WishlistItem {
