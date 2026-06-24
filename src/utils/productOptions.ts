@@ -15,7 +15,7 @@ export function getProductOptions(product: Product): ProductOption[] {
       const unitSingular = isTablet ? "tablet" : "capsule";
       const unitPlural = isTablet ? "tablets" : "capsules";
       return [
-        { name: `3 ${unitPlural} (Pieces)`, price: Math.round((product.price * 0.3) * 100) / 100 },
+        { name: `Loose Pieces (Individual ${unitSingular})`, price: Math.round((product.price / 10) * 100) / 100 },
         { name: `Whole Sheet (10 ${unitPlural})`, price: product.price }
       ];
     } else {
@@ -30,13 +30,14 @@ export function getProductOptions(product: Product): ProductOption[] {
     const nameLower = product.name.toLowerCase();
     if (nameLower.includes("pencil")) {
       return [
-        { name: "4 Pencils (Pieces)", price: Math.round((product.price * 0.35) * 100) / 100 },
+        { name: "Loose Pieces (Individual Pencil)", price: Math.round((product.price / 12) * 100) / 100 },
         { name: "Box of 12 Pencils (Whole Set)", price: product.price }
       ];
     } else if (nameLower.includes("pen") || nameLower.includes("marker")) {
+      const unitLabel = nameLower.includes("pen") ? "Pen" : "Marker";
       return [
-        { name: "2 Pens (Pieces)", price: Math.round((product.price * 0.4) * 100) / 100 },
-        { name: "Box of 10 Pens (Whole Set)", price: product.price }
+        { name: `Loose Pieces (Individual ${unitLabel})`, price: Math.round((product.price / 10) * 100) / 100 },
+        { name: `Box of 10 ${unitLabel}s (Whole Set)`, price: product.price }
       ];
     } else {
       return [
@@ -46,3 +47,4 @@ export function getProductOptions(product: Product): ProductOption[] {
     }
   }
 }
+
