@@ -606,7 +606,9 @@ export default function App() {
             />
           )}
 
-          {nav.page === "delivery" && <DeliveryHubView />}
+          {nav.page === "delivery" && (
+            <DeliveryHubView currentUser={currentUser} onNavigate={handleNavigate} />
+          )}
         </Suspense>
       </main>
 

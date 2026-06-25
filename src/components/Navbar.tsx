@@ -130,7 +130,7 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
     { label: "JA Stationery", view: "stationery" },
     { label: "About", view: "about" },
     { label: "Contact", view: "contact" },
-    { label: "Delivery Portal", view: "delivery" },
+    ...(currentUser?.role === "admin" ? [{ label: "Delivery Portal", view: "delivery" }] : []),
   ];
 
   return (

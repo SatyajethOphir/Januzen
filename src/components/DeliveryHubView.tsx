@@ -1,11 +1,49 @@
 import React from "react";
 import { safeLocalStorage as localStorage, safeSessionStorage as sessionStorage } from "../utils/storage";
 import { 
-  Truck, Phone, ShieldCheck, MapPin, Loader2, RefreshCw, CheckCircle2, Navigation, User
+  Truck, Phone, ShieldCheck, MapPin, Loader2, RefreshCw, CheckCircle2, Navigation, User,
+  ShieldAlert, LogIn, ArrowLeft
 } from "lucide-react";
 import { Order } from "../types";
 
-export default function DeliveryHubView() {
+interface DeliveryHubViewProps {
+  currentUser?: any;
+  onNavigate?: (view: string, params?: Record<string, any>) => void;
+}
+
+export default function DeliveryHubView({ currentUser, onNavigate }: DeliveryHubViewProps) {
+  if (!currentUser || currentUser.role !== "admin") {
+    return (
+      <div className="max-w-md mx-auto my-16 bg-white border border-gray-150 p-8 rounded-xl text-center space-y-5 shadow-sm">
+        <div className="mx-auto w-12 h-12 bg-rose-50 rounded-full flex items-center justify-center">
+          <ShieldAlert className="h-6 w-6 text-rose-600" />
+        </div>
+        <h3 className="font-serif text-xl font-bold text-slate-950">Administrative Authorization Needed</h3>
+        <p className="text-sm text-slate-600 leading-relaxed">
+          The delivery tracking and dispatch portal is restricted strictly to active administrators and authenticated logistics handlers of JANUZEN Global LLP.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-2 pt-2 justify-center">
+          {onNavigate && (
+            <button
+              onClick={() => onNavigate("home")}
+              className="flex items-center justify-center gap-2 border border-slate-200 text-slate-700 hover:bg-slate-50 px-4 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all cursor-pointer"
+            >
+              <ArrowLeft className="h-4 w-4" /> Go Back Home
+            </button>
+          )}
+          {onNavigate && !currentUser && (
+            <button
+              onClick={() => onNavigate("login", { redirectAfter: "delivery" })}
+              className="flex items-center justify-center gap-2 bg-[#0F9B8E] hover:bg-[#0C7C72] text-white px-4 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all cursor-pointer"
+            >
+              <LogIn className="h-4 w-4" /> Portal Access
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   const [orders, setOrders] = React.useState<Order[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [updatingId, setUpdatingId] = React.useState<string | null>(null);
