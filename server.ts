@@ -9,6 +9,9 @@ import multer from "multer";
 import fs from "fs";
 import { Product, User, Order, Message } from "./src/types";
 import { dbClient, connectAndSeedDB, isMongo } from "./server/db";
+import sitemapRouter from "./server/routes/sitemap";
+import { generateInvoice } from "./server/invoice";
+import { sendInvoiceEmail } from "./server/mailer";
 
 const PORT = 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "JANUZEN_JWT_SECRET_KEY";
@@ -63,6 +66,18 @@ const filterMulter = multer({
 
 async function startServer() {
   const app = express();
+
+  // Force HTTPS in production
+  app.use((req, res, next) => {
+    if (process.env.NODE_ENV === "production" && req.headers["x-forwarded-proto"] !== "https") {
+      return res.redirect(301, "https://" + req.headers.host + req.url);
+    }
+    next();
+  });
+
+  // Sitemap routing
+  app.use("/", sitemapRouter);
+
   app.use(express.json({ limit: "10mb" }));
   app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
@@ -625,16 +640,87 @@ async function startServer() {
 
       await dbClient.createOrder(newOrder);
 
+      // Generate and email invoice — wrapped in try/catch so invoice
+      // failure never blocks the order confirmation response
+      try {
+        const invoiceBuffer = await generateInvoice(newOrder);
+        await sendInvoiceEmail(newOrder, invoiceBuffer);
+      } catch (invoiceErr) {
+        console.error("[INVOICE] Failed to generate/send invoice:", invoiceErr);
+        // Do NOT re-throw — order is already placed, don't fail the response
+      }
+
       // Nodemailer Simulator Console Logging
       console.log(`[EMAIL DISPATCH] TO: ${req.user.email} | SUBJECT: JANUZEN Order Confirmed | CONTENT: Rest easy, your purchase ${orderIdCode} has been placed. Deep thank you for supporting Nuthan Medicals & JA Stationery! Grand Total: ₹${total}`);
 
       res.status(201).json({
         message: "Order placed successfully!",
-        order: newOrder
+        order: newOrder,
+        shareLinks: {
+          whatsapp: `https://wa.me/?text=${encodeURIComponent(
+            `Hi! I just placed an order with JANUZEN Global LLP 🛍️\n\nOrder ID: ${orderIdCode}\nTotal: ₹${total}\n\nView products at: https://januzen.in`
+          )}`,
+          invoiceNote: "Invoice has been sent to your email address."
+        }
       });
     } catch (e) {
       console.error(e);
       res.status(500).json({ error: "Internal server error during order checkout." });
+    }
+  });
+
+  // Temporary Dev/Admin testing route for invoice PDF & mail dispatch
+  app.get("/api/dev/test-invoice-email", async (req, res) => {
+    try {
+      const dummyOrder: any = {
+        id: "o_test_" + Date.now(),
+        orderId: `JAN-TEST-${Math.floor(1000 + Math.random() * 9000)}`,
+        userId: "u_test",
+        userName: "JANUZEN QA Team",
+        userEmail: "team@januzen.in",
+        items: [
+          {
+            productId: "m1",
+            name: "Amoxicillin 500mg Capsules",
+            price: 450.00,
+            quantity: 2,
+            image: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=600&auto=format&fit=crop",
+            shop: "medicals"
+          },
+          {
+            productId: "s1",
+            name: "Premium Gel Pen Set",
+            price: 150.00,
+            quantity: 3,
+            image: "https://images.unsplash.com/photo-1583485088034-697b5bc54ccd?w=600&auto=format&fit=crop",
+            shop: "stationery"
+          }
+        ],
+        shippingAddress: "JANUZEN Corporate Testing Lab, Sector IV, Bangalore, Karnataka - 560001",
+        deliveryOTP: "1234",
+        totals: {
+          subtotal: 1350.00,
+          discount: 100.00,
+          shipping: 0,
+          tax: 62.50,
+          total: 1312.50
+        },
+        status: "placed",
+        paymentMethod: "Prepaid Test Gateway",
+        createdAt: new Date().toISOString()
+      };
+
+      const buffer = await generateInvoice(dummyOrder);
+      await sendInvoiceEmail(dummyOrder, buffer);
+
+      res.json({
+        success: true,
+        message: "Invoice generated and mock email successfully dispatched to team@januzen.in!",
+        orderId: dummyOrder.orderId
+      });
+    } catch (err: any) {
+      console.error("Test email failure:", err);
+      res.status(500).json({ error: err.message || "Failed to generate/dispatch test invoice email" });
     }
   });
 

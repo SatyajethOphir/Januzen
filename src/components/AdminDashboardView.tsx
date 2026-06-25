@@ -165,10 +165,10 @@ export default function AdminDashboardView() {
       setDraftSubmitProgress("Syncing final updated database parameters...");
       setDraftChanges([]);
       await fetchAllData(token || "");
-      alert("All pending changes have been successfully committed and published to the database!");
+      (window as any).showToast?.("All pending changes have been successfully committed and published to the database!", "success");
     } catch (err) {
       console.error(err);
-      alert("An error occurred while publishing some changes. Please refresh to synchronize current database state.");
+      (window as any).showToast?.("An error occurred while publishing some changes. Please refresh to synchronize current database state.", "error");
     } finally {
       setIsSubmittingDrafts(false);
       setDraftSubmitProgress("");
@@ -466,7 +466,7 @@ export default function AdminDashboardView() {
   const handleCreateCoupon = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCouponCode || !newCouponValue) {
-      alert("Please fill in both Code and Value fields.");
+      (window as any).showToast?.("Please fill in both Code and Value fields.", "error");
       return;
     }
     const code = newCouponCode.toUpperCase().trim();
@@ -525,7 +525,7 @@ export default function AdminDashboardView() {
   const handleBroadcastNotification = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!broadcastMatter) {
-      alert("Please specify the notification main matter.");
+      (window as any).showToast?.("Please specify the notification main matter.", "error");
       return;
     }
     setBroadcastStatus("dispatching");
@@ -547,14 +547,15 @@ export default function AdminDashboardView() {
         setBroadcastStatus("success");
         setTimeout(() => setBroadcastStatus(""), 4000);
         fetchAllData(token);
+        (window as any).showToast?.("Broadcast sent successfully to all registered customers!", "success");
       } else {
         const errData = await res.json();
-        alert(errData.error || "Failed to broadcast notifications.");
+        (window as any).showToast?.(errData.error || "Failed to broadcast notifications.", "error");
         setBroadcastStatus("failed");
       }
     } catch (err) {
       console.error(err);
-      alert("Network exception occurred sending notifications broadcast.");
+      (window as any).showToast?.("Network exception occurred sending notifications broadcast.", "error");
       setBroadcastStatus("failed");
     }
   };
@@ -581,12 +582,13 @@ export default function AdminDashboardView() {
         const data = await res.json();
         setRetentionSweepResult(data.purged);
         fetchAllData(token);
+        (window as any).showToast?.("Manual storage retention sweep completed successfully!", "success");
       } else {
-        alert("Manual storage retention sweep failed.");
+        (window as any).showToast?.("Manual storage retention sweep failed.", "error");
       }
     } catch (e) {
       console.error(e);
-      alert("Error triggering storage retention clean sweep.");
+      (window as any).showToast?.("Error triggering storage retention clean sweep.", "error");
     } finally {
       setIsRetentionLoading(false);
     }
@@ -603,13 +605,14 @@ export default function AdminDashboardView() {
       });
       if (res.ok) {
         setDryRunStats(await res.json());
+        (window as any).showToast?.("Cascade analysis simulation completed.", "success");
       } else {
-        alert("Cascade analysis failed. Associated entity may not exist.");
+        (window as any).showToast?.("Cascade analysis failed. Associated entity may not exist.", "error");
         setDryRunTarget(null);
       }
     } catch (e) {
       console.error(e);
-      alert("Error preparing dry-run simulation analysis.");
+      (window as any).showToast?.("Error preparing dry-run simulation analysis.", "error");
       setDryRunTarget(null);
     } finally {
       setDryRunLoading(false);
@@ -626,17 +629,17 @@ export default function AdminDashboardView() {
         headers: { "Authorization": `Bearer ${token}` }
       });
       if (res.ok) {
-        alert(`Cascade Purge Completed! Permanent record scrub for ${dryRunTarget.type} "${dryRunTarget.name}" is logged.`);
+        (window as any).showToast?.(`Cascade Purge Completed! Permanent record scrub for ${dryRunTarget.type} "${dryRunTarget.name}" is logged.`, "success");
         setDryRunTarget(null);
         setDryRunStats(null);
         fetchAllData(token);
       } else {
         const data = await res.json();
-        alert(data.error || "Failed to execute cascading purge.");
+        (window as any).showToast?.(data.error || "Failed to execute cascading purge.", "error");
       }
     } catch (e) {
       console.error(e);
-      alert(`Critical error executing cascading database purge.`);
+      (window as any).showToast?.(`Critical error executing cascading database purge.`, "error");
     } finally {
       setPurgeExecuting(false);
     }

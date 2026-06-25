@@ -32,7 +32,7 @@ export default function App() {
   const [cart, setCart] = React.useState<CartItem[]>([]);
   const [sideCartOpen, setSideCartOpen] = React.useState(false);
   const [featuredProducts, setFeaturedProducts] = React.useState<Product[]>([]);
-  const [toast, setToast] = React.useState<string | null>(null);
+  const [toasts, setToasts] = React.useState<Array<{ id: string; message: string; type: 'success' | 'error' | 'info' }>>([]);
   const [wishlistProductIds, setWishlistProductIds] = React.useState<string[]>([]);
   const [marquee, setMarquee] = React.useState<string>("");
   const [marqueeSpeed, setMarqueeSpeed] = React.useState<number>(30);
@@ -335,9 +335,33 @@ export default function App() {
     localStorage.setItem("januzen_theme", newTheme);
   };
 
-  const showToastMsg = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 3000);
+  const addToast = React.useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    const id = Math.random().toString(36).substring(2, 9);
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 4000);
+  }, []);
+
+  const removeToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  React.useEffect(() => {
+    (window as any).showToast = addToast;
+    return () => {
+      delete (window as any).showToast;
+    };
+  }, [addToast]);
+
+  const showToastMsg = (msg: string, type: 'success' | 'error' | 'info' = 'info') => {
+    let finalType = type;
+    if (msg.includes("⚠️") || msg.toLowerCase().includes("fail") || msg.toLowerCase().includes("error") || msg.toLowerCase().includes("unable")) {
+      finalType = "error";
+    } else if (msg.toLowerCase().includes("success") || msg.toLowerCase().includes("welcome") || msg.includes("❤️") || msg.toLowerCase().includes("added") || msg.toLowerCase().includes("complete")) {
+      finalType = "success";
+    }
+    addToast(msg, finalType);
   };
 
   // --- CART MANAGEMENT ---
@@ -586,12 +610,58 @@ export default function App() {
         </Suspense>
       </main>
 
-      {/* 📢 TOAST ALERT MESSAGE PANEL */}
-      {toast && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#0D1B2A] text-white py-3 px-5 rounded-xl text-xs font-mono font-bold shadow-lg flex items-center gap-2 border border-slate-700/80 max-w-sm leading-normal animate-pulse">
-          🎯 {toast}
-        </div>
-      )}
+      {/* 📢 CUSTOM TOAST NOTIFICATION CONTAINER (BOTTOM RIGHT) */}
+      <style>{`
+        @keyframes toast-slide-in {
+          from {
+            opacity: 0;
+            transform: translateY(12px) scale(0.96);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+      `}</style>
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2.5 max-w-sm w-full pointer-events-none select-none">
+        {toasts.map((t) => {
+          let bgClass = "bg-slate-900 border-slate-700/80 text-white";
+          let icon = "🎯";
+          
+          if (t.type === "success") {
+            bgClass = "bg-[#064e3b] border-emerald-600/50 text-emerald-100 shadow-emerald-950/40";
+            icon = "✅";
+          } else if (t.type === "error") {
+            bgClass = "bg-[#7f1d1d] border-red-600/50 text-red-100 shadow-red-950/40";
+            icon = "❌";
+          } else if (t.type === "info") {
+            bgClass = "bg-[#0f172a] border-slate-700 text-slate-100";
+            icon = "ℹ️";
+          }
+
+          return (
+            <div
+              key={t.id}
+              className={`pointer-events-auto flex items-start gap-3 p-3.5 rounded-xl border shadow-lg leading-normal transition-all duration-300 ${bgClass}`}
+              style={{
+                animation: "toast-slide-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards"
+              }}
+            >
+              <span className="text-sm shrink-0 mt-0.5">{icon}</span>
+              <div className="flex-1 text-xs font-mono font-bold whitespace-pre-line leading-relaxed">
+                {t.message}
+              </div>
+              <button
+                onClick={() => removeToast(t.id)}
+                className="shrink-0 p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                title="Dismiss message"
+              >
+                <span className="text-[10px] font-sans">✕</span>
+              </button>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

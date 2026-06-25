@@ -87,7 +87,7 @@ export default function DeliveryHubView() {
         loadAllOrders(true);
         setTimeout(() => setStatusMessage(""), 4000);
       } else {
-        alert("Unable to adjust shipping state.");
+        (window as any).showToast?.("Unable to adjust shipping state.", "error");
       }
     } catch (err) {
       console.error(err);

@@ -62,12 +62,12 @@ export default function ProductDetailView({
   const handlePostReview = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!reviewComment.trim()) {
-      alert("Please enter a review comment.");
+      (window as any).showToast?.("Please enter a review comment.", "error");
       return;
     }
     const jwtToken = localStorage.getItem("januzen_token") || sessionStorage.getItem("januzen_token");
     if (!jwtToken) {
-      alert("You must be signed in to post a product review!");
+      (window as any).showToast?.("You must be signed in to post a product review!", "error");
       return;
     }
     setReviewSubmitting(true);
@@ -88,13 +88,14 @@ export default function ProductDetailView({
         setReviewComment("");
         setReviewRating(5);
         setReviews(prev => [data.review, ...prev]);
+        (window as any).showToast?.("Review submitted successfully! Thank you. ❤️", "success");
       } else {
         const data = await res.json();
-        alert(data.error || "Failed to submit review.");
+        (window as any).showToast?.(data.error || "Failed to submit review.", "error");
       }
     } catch (err) {
       console.error(err);
-      alert("Network discrepancy occurred trying to register your review.");
+      (window as any).showToast?.("Network discrepancy occurred trying to register your review.", "error");
     } finally {
       setReviewSubmitting(false);
     }

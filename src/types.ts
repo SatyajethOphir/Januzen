@@ -53,6 +53,7 @@ export interface ShippingAddress {
 
 export interface OrderTotals {
   subtotal: number;
+  discount?: number;
   shipping: number;
   tax: number;
   total: number;

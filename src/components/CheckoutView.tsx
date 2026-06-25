@@ -16,6 +16,7 @@ export default function CheckoutView({ cartItems, currentUser, onNavigate, onCle
   const [loading, setLoading] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState("");
   const [placedOrder, setPlacedOrder] = React.useState<Order | null>(null);
+  const [shareLinks, setShareLinks] = React.useState<any>(null);
 
   // Form States
   const [fullName, setFullName] = React.useState(currentUser?.name || "");
@@ -153,6 +154,26 @@ export default function CheckoutView({ cartItems, currentUser, onNavigate, onCle
     );
   }
 
+  const handleShare = async () => {
+    if (!placedOrder) return;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "JANUZEN Order Confirmed",
+          text: `My order ${placedOrder.orderId} from JANUZEN Global LLP is confirmed! Total: ₹${placedOrder.totals.total}`,
+          url: "https://januzen.in",
+        });
+      } catch (err) {
+        // User cancelled share — not an error, do nothing
+      }
+    } else {
+      const whatsappUrl = shareLinks?.whatsapp || `https://wa.me/?text=${encodeURIComponent(
+        `Hi! I just placed an order with JANUZEN Global LLP 🛍️\n\nOrder ID: ${placedOrder.orderId}\nTotal: ₹${placedOrder.totals.total}\n\nView products at: https://januzen.in`
+      )}`;
+      window.open(whatsappUrl, "_blank");
+    }
+  };
+
   const handleNextStep = (e: React.FormEvent) => {
     e.preventDefault();
     if (!fullName || !addressLine || !city || !postalCode || !phone) {
@@ -209,6 +230,7 @@ export default function CheckoutView({ cartItems, currentUser, onNavigate, onCle
       const data = await res.json();
       if (res.ok) {
         setPlacedOrder(data.order);
+        setShareLinks(data.shareLinks);
         onClearCart();
         setStep(3);
       } else {
@@ -600,9 +622,24 @@ export default function CheckoutView({ cartItems, currentUser, onNavigate, onCle
               <span className="font-bold text-emerald-600 font-sans">Same day / Next 24 hours</span>
             </div>
           </div>
+          
+          <div className="bg-slate-50 border border-slate-100 p-4 rounded-xl space-y-3 max-w-sm mx-auto">
+            <p className="text-xs font-semibold text-slate-700 leading-normal">
+              🎁 Share your order details with contacts or save a log of it!
+            </p>
+            <button
+              onClick={handleShare}
+              className="w-full flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1ebe5d] text-white px-4 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all cursor-pointer shadow-sm"
+            >
+              <span>📱</span> Share on WhatsApp
+            </button>
+            <p className="text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-100 py-1.5 px-3 rounded-lg flex items-center justify-center gap-1.5 font-medium leading-normal">
+              <span>📧</span> Invoice has been sent to {placedOrder.userEmail}
+            </p>
+          </div>
 
           <p className="text-[10px] text-gray-400 leading-normal max-w-xs mx-auto italic">
-            📧 An order confirmation and transaction bill details have been broadcasted to <span className="font-semibold text-[#0D1B2A]">{currentUser.email}</span>. A representative will contact you via mobile code {phone}.
+            A representative will contact you via mobile code {phone} to schedule delivery.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-2 mt-4">
