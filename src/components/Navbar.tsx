@@ -21,6 +21,35 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
   const [notifications, setNotifications] = React.useState<any[]>([]);
   const [notifOpen, setNotifOpen] = React.useState(false);
 
+  // Notification Permission states for native push alerts
+  const [notifPermission, setNotifPermission] = React.useState(() => {
+    if (typeof window === "undefined" || !("Notification" in window)) return "denied";
+    return Notification.permission;
+  });
+
+  const [showPermissionBanner, setShowPermissionBanner] = React.useState(() => {
+    if (typeof window === "undefined" || !("Notification" in window)) return false;
+    return Notification.permission === "default" && localStorage.getItem("januzen_notif_banner_dismissed") !== "true";
+  });
+
+  const handleRequestPermission = () => {
+    if (typeof window === "undefined" || !("Notification" in window)) return;
+    Notification.requestPermission().then((permission) => {
+      setNotifPermission(permission);
+      setShowPermissionBanner(false);
+      if (permission === "granted") {
+        (window as any).showToast?.("Push notifications enabled successfully! 🔔", "success");
+      } else {
+        (window as any).showToast?.("Notifications permission was not granted.", "info");
+      }
+    });
+  };
+
+  const handleDismissBanner = () => {
+    localStorage.setItem("januzen_notif_banner_dismissed", "true");
+    setShowPermissionBanner(false);
+  };
+
   const cartIconRef = React.useRef<HTMLButtonElement>(null);
   const cartIconRefMobile = React.useRef<HTMLButtonElement>(null);
 
@@ -100,9 +129,80 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
 
   React.useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 15000);
-    return () => clearInterval(interval);
-  }, [fetchNotifications]);
+
+    if (!currentUser) return;
+
+    const jwtToken = localStorage.getItem("januzen_token") || sessionStorage.getItem("januzen_token");
+    if (!jwtToken) return;
+
+    // Use absolute or relative URL for real-time alert stream
+    const streamUrl = `/api/updates/stream?token=${encodeURIComponent(jwtToken)}`;
+    console.log("🔌 Connecting to JANUZEN Real-Time Notification Stream...");
+
+    const eventSource = new EventSource(streamUrl);
+
+    eventSource.addEventListener("connected", (event) => {
+      console.log("✅ SSE Connection established:", JSON.parse(event.data).message);
+    });
+
+    eventSource.addEventListener("notification", (event) => {
+      try {
+        const notif = JSON.parse(event.data);
+        console.log("🔔 Real-time notification received:", notif);
+
+        // Prepend new notification in real-time
+        setNotifications((prev) => {
+          if (prev.some((n) => n.id === notif.id)) return prev;
+          return [notif, ...prev];
+        });
+
+        // Trigger native browser notification
+        if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+          new Notification(notif.title, {
+            body: notif.content,
+            icon: "/appicon.png",
+            tag: notif.id,
+            requireInteraction: true // Keep the notification visible for important details like OTPs
+          });
+        }
+
+        // Trigger in-app toast
+        (window as any).showToast?.(`🔔 ${notif.title}: ${notif.content}`, "info");
+
+        // Synthesize double-chime high pitch frequencies (Web Audio API)
+        try {
+          const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+          gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+          osc.start();
+
+          osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.12); // A5
+          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+          osc.stop(audioCtx.currentTime + 0.4);
+        } catch (soundErr) {
+          // Silent fallback if audio context blocked/unsupported
+        }
+      } catch (err) {
+        console.error("Error processing real-time notification payload:", err);
+      }
+    });
+
+    eventSource.addEventListener("error", (event) => {
+      console.warn("⚠️ Real-time stream reconnecting...");
+    });
+
+    // Clean up EventSource on unmount/re-login
+    return () => {
+      console.log("🔌 Closing JANUZEN Real-Time Notification Stream.");
+      eventSource.close();
+    };
+  }, [currentUser, fetchNotifications]);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
@@ -134,7 +234,30 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
   ];
 
   return (
-    <nav className="sticky top-0 z-50 bg-[#0D1B2A] text-white border-b border-[#1E293B] shadow-md">
+    <>
+      {currentUser && showPermissionBanner && (
+        <div className="bg-gradient-to-r from-teal-800 via-[#0F9B8E] to-emerald-800 text-white py-2.5 px-4 text-center relative z-50 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 animate-in slide-in-from-top duration-300">
+          <div className="flex items-center gap-2 text-[11px] sm:text-xs font-sans font-medium">
+            <span className="animate-pulse">🔔</span>
+            <span>Enable real-time push alerts on this device to instantly receive your order status updates, OTP verifications, and announcements!</span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={handleRequestPermission}
+              className="bg-white text-[#0F9B8E] hover:bg-teal-50 px-3 py-0.5 sm:py-1 rounded text-[10px] font-bold tracking-wider uppercase shadow transition-all cursor-pointer font-sans"
+            >
+              Enable
+            </button>
+            <button
+              onClick={handleDismissBanner}
+              className="bg-teal-900/40 hover:bg-teal-900/60 border border-teal-500/30 text-white px-2.5 py-0.5 sm:py-1 rounded text-[10px] font-medium transition-all cursor-pointer font-sans"
+            >
+              Later
+            </button>
+          </div>
+        </div>
+      )}
+      <nav className="sticky top-0 z-50 bg-[#0D1B2A] text-white border-b border-[#1E293B] shadow-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-4 xl:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo Brand */}
@@ -237,6 +360,19 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
                         </span>
                       )}
                     </div>
+                    {notifPermission === "default" && (
+                      <div className="p-3 bg-emerald-50/70 border-b border-emerald-100/50 flex flex-col gap-1.5">
+                        <p className="text-[10px] text-slate-700 leading-normal font-sans">
+                          Stay updated in real-time! Enable native push notifications for order statuses, secure OTPs, and announcements.
+                        </p>
+                        <button
+                          onClick={handleRequestPermission}
+                          className="w-full py-1 text-center bg-[#0F9B8E] hover:bg-[#0C7C72] text-white text-[10px] font-bold tracking-wider rounded uppercase font-sans cursor-pointer transition-colors"
+                        >
+                          Enable Device Alerts
+                        </button>
+                      </div>
+                    )}
                     <div className="max-h-64 overflow-y-auto divide-y divide-gray-100">
                       {notifications.length === 0 ? (
                         <div className="p-4 text-center text-xs text-gray-400 font-sans">
@@ -570,5 +706,6 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
         </div>
       )}
     </nav>
+    </>
   );
 }

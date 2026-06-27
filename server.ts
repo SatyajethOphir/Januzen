@@ -17,6 +17,41 @@ const PORT = 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "JANUZEN_JWT_SECRET_KEY";
 const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY || "phoenix123&";
 
+interface SseConnection {
+  userId: string;
+  role: string;
+  res: any;
+}
+const sseConnections = new Set<SseConnection>();
+
+function sendRealtimeNotification(userId: string, notification: any) {
+  for (const conn of sseConnections) {
+    if (conn.userId === userId) {
+      try {
+        conn.res.write(`event: notification\n`);
+        conn.res.write(`data: ${JSON.stringify(notification)}\n\n`);
+      } catch (err) {
+        console.error("Error writing SSE notification:", err);
+      }
+    }
+  }
+}
+
+async function createAndSendNotification(userId: string, title: string, content: string) {
+  const notif = {
+    id: "notif_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
+    userId,
+    title,
+    content,
+    isRead: false,
+    createdAt: new Date().toISOString()
+  };
+  await dbClient.createNotification(notif);
+  sendRealtimeNotification(userId, notif);
+  return notif;
+}
+
+
 const SETTINGS_FILE = path.join(process.cwd(), "data", "settings.json");
 
 interface SystemSettings {
@@ -673,6 +708,13 @@ async function startServer() {
 
       await dbClient.createOrder(newOrder);
 
+      // Create a notification immediately for the user
+      await createAndSendNotification(
+        newOrder.userId,
+        "Order Placed Successfully",
+        `Hi ${newOrder.userName}, your order ${newOrder.orderId} has been placed successfully! Your delivery verification OTP is [${deliveryOTP}]. Total amount: ₹${total.toFixed(2)}. We will notify you when it's dispatched.`
+      );
+
       // Generate and email invoice — wrapped in try/catch so invoice
       // failure never blocks the order confirmation response
       try {
@@ -851,14 +893,11 @@ async function startServer() {
       }
 
       // Generate custom personalized notification
-      await dbClient.createNotification({
-        id: "notif_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
-        userId: updatedOrder.userId,
-        title: `Order Status Update: ${status}`,
-        content: note || `Hi ${updatedOrder.userName}, your corporate purchase status has been updated to "${status}" for order ${updatedOrder.orderId}.`,
-        isRead: false,
-        createdAt: new Date().toISOString()
-      });
+      await createAndSendNotification(
+        updatedOrder.userId,
+        `Order Status Update: ${status}`,
+        note || `Hi ${updatedOrder.userName}, your corporate purchase status has been updated to "${status}" for order ${updatedOrder.orderId}.`
+      );
 
       // Nodemailer Simulator Console Logging
       console.log(`[EMAIL DISPATCH] TO: ${updatedOrder.userEmail} | SUBJECT: JANUZEN Order Status Update | CONTENT: Your purchase status has updated to: [${status}] for order ID ${updatedOrder.orderId}. Description: ${note || 'None'}`);
@@ -917,14 +956,11 @@ async function startServer() {
         return res.status(404).json({ error: "Failed to apply cancellation status." });
       }
 
-      await dbClient.createNotification({
-        id: "notif_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
-        userId: updatedOrder.userId,
-        title: "Order Cancelled",
-        content: `Hi ${updatedOrder.userName}, your order ${updatedOrder.orderId} was successfully cancelled.`,
-        isRead: false,
-        createdAt: new Date().toISOString()
-      });
+      await createAndSendNotification(
+        updatedOrder.userId,
+        "Order Cancelled",
+        `Hi ${updatedOrder.userName}, your order ${updatedOrder.orderId} was successfully cancelled.`
+      );
 
       res.json({ message: "Order cancelled successfully.", order: updatedOrder });
     } catch (e) {
@@ -945,14 +981,11 @@ async function startServer() {
       if (!updatedOrder) {
         return res.status(404).json({ error: "Order not found" });
       }
-      await dbClient.createNotification({
-        id: "notif_" + Date.now() + "_" + Math.floor(Math.random() * 1050),
-        userId: updatedOrder.userId,
-        title: `Delivery Dispatch: ${status}`,
-        content: `Your order ${updatedOrder.orderId} is now updated to: ${status}. Note: ${note || ""}`,
-        isRead: false,
-        createdAt: new Date().toISOString()
-      });
+      await createAndSendNotification(
+        updatedOrder.userId,
+        `Delivery Dispatch: ${status}`,
+        `Your order ${updatedOrder.orderId} is now updated to: ${status}. Note: ${note || ""}`
+      );
       res.json({ message: "Delivery stage updated", order: updatedOrder });
     } catch (e) {
       console.error(e);
@@ -979,14 +1012,11 @@ async function startServer() {
           return res.status(500).json({ error: "Failed to update order status." });
         }
 
-        await dbClient.createNotification({
-          id: "notif_" + Date.now() + "_" + Math.floor(Math.random() * 1050),
-          userId: updatedOrder.userId,
-          title: `Delivery OTP Verified Successfully!`,
-          content: `Your order ${updatedOrder.orderId} was safely handed over using OTP verification code ${otp}. Thank you!`,
-          isRead: false,
-          createdAt: new Date().toISOString()
-        });
+        await createAndSendNotification(
+          updatedOrder.userId,
+          `Delivery OTP Verified Successfully!`,
+          `Your order ${updatedOrder.orderId} was safely handed over using OTP verification code ${otp}. Thank you!`
+        );
 
         return res.json({ success: true, message: "OTP Verified! Order marked as Delivered.", order: updatedOrder });
       } else {
@@ -1173,6 +1203,51 @@ async function startServer() {
     }
   });
 
+  // Real-time notifications stream (SSE)
+  app.get("/api/updates/stream", (req, res) => {
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("Content-Encoding", "none");
+    res.flushHeaders();
+
+    const token = req.query.token as string;
+    if (!token) {
+      res.write(`event: error\ndata: ${JSON.stringify({ error: "Unauthorized: Missing token" })}\n\n`);
+      return res.end();
+    }
+
+    try {
+      const decodedUser: any = jwt.verify(token, JWT_SECRET);
+      const conn = {
+        userId: decodedUser.id,
+        role: decodedUser.role || "customer",
+        res
+      };
+
+      sseConnections.add(conn);
+      console.log(`📡 [SSE] Client connected: user ${decodedUser.name} (${decodedUser.id}), role: ${decodedUser.role || "customer"}. Total active: ${sseConnections.size}`);
+
+      // Send initial connection success event
+      res.write(`event: connected\ndata: ${JSON.stringify({ message: "Successfully connected to JANUZEN real-time alert stream" })}\n\n`);
+
+      // Keep alive heartbeat (ping) every 25 seconds
+      const pingInterval = setInterval(() => {
+        res.write(`:\n\n`);
+      }, 25000);
+
+      req.on("close", () => {
+        clearInterval(pingInterval);
+        sseConnections.delete(conn);
+        console.log(`🔌 [SSE] Client disconnected: user ${decodedUser.name} (${decodedUser.id}). Total active: ${sseConnections.size}`);
+      });
+    } catch (err) {
+      res.write(`event: error\ndata: ${JSON.stringify({ error: "Unauthorized: Invalid token" })}\n\n`);
+      return res.end();
+    }
+  });
+
+
   // Fetch Wishlist for active authenticated customer
   app.get("/api/wishlist", authenticateToken, async (req: any, res) => {
     try {
@@ -1212,15 +1287,11 @@ async function startServer() {
 
       for (const customer of customers) {
         const content = `Dear ${customer.name},\n\n${matter}`;
-        const notif = {
-          id: "notif_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7),
-          userId: customer.id,
-          title: titleText,
-          content,
-          isRead: false,
-          createdAt: new Date().toISOString()
-        };
-        await dbClient.createNotification(notif);
+        await createAndSendNotification(
+          customer.id,
+          titleText,
+          content
+        );
       }
 
       res.status(201).json({
