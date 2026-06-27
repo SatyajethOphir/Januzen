@@ -1,10 +1,31 @@
 import PDFDocument from "pdfkit";
 import https from "https";
+import fs from "fs";
+import path from "path";
 import { Order } from "../src/types";
 
 function fetchLogo(): Promise<Buffer | null> {
   return new Promise((resolve) => {
-    const req = https.get("https://januzen.in/logo.png", { timeout: 5000 }, (res) => {
+    try {
+      // 1. Try local appicon.png first (extremely fast & reliable)
+      const localAppIconPath = path.join(process.cwd(), "public", "appicon.png");
+      if (fs.existsSync(localAppIconPath)) {
+        resolve(fs.readFileSync(localAppIconPath));
+        return;
+      }
+      
+      // 2. Try local logo.png
+      const localLogoPath = path.join(process.cwd(), "public", "logo.png");
+      if (fs.existsSync(localLogoPath)) {
+        resolve(fs.readFileSync(localLogoPath));
+        return;
+      }
+    } catch (e) {
+      console.warn("⚠️ [INVOICE] Failed to read local logo image:", e);
+    }
+
+    // 3. Fallback to HTTPS fetch
+    const req = https.get("https://januzen.in/logo.png", { timeout: 3000 }, (res) => {
       if (res.statusCode !== 200) {
         resolve(null);
         return;

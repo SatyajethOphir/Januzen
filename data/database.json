@@ -58,7 +58,11 @@
       "isActive": false,
       "stockQuantity": 45,
       "lowStockThreshold": 5,
-      "stockStatus": "in_stock"
+      "stockStatus": "in_stock",
+      "brand": "JANUZEN",
+      "piecesPerUnit": 1,
+      "totalUnitsAvailable": 45,
+      "pricePerPiece": 18.5
     },
     {
       "id": "m2",
@@ -78,7 +82,11 @@
       "isActive": false,
       "stockQuantity": 60,
       "lowStockThreshold": 5,
-      "stockStatus": "in_stock"
+      "stockStatus": "in_stock",
+      "brand": "JANUZEN",
+      "piecesPerUnit": 1,
+      "totalUnitsAvailable": 60,
+      "pricePerPiece": 12.9
     },
     {
       "id": "m3",
@@ -98,7 +106,11 @@
       "isActive": false,
       "stockQuantity": 120,
       "lowStockThreshold": 5,
-      "stockStatus": "in_stock"
+      "stockStatus": "in_stock",
+      "brand": "JANUZEN",
+      "piecesPerUnit": 1,
+      "totalUnitsAvailable": 120,
+      "pricePerPiece": 6.25
     },
     {
       "id": "m4",
@@ -118,7 +130,11 @@
       "isActive": true,
       "stockQuantity": 79,
       "lowStockThreshold": 5,
-      "stockStatus": "in_stock"
+      "stockStatus": "in_stock",
+      "brand": "JANUZEN",
+      "piecesPerUnit": 1,
+      "totalUnitsAvailable": 79,
+      "pricePerPiece": 8.99
     },
     {
       "id": "m5",
@@ -138,7 +154,11 @@
       "isActive": true,
       "stockQuantity": 15,
       "lowStockThreshold": 5,
-      "stockStatus": "in_stock"
+      "stockStatus": "in_stock",
+      "brand": "JANUZEN",
+      "piecesPerUnit": 1,
+      "totalUnitsAvailable": 15,
+      "pricePerPiece": 49.5
     },
     {
       "id": "m6",
@@ -158,7 +178,11 @@
       "isActive": true,
       "stockQuantity": 99,
       "lowStockThreshold": 5,
-      "stockStatus": "in_stock"
+      "stockStatus": "in_stock",
+      "brand": "JANUZEN",
+      "piecesPerUnit": 1,
+      "totalUnitsAvailable": 99,
+      "pricePerPiece": 24.95
     },
     {
       "id": "m7",
@@ -178,7 +202,11 @@
       "isActive": true,
       "stockQuantity": 140,
       "lowStockThreshold": 5,
-      "stockStatus": "in_stock"
+      "stockStatus": "in_stock",
+      "brand": "JANUZEN",
+      "piecesPerUnit": 1,
+      "totalUnitsAvailable": 140,
+      "pricePerPiece": 5.5
     },
     {
       "id": "m8",
@@ -198,7 +226,11 @@
       "isActive": true,
       "stockQuantity": 22,
       "lowStockThreshold": 5,
-      "stockStatus": "in_stock"
+      "stockStatus": "in_stock",
+      "brand": "JANUZEN",
+      "piecesPerUnit": 1,
+      "totalUnitsAvailable": 22,
+      "pricePerPiece": 34.99
     },
     {
       "id": "m9",
@@ -218,7 +250,11 @@
       "isActive": true,
       "stockQuantity": 95,
       "lowStockThreshold": 5,
-      "stockStatus": "in_stock"
+      "stockStatus": "in_stock",
+      "brand": "JANUZEN",
+      "piecesPerUnit": 1,
+      "totalUnitsAvailable": 95,
+      "pricePerPiece": 19.99
     },
     {
       "id": "m10",
@@ -238,7 +274,11 @@
       "isActive": true,
       "stockQuantity": 65,
       "lowStockThreshold": 5,
-      "stockStatus": "in_stock"
+      "stockStatus": "in_stock",
+      "brand": "JANUZEN",
+      "piecesPerUnit": 1,
+      "totalUnitsAvailable": 65,
+      "pricePerPiece": 22.5
     },
     {
       "id": "s1",
@@ -258,7 +298,11 @@
       "isActive": true,
       "stockQuantity": 250,
       "lowStockThreshold": 5,
-      "stockStatus": "in_stock"
+      "stockStatus": "in_stock",
+      "brand": "JANUZEN",
+      "piecesPerUnit": 1,
+      "totalUnitsAvailable": 250,
+      "pricePerPiece": 7.95
     },
     {
       "id": "s2",
@@ -278,7 +322,11 @@
       "isActive": true,
       "stockQuantity": 18,
       "lowStockThreshold": 5,
-      "stockStatus": "in_stock"
+      "stockStatus": "in_stock",
+      "brand": "JANUZEN",
+      "piecesPerUnit": 1,
+      "totalUnitsAvailable": 18,
+      "pricePerPiece": 38
     },
     {
       "id": "s3",
@@ -298,7 +346,11 @@
       "isActive": true,
       "stockQuantity": 90,
       "lowStockThreshold": 5,
-      "stockStatus": "in_stock"
+      "stockStatus": "in_stock",
+      "brand": "JANUZEN",
+      "piecesPerUnit": 1,
+      "totalUnitsAvailable": 90,
+      "pricePerPiece": 14.5
     },
     {
       "id": "s4",
@@ -318,7 +370,11 @@
       "isActive": true,
       "stockQuantity": 75,
       "lowStockThreshold": 5,
-      "stockStatus": "in_stock"
+      "stockStatus": "in_stock",
+      "brand": "JANUZEN",
+      "piecesPerUnit": 1,
+      "totalUnitsAvailable": 75,
+      "pricePerPiece": 16.9
     },
     {
       "id": "s5",
@@ -338,7 +394,11 @@
       "isActive": true,
       "stockQuantity": 40,
       "lowStockThreshold": 5,
-      "stockStatus": "in_stock"
+      "stockStatus": "in_stock",
+      "brand": "JANUZEN",
+      "piecesPerUnit": 1,
+      "totalUnitsAvailable": 40,
+      "pricePerPiece": 29.99
     },
     {
       "id": "s6",
@@ -358,7 +418,11 @@
       "isActive": true,
       "stockQuantity": 80,
       "lowStockThreshold": 5,
-      "stockStatus": "in_stock"
+      "stockStatus": "in_stock",
+      "brand": "JANUZEN",
+      "piecesPerUnit": 1,
+      "totalUnitsAvailable": 80,
+      "pricePerPiece": 11.2
     },
     {
       "id": "s7",
@@ -378,7 +442,11 @@
       "isActive": true,
       "stockQuantity": 100,
       "lowStockThreshold": 5,
-      "stockStatus": "in_stock"
+      "stockStatus": "in_stock",
+      "brand": "JANUZEN",
+      "piecesPerUnit": 1,
+      "totalUnitsAvailable": 100,
+      "pricePerPiece": 21.5
     },
     {
       "id": "s8",
@@ -398,7 +466,11 @@
       "isActive": true,
       "stockQuantity": 15,
       "lowStockThreshold": 5,
-      "stockStatus": "in_stock"
+      "stockStatus": "in_stock",
+      "brand": "JANUZEN",
+      "piecesPerUnit": 1,
+      "totalUnitsAvailable": 15,
+      "pricePerPiece": 45
     },
     {
       "id": "p_1780233365433",
@@ -416,7 +488,11 @@
       "isActive": true,
       "stockQuantity": 97,
       "lowStockThreshold": 5,
-      "stockStatus": "in_stock"
+      "stockStatus": "in_stock",
+      "brand": "JANUZEN",
+      "piecesPerUnit": 1,
+      "totalUnitsAvailable": 97,
+      "pricePerPiece": 10
     },
     {
       "id": "p_1780234114347",
@@ -434,7 +510,11 @@
       "isActive": true,
       "stockQuantity": 100,
       "lowStockThreshold": 5,
-      "stockStatus": "in_stock"
+      "stockStatus": "in_stock",
+      "brand": "JANUZEN",
+      "piecesPerUnit": 1,
+      "totalUnitsAvailable": 100,
+      "pricePerPiece": 10
     },
     {
       "id": "p_1780234562148",
@@ -452,7 +532,11 @@
       "isActive": true,
       "stockQuantity": 100,
       "lowStockThreshold": 5,
-      "stockStatus": "in_stock"
+      "stockStatus": "in_stock",
+      "brand": "JANUZEN",
+      "piecesPerUnit": 1,
+      "totalUnitsAvailable": 100,
+      "pricePerPiece": 10
     }
   ],
   "orders": [
@@ -601,5 +685,6 @@
   "wishlist": [],
   "sessions": [],
   "couponUsages": [],
-  "auditLogs": []
+  "auditLogs": [],
+  "marqueeSpeed": 30
 }
