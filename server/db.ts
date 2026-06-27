@@ -798,7 +798,7 @@ export const dbClient = {
       const updated = await MongoUser.findOneAndUpdate(
         { id: userId },
         { $set: updateData },
-        { new: true }
+        { returnDocument: 'after' }
       ).lean();
       return updated as any;
     } else {
@@ -921,7 +921,7 @@ export const dbClient = {
       updates.stockStatus = updates.stock === 0 ? "out_of_stock" : (updates.stock <= thresh ? "low_stock" : "in_stock");
     }
     if (isMongo) {
-      const doc = await MongoProduct.findOneAndUpdate({ id }, { $set: updates }, { new: true }).lean() as any;
+      const doc = await MongoProduct.findOneAndUpdate({ id }, { $set: updates }, { returnDocument: 'after' }).lean() as any;
       return doc;
     } else {
       const db = loadLocalDB();
@@ -1025,7 +1025,7 @@ export const dbClient = {
       const doc = await MongoOrder.findOneAndUpdate(
         { id },
         { $set: { status, statusHistory: history, stockAdjusted, hasStatusOverflow } },
-        { new: true }
+        { returnDocument: 'after' }
       ).lean() as any;
       return doc;
     } else {
@@ -1108,7 +1108,7 @@ export const dbClient = {
 
   markMessageRead: async (id: string): Promise<Message | null> => {
     if (isMongo) {
-      const doc = await MongoMessage.findOneAndUpdate({ id }, { $set: { isRead: true } }, { new: true }).lean() as any;
+      const doc = await MongoMessage.findOneAndUpdate({ id }, { $set: { isRead: true } }, { returnDocument: 'after' }).lean() as any;
       return doc;
     } else {
       const db = loadLocalDB();
