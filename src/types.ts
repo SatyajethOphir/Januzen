@@ -31,6 +31,10 @@ export interface Product {
   featured: boolean;
   isActive: boolean;
   options?: ProductOption[];
+  brand?: string;
+  pricePerPiece?: number;
+  piecesPerUnit?: number;
+  totalUnitsAvailable?: number;
 }
 
 export interface OrderItem {

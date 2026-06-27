@@ -6,6 +6,8 @@ import {
 } from "lucide-react";
 import { Product } from "../types";
 import { JanuzenLogo, NuthanMedicalsLogo, JaStationeryLogo } from "./Logos";
+import { ProductCardSkeleton, TestimonialSkeleton } from "./SkeletonLoader";
+import ImageWithLoader from "./ImageWithLoader";
 
 interface HomeViewProps {
   onNavigate: (view: string, params?: Record<string, any>) => void;
@@ -26,6 +28,12 @@ export default function HomeView({
   const [successMsg, setSuccessMsg] = React.useState("");
   const [errorMsg, setErrorMsg] = React.useState("");
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
+  const [testimonialsLoading, setTestimonialsLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => setTestimonialsLoading(false), 1200);
+    return () => clearTimeout(timer);
+  }, []);
 
   React.useEffect(() => {
     // Elegant entrance timeline for the premium brand launch
@@ -178,13 +186,13 @@ export default function HomeView({
 
               {/* The Majestic Generated Image Asset */}
               <div className="relative w-full h-48 md:h-56 rounded-xl overflow-hidden border border-white/15 shadow-inner">
-                <img 
+                <ImageWithLoader 
                   src="/januzen_hero_centerpiece_1782099432421.jpg" 
                   alt="Januzen Global Sovereign Pieces" 
-                  referrerPolicy="no-referrer"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 filter brightness-95 hover:brightness-105"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 filter brightness-95 hover:brightness-105 animate-fade-in-up"
+                  containerClassName="w-full h-full"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10"></div>
                 <div className="absolute bottom-3 left-4 right-4 flex justify-between items-end">
                   <div>
                     <span className="text-[9px] font-mono text-amber-300 uppercase tracking-widest font-black">Curated Collection</span>
@@ -377,9 +385,9 @@ export default function HomeView({
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
           {featuredProducts.length === 0 ? (
-            <div className="col-span-full py-16 text-center text-gray-400 font-mono text-xs italic">
-              Retrieving fine discoveries from the master store vault...
-            </div>
+            [...Array(4)].map((_, i) => (
+              <ProductCardSkeleton key={i} />
+            ))
           ) : (
             featuredProducts.slice(0, 4).map((product) => {
               const shopBadge = product.shop === "medicals" ? "bg-teal-50 text-teal-800 border-teal-100" : "bg-amber-50 text-amber-800 border-amber-100";
@@ -407,11 +415,11 @@ export default function HomeView({
                   className="gsap-product-tile bg-card-theme border rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between relative group/tile"
                 >
                   <div className="relative overflow-hidden group/img">
-                    <img
+                    <ImageWithLoader
                       src={product.image}
                       alt={product.name}
-                      referrerPolicy="no-referrer"
-                      className="w-full h-56 object-cover group-hover/img:scale-105 transition-transform duration-500"
+                      className="w-full h-56 group-hover/img:scale-105 transition-transform duration-500"
+                      containerClassName="w-full h-56"
                     />
                     <span className={`absolute top-4 left-4 text-[9px] font-mono font-bold tracking-wider uppercase px-3 py-1 rounded-full border shadow-sm ${shopBadge}`}>
                       {product.shop === "medicals" ? "💊 Nuthan Med" : "🖋️ JA Stationery"}
@@ -424,7 +432,7 @@ export default function HomeView({
                           e.stopPropagation();
                           if (onToggleWishlist) onToggleWishlist(product.id, product.shop);
                         }}
-                        className="h-8 w-8 bg-white/95 hover:bg-white text-slate-700 hover:text-red-600 rounded-full flex items-center justify-center shadow-md border border-gray-200 transition-all cursor-pointer"
+                        className="h-8 w-8 rounded-full flex items-center justify-center border transition-all cursor-pointer action-btn-override wishlist-btn-override"
                         title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
                       >
                         <Heart className={`h-4.5 w-4.5 transition-colors ${isWishlisted ? "fill-red-600 stroke-red-600" : ""}`} />
@@ -432,7 +440,7 @@ export default function HomeView({
 
                       <button
                         onClick={handleShareLink}
-                        className="h-8 w-8 bg-white/95 hover:bg-white text-slate-700 hover:text-teal-600 rounded-full flex items-center justify-center shadow-md border border-gray-200 transition-all cursor-pointer"
+                        className="h-8 w-8 rounded-full flex items-center justify-center border transition-all cursor-pointer action-btn-override"
                         title="Copy product link"
                       >
                         {isCopied ? (
@@ -494,64 +502,175 @@ export default function HomeView({
         </div>
       </section>
 
-      {/* 💬 TESTIMONIALS: JOURNAL FORMAT */}
-      <section className="bg-gradient-to-b from-transparent to-black/5 py-24 border-y border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
+      {/* 💬 TESTIMONIALS: JOURNAL FORMAT WITH INFINITE SCROLL */}
+      <section className="bg-gradient-to-b from-transparent to-black/5 py-24 border-y border-gray-200 overflow-hidden relative">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-16">
+          <div className="text-center max-w-2xl mx-auto space-y-3">
             <span className="text-xs font-mono font-bold tracking-[0.25em] text-[#D4820A] block uppercase">Client Testimonials</span>
             <h2 className="font-serif text-4xl font-light">The Voice of <span className="italic font-normal">Our Community</span></h2>
             <p className="text-gray-500 text-sm">Vouched for by doctors, clinic staff, corporate planners, and creative studios.</p>
           </div>
+        </div>
 
-          <div className="grid md:grid-cols-3 gap-10">
-            {[
-              {
-                text: "Nuthan Medicals is incredibly reliable. As a professional builder coordination lead, finding a portal where I can order authenticated workplace sanitization items and diagnostic safety indicators with a single invoice is marvelous.",
-                author: "Nageshwar Reddy",
-                role: "Builder",
-                avatar: "NR",
-                color: "bg-teal-50 border-teal-200 text-teal-800"
-              },
-              {
-                text: "Our campus departments order heavyweight A4 drawing reams, archival files, and fine writing sets constantly. JA Stationery has always delivered crisp fine archival inventories with pristine packaging and extreme care.",
-                author: "Bikshapathy Peruka",
-                role: "Professor",
-                avatar: "BP",
-                color: "bg-amber-50 border-amber-200 text-amber-800"
-              },
-              {
-                text: "Consolidated partnership billing saves our high-end construction programs countless steps. I buy certified medical supplies for corporate sites and executive stationery portfolios in a single, clean checkout portal.",
-                author: "jagadeeshwar Reddy",
-                role: "Builder",
-                avatar: "JR",
-                color: "bg-slate-100 border-slate-200 text-slate-800"
-              },
-            ].map((t, idx) => (
-              <div 
-                key={idx} 
-                className="gsap-testimonial-item bg-card-theme p-8 rounded-xl border border-gray-200/60 shadow-sm relative space-y-6 flex flex-col justify-between"
-              >
-                <div className="space-y-4">
-                  <div className="text-[#D4820A] fill-current opacity-30">
-                    <Quote className="h-8 w-8 transform -scale-x-100" />
-                  </div>
-                  <p className="text-gray-600 text-sm font-serif leading-relaxed italic">
-                    "{t.text}"
-                  </p>
-                </div>
+        {/* Seamless Infinite Scrolling Track */}
+        <div className="relative w-full overflow-hidden select-none py-4">
+          {/* Edge fades for smooth visual blending */}
+          <div className="absolute left-0 top-0 bottom-0 w-16 sm:w-32 bg-gradient-to-r from-white via-white/80 to-transparent dark:from-slate-950 dark:via-slate-950/85 z-10 pointer-events-none"></div>
+          <div className="absolute right-0 top-0 bottom-0 w-16 sm:w-32 bg-gradient-to-l from-white via-white/80 to-transparent dark:from-slate-950 dark:via-slate-950/85 z-10 pointer-events-none"></div>
 
-                <div className="pt-6 border-t border-gray-100 flex items-center gap-4">
-                  <div className={`h-10 w-10 rounded-full flex items-center justify-center font-bold text-xs uppercase ${t.color}`}>
-                    {t.avatar}
+          {testimonialsLoading ? (
+            <div className="max-w-7xl mx-auto px-4 grid md:grid-cols-3 gap-6 animate-pulse">
+              {[...Array(3)].map((_, i) => (
+                <TestimonialSkeleton key={i} />
+              ))}
+            </div>
+          ) : (
+            <div className="flex w-max gap-8 animate-fade-in-up">
+              {/* Track 1 */}
+              <div className="animate-testimonial-marquee flex gap-8 whitespace-normal shrink-0">
+              {[
+                {
+                  text: "Nuthan Medicals is incredibly reliable. As a professional builder coordination lead, finding a portal where I can order authenticated workplace sanitization items and diagnostic safety indicators with a single invoice is marvelous.",
+                  author: "Nageshwar Reddy",
+                  role: "Builder Coordination Lead",
+                  avatar: "NR",
+                  color: "bg-teal-50 dark:bg-teal-950/45 border-teal-200 dark:border-teal-900/60 text-teal-800 dark:text-teal-300"
+                },
+                {
+                  text: "Our campus departments order heavyweight A4 drawing reams, archival files, and fine writing sets constantly. JA Stationery has always delivered crisp fine archival inventories with pristine packaging and extreme care.",
+                  author: "Bikshapathy Peruka",
+                  role: "University Department Head",
+                  avatar: "BP",
+                  color: "bg-amber-50 dark:bg-amber-950/45 border-amber-200 dark:border-amber-900/60 text-amber-800 dark:text-amber-300"
+                },
+                {
+                  text: "Consolidated partnership billing saves our high-end construction programs countless steps. I buy certified medical supplies for corporate sites and executive stationery portfolios in a single, clean checkout portal.",
+                  author: "Jagadeeshwar Reddy",
+                  role: "Infrastructure Consultant",
+                  avatar: "JR",
+                  color: "bg-slate-100 dark:bg-slate-900/45 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-300"
+                },
+                {
+                  text: "The delivery of specialized diagnostics tools and healthcare kits is ultra-fast. The single invoice framework has saved our accountancy team dozens of working hours this quarter.",
+                  author: "Dr. Kavitha Sharma",
+                  role: "Chief Medical Officer",
+                  avatar: "KS",
+                  color: "bg-emerald-50 dark:bg-emerald-950/45 border-emerald-200 dark:border-emerald-900/60 text-emerald-800 dark:text-emerald-300"
+                },
+                {
+                  text: "Highly sophisticated ordering interface and excellent customer transparency. Authentic supplies, quick dispatch updates, and solid responsive support are hallmarks of their global enterprise model.",
+                  author: "Vikram Malhotra",
+                  role: "Director of Facilities",
+                  avatar: "VM",
+                  color: "bg-blue-50 dark:bg-blue-950/45 border-blue-200 dark:border-blue-900/60 text-blue-800 dark:text-blue-300"
+                },
+                {
+                  text: "Finding high-grade drawing papers, custom portfolios, and technical plotting instruments in one place is fantastic. JA Stationery delivers with exquisite care and professional execution.",
+                  author: "Ananya Sen",
+                  role: "Lead Creative Designer",
+                  avatar: "AS",
+                  color: "bg-rose-50 dark:bg-rose-950/45 border-rose-200 dark:border-rose-900/60 text-rose-800 dark:text-rose-300"
+                }
+              ].map((t, idx) => (
+                <div 
+                  key={`track1-${idx}`} 
+                  className="w-[360px] md:w-[400px] shrink-0 bg-white dark:bg-slate-900 p-8 rounded-xl border border-gray-200/60 dark:border-slate-800 shadow-sm relative space-y-6 flex flex-col justify-between hover:border-amber-400 dark:hover:border-amber-400 transition-colors duration-300"
+                >
+                  <div className="space-y-4">
+                    <div className="text-[#D4820A] fill-current opacity-30">
+                      <Quote className="h-7 w-7 transform -scale-x-100" />
+                    </div>
+                    <p className="text-gray-600 dark:text-gray-300 text-sm font-serif leading-relaxed italic">
+                      "{t.text}"
+                    </p>
                   </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-gray-950">{t.author}</h4>
-                    <p className="text-[10px] text-gray-400 font-mono mt-0.5">{t.role}</p>
+
+                  <div className="pt-6 border-t border-gray-100 dark:border-slate-800 flex items-center gap-4">
+                    <div className={`h-10 w-10 rounded-full flex items-center justify-center font-bold text-xs uppercase shrink-0 ${t.color}`}>
+                      {t.avatar}
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-gray-950 dark:text-white">{t.author}</h4>
+                      <p className="text-[10px] text-gray-400 font-mono mt-0.5">{t.role}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+
+            {/* Track 2 (Identical Duplicate) */}
+            <div className="animate-testimonial-marquee flex gap-8 whitespace-normal shrink-0" aria-hidden="true">
+              {[
+                {
+                  text: "Nuthan Medicals is incredibly reliable. As a professional builder coordination lead, finding a portal where I can order authenticated workplace sanitization items and diagnostic safety indicators with a single invoice is marvelous.",
+                  author: "Nageshwar Reddy",
+                  role: "Builder Coordination Lead",
+                  avatar: "NR",
+                  color: "bg-teal-50 dark:bg-teal-950/45 border-teal-200 dark:border-teal-900/60 text-teal-800 dark:text-teal-300"
+                },
+                {
+                  text: "Our campus departments order heavyweight A4 drawing reams, archival files, and fine writing sets constantly. JA Stationery has always delivered crisp fine archival inventories with pristine packaging and extreme care.",
+                  author: "Bikshapathy Peruka",
+                  role: "University Department Head",
+                  avatar: "BP",
+                  color: "bg-amber-50 dark:bg-amber-950/45 border-amber-200 dark:border-amber-900/60 text-amber-800 dark:text-amber-300"
+                },
+                {
+                  text: "Consolidated partnership billing saves our high-end construction programs countless steps. I buy certified medical supplies for corporate sites and executive stationery portfolios in a single, clean checkout portal.",
+                  author: "Jagadeeshwar Reddy",
+                  role: "Infrastructure Consultant",
+                  avatar: "JR",
+                  color: "bg-slate-100 dark:bg-slate-900/45 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-300"
+                },
+                {
+                  text: "The delivery of specialized diagnostics tools and healthcare kits is ultra-fast. The single invoice framework has saved our accountancy team dozens of working hours this quarter.",
+                  author: "Dr. Kavitha Sharma",
+                  role: "Chief Medical Officer",
+                  avatar: "KS",
+                  color: "bg-emerald-50 dark:bg-emerald-950/45 border-emerald-200 dark:border-emerald-900/60 text-emerald-800 dark:text-emerald-300"
+                },
+                {
+                  text: "Highly sophisticated ordering interface and excellent customer transparency. Authentic supplies, quick dispatch updates, and solid responsive support are hallmarks of their global enterprise model.",
+                  author: "Vikram Malhotra",
+                  role: "Director of Facilities",
+                  avatar: "VM",
+                  color: "bg-blue-50 dark:bg-blue-950/45 border-blue-200 dark:border-blue-900/60 text-blue-800 dark:text-blue-300"
+                },
+                {
+                  text: "Finding high-grade drawing papers, custom portfolios, and technical plotting instruments in one place is fantastic. JA Stationery delivers with exquisite care and professional execution.",
+                  author: "Ananya Sen",
+                  role: "Lead Creative Designer",
+                  avatar: "AS",
+                  color: "bg-rose-50 dark:bg-rose-950/45 border-rose-200 dark:border-rose-900/60 text-rose-800 dark:text-rose-300"
+                }
+              ].map((t, idx) => (
+                <div 
+                  key={`track2-${idx}`} 
+                  className="w-[360px] md:w-[400px] shrink-0 bg-white dark:bg-slate-900 p-8 rounded-xl border border-gray-200/60 dark:border-slate-800 shadow-sm relative space-y-6 flex flex-col justify-between hover:border-amber-400 dark:hover:border-amber-400 transition-colors duration-300"
+                >
+                  <div className="space-y-4">
+                    <div className="text-[#D4820A] fill-current opacity-30">
+                      <Quote className="h-7 w-7 transform -scale-x-100" />
+                    </div>
+                    <p className="text-gray-600 dark:text-gray-300 text-sm font-serif leading-relaxed italic">
+                      "{t.text}"
+                    </p>
+                  </div>
+
+                  <div className="pt-6 border-t border-gray-100 dark:border-slate-800 flex items-center gap-4">
+                    <div className={`h-10 w-10 rounded-full flex items-center justify-center font-bold text-xs uppercase shrink-0 ${t.color}`}>
+                      {t.avatar}
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-gray-950 dark:text-white">{t.author}</h4>
+                      <p className="text-[10px] text-gray-400 font-mono mt-0.5">{t.role}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
+          )}
         </div>
       </section>
 
@@ -642,7 +761,7 @@ export default function HomeView({
               </div>
               <div className="flex items-center gap-2">
                 <Truck className="h-4 w-4 text-amber-500" />
-                <span>Free Insured Courier &gt;$35</span>
+                <span>Free Insured Courier &gt;₹1000</span>
               </div>
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-cyan-500" />

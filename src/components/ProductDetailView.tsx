@@ -320,10 +320,10 @@ export default function ProductDetailView({
                     e.stopPropagation();
                     if (onToggleWishlist) onToggleWishlist(product.id, product.shop);
                   }}
-                  className="p-3 bg-white hover:bg-red-50 text-slate-700 hover:text-red-100 rounded-lg border border-gray-250 flex items-center justify-center transition-all cursor-pointer shadow-sm shrink-0"
+                  className="p-3 rounded-lg border flex items-center justify-center transition-all cursor-pointer shrink-0 action-btn-override wishlist-btn-override"
                   title={wishlistProductIds.includes(product.id) ? "Remove from wishlist" : "Add to wishlist"}
                 >
-                  <Heart className={`h-5 w-5 transition-colors ${wishlistProductIds.includes(product.id) ? "fill-red-600 stroke-red-600 text-red-600" : "text-slate-500"}`} />
+                  <Heart className={`h-5 w-5 transition-colors ${wishlistProductIds.includes(product.id) ? "fill-red-600 stroke-red-600 text-red-600" : ""}`} />
                 </button>
 
                 <button
@@ -334,13 +334,13 @@ export default function ProductDetailView({
                       setTimeout(() => setCopied(false), 2000);
                     });
                   }}
-                  className="p-3 bg-white hover:bg-teal-50 text-slate-700 hover:text-teal-600 rounded-lg border border-gray-250 flex items-center justify-center transition-all cursor-pointer shadow-sm shrink-0"
+                  className="p-3 rounded-lg border flex items-center justify-center transition-all cursor-pointer shrink-0 action-btn-override"
                   title="Copy product link"
                 >
                   {copied ? (
                     <Check className="h-5 w-5 text-teal-600" />
                   ) : (
-                    <Share2 className="h-5 w-5 text-slate-500" />
+                    <Share2 className="h-5 w-5" />
                   )}
                 </button>
               </div>

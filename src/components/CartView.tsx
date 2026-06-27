@@ -1,6 +1,8 @@
 import React from "react";
 import { Trash2, ShoppingBag, Plus, Minus, ArrowRight, ArrowLeft } from "lucide-react";
 import { Product, ProductOption } from "../types";
+import { CartItemSkeleton } from "./SkeletonLoader";
+import ImageWithLoader from "./ImageWithLoader";
 
 export interface CartItem {
   product: Product;
@@ -16,6 +18,12 @@ interface CartViewProps {
 }
 
 export default function CartView({ cartItems, onUpdateQty, onRemoveItem, onNavigate }: CartViewProps) {
+  const [cartLoading, setCartLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => setCartLoading(false), 600);
+    return () => clearTimeout(timer);
+  }, []);
   
   const subtotal = cartItems.reduce((sum, item) => sum + (item.selectedOption ? item.selectedOption.price : item.product.price) * item.quantity, 0);
   const tax = Math.round((subtotal * 0.05) * 100) / 100; // 5% GST scale in India
@@ -61,85 +69,95 @@ export default function CartView({ cartItems, onUpdateQty, onRemoveItem, onNavig
               </div>
 
               <div className="divide-y divide-gray-100">
-                {cartItems.map((item) => {
-                  const p = item.product;
-                  const itemPrice = item.selectedOption ? item.selectedOption.price : p.price;
-                  const itemSub = itemPrice * item.quantity;
-                  const itemColor = p.shop === "medicals" ? "text-teal-600 font-bold" : "text-amber-600 font-bold";
+                {cartLoading ? (
+                  <div className="p-6 space-y-4">
+                    {[...Array(Math.max(cartItems.length, 1))].map((_, i) => (
+                      <CartItemSkeleton key={i} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="animate-fade-in-up divide-y divide-gray-100">
+                    {cartItems.map((item) => {
+                      const p = item.product;
+                      const itemPrice = item.selectedOption ? item.selectedOption.price : p.price;
+                      const itemSub = itemPrice * item.quantity;
+                      const itemColor = p.shop === "medicals" ? "text-teal-600 font-bold" : "text-amber-600 font-bold";
 
-                  return (
-                    <div key={`${p.id}-${item.selectedOption?.name || "default"}`} className="grid grid-cols-1 sm:grid-cols-12 gap-4 px-6 py-5 items-center">
-                      
-                      {/* Product details thumbnail & info */}
-                      <div className="col-span-1 sm:col-span-6 flex gap-4">
-                        <img
-                          src={p.image}
-                          alt={p.name}
-                          referrerPolicy="no-referrer"
-                          className="h-16 w-16 rounded-lg object-cover shrink-0 border border-gray-150"
-                        />
-                        <div>
-                          <span className={`${itemColor} text-[10px] uppercase font-mono tracking-widest block`}>
-                            {p.shop === "medicals" ? "Nuthan Medicals" : "JA Stationery"}
-                          </span>
-                          <h4
-                            onClick={() => onNavigate("product-detail", { productId: p.id })}
-                            className="font-serif text-sm font-bold text-gray-900 cursor-pointer hover:text-blue-700 line-clamp-1 mt-0.5"
-                          >
-                            {p.name}
-                          </h4>
-                          {item.selectedOption && (
-                            <p className="text-[11px] text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-100 font-sans mt-1 inline-block font-semibold">
-                              Unit: {item.selectedOption.name}
-                            </p>
-                          )}
-                          <button
-                            onClick={() => onRemoveItem(p.id, item.selectedOption?.name)}
-                            className="text-[11px] text-gray-400 hover:text-red-500 transition-colors flex items-center gap-1 mt-1.5 cursor-pointer font-medium"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                            Remove item
-                          </button>
+                      return (
+                        <div key={`${p.id}-${item.selectedOption?.name || "default"}`} className="grid grid-cols-1 sm:grid-cols-12 gap-4 px-6 py-5 items-center">
+                          
+                          {/* Product details thumbnail & info */}
+                          <div className="col-span-1 sm:col-span-6 flex gap-4">
+                            <ImageWithLoader
+                              src={p.image}
+                              alt={p.name}
+                              className="h-16 w-16 rounded-lg"
+                              containerClassName="h-16 w-16 shrink-0 border border-gray-150"
+                            />
+                            <div>
+                              <span className={`${itemColor} text-[10px] uppercase font-mono tracking-widest block`}>
+                                {p.shop === "medicals" ? "Nuthan Medicals" : "JA Stationery"}
+                              </span>
+                              <h4
+                                onClick={() => onNavigate("product-detail", { productId: p.id })}
+                                className="font-serif text-sm font-bold text-gray-900 cursor-pointer hover:text-blue-700 line-clamp-1 mt-0.5"
+                              >
+                                {p.name}
+                              </h4>
+                              {item.selectedOption && (
+                                <p className="text-[11px] text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-100 font-sans mt-1 inline-block font-semibold">
+                                  Unit: {item.selectedOption.name}
+                                </p>
+                              )}
+                              <button
+                                onClick={() => onRemoveItem(p.id, item.selectedOption?.name)}
+                                className="text-[11px] text-gray-400 hover:text-red-500 transition-colors flex items-center gap-1 mt-1.5 cursor-pointer font-medium"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                                Remove item
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Unit pricing detail */}
+                          <div className="col-span-1 sm:col-span-2 text-center sm:block flex justify-between items-center bg-slate-50/50 sm:bg-transparent p-2 sm:p-0 rounded">
+                            <span className="sm:hidden text-xs text-gray-400 uppercase font-mono">Price:</span>
+                            <span className="font-mono text-sm font-bold text-gray-700">₹{itemPrice.toFixed(2)}</span>
+                          </div>
+
+                          {/* Quantity stepper controller */}
+                          <div className="col-span-1 sm:col-span-2 flex justify-between sm:justify-center items-center bg-slate-50/50 sm:bg-transparent p-2 sm:p-0 rounded">
+                            <span className="sm:hidden text-xs text-gray-400 uppercase font-mono">Qty:</span>
+                            <div className="flex items-center gap-2 border border-gray-250 bg-white rounded-lg px-2 py-1">
+                              <button
+                                onClick={() => onUpdateQty(p.id, item.quantity - 1, item.selectedOption?.name)}
+                                disabled={item.quantity <= 1}
+                                className="text-gray-400 hover:text-black hover:bg-slate-100 rounded p-0.5 disabled:opacity-40 cursor-pointer"
+                              >
+                                <Minus className="h-3.5 w-3.5" />
+                              </button>
+                              <span className="font-mono text-xs font-bold text-slate-800 px-1">{item.quantity}</span>
+                              <button
+                                onClick={() => onUpdateQty(p.id, item.quantity + 1, item.selectedOption?.name)}
+                                disabled={item.quantity >= p.stock}
+                                className="text-gray-400 hover:text-black hover:bg-slate-100 rounded p-0.5 disabled:opacity-40 cursor-pointer"
+                              >
+                                <Plus className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Total Item subtotal column */}
+                          <div className="col-span-1 sm:col-span-2 text-right sm:block flex justify-between items-center bg-slate-50/50 sm:bg-transparent p-2 sm:p-0 rounded">
+                            <span className="sm:hidden text-xs text-gray-400 uppercase font-mono">Subtotal:</span>
+                            <span className="font-mono text-sm font-extrabold text-gray-900">₹{itemSub.toFixed(2)}</span>
+                          </div>
+
                         </div>
-                      </div>
-
-                      {/* Unit pricing detail */}
-                      <div className="col-span-1 sm:col-span-2 text-center sm:block flex justify-between items-center bg-slate-50/50 sm:bg-transparent p-2 sm:p-0 rounded">
-                        <span className="sm:hidden text-xs text-gray-400 uppercase font-mono">Price:</span>
-                        <span className="font-mono text-sm font-bold text-gray-700">₹{itemPrice.toFixed(2)}</span>
-                      </div>
-
-                      {/* Quantity stepper controller */}
-                      <div className="col-span-1 sm:col-span-2 flex justify-between sm:justify-center items-center bg-slate-50/50 sm:bg-transparent p-2 sm:p-0 rounded">
-                        <span className="sm:hidden text-xs text-gray-400 uppercase font-mono">Qty:</span>
-                        <div className="flex items-center gap-2 border border-gray-250 bg-white rounded-lg px-2 py-1">
-                          <button
-                            onClick={() => onUpdateQty(p.id, item.quantity - 1, item.selectedOption?.name)}
-                            disabled={item.quantity <= 1}
-                            className="text-gray-400 hover:text-black hover:bg-slate-100 rounded p-0.5 disabled:opacity-40 cursor-pointer"
-                          >
-                            <Minus className="h-3.5 w-3.5" />
-                          </button>
-                          <span className="font-mono text-xs font-bold text-slate-800 px-1">{item.quantity}</span>
-                          <button
-                            onClick={() => onUpdateQty(p.id, item.quantity + 1, item.selectedOption?.name)}
-                            disabled={item.quantity >= p.stock}
-                            className="text-gray-400 hover:text-black hover:bg-slate-100 rounded p-0.5 disabled:opacity-40 cursor-pointer"
-                          >
-                            <Plus className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Total Item subtotal column */}
-                      <div className="col-span-1 sm:col-span-2 text-right sm:block flex justify-between items-center bg-slate-50/50 sm:bg-transparent p-2 sm:p-0 rounded">
-                        <span className="sm:hidden text-xs text-gray-400 uppercase font-mono">Subtotal:</span>
-                        <span className="font-mono text-sm font-extrabold text-gray-900">₹{itemSub.toFixed(2)}</span>
-                      </div>
-
-                    </div>
-                  );
-                })}
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
 

@@ -314,6 +314,10 @@ const ProductSchema = new Schema({
   stockQuantity: { type: Number, min: 0 },
   lowStockThreshold: { type: Number, default: 5, min: 0 },
   stockStatus: { type: String, enum: ["in_stock", "low_stock", "out_of_stock"] },
+  brand: { type: String, default: "JANUZEN" },
+  pricePerPiece: { type: Number, default: 0 },
+  piecesPerUnit: { type: Number, default: 1 },
+  totalUnitsAvailable: { type: Number, default: 0 },
   image: {
     type: String,
     required: true,
@@ -625,6 +629,10 @@ export function loadLocalDB(): DBStructure {
           p.stockStatus = p.stock === 0 ? "out_of_stock" : (p.stock <= threshold ? "low_stock" : "in_stock");
           updated = true;
         }
+        if (p.brand === undefined) { p.brand = "JANUZEN"; updated = true; }
+        if (p.piecesPerUnit === undefined) { p.piecesPerUnit = 1; updated = true; }
+        if (p.totalUnitsAvailable === undefined) { p.totalUnitsAvailable = p.stock; updated = true; }
+        if (p.pricePerPiece === undefined) { p.pricePerPiece = p.price; updated = true; }
         if (updated) productsDirty = true;
         return p;
       });

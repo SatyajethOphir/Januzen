@@ -68,6 +68,20 @@ body {
   border-color: #D6D3D1 !important; /* Defined clean border lines */
 }
 
+/* Do not let mode-light corrupt text inside dark-background components */
+.mode-light .bg-\[\#0D1B2A\] .text-gray-400,
+.mode-light .bg-\[\#0D1B2A\] .text-slate-400,
+.mode-light .bg-slate-900 .text-gray-400,
+.mode-light .bg-slate-900 .text-slate-400,
+.mode-light .bg-slate-950 .text-gray-400,
+.mode-light .bg-slate-950 .text-slate-400 {
+  color: rgba(241, 245, 249, 0.6) !important;
+}
+/* Restore for light popovers inside dark container */
+.mode-light .bg-\[\#0D1B2A\] .bg-white .text-gray-400 {
+  color: #57534E !important;
+}
+
 .mode-dark {
   background-color: #0A0E1A !important;
   color: #F1F5F9 !important;
@@ -113,6 +127,7 @@ body {
 .mode-dark .text-gray-900,
 .mode-dark .text-slate-900,
 .mode-dark .text-\[\#0D1B2A\],
+.mode-dark .text-\[\#0d1b2a\],
 .mode-dark .text-slate-850,
 .mode-dark .text-slate-800,
 .mode-dark .text-gray-800,
@@ -129,11 +144,15 @@ body {
   color: #94A3B8 !important;
 }
 .mode-dark .text-teal-800,
-.mode-dark .text-[#0c7f74] {
+.mode-dark .text-\[\#0c7f74\] {
   color: #2DD4BF !important;
 }
 .mode-dark .text-amber-800 {
   color: #FBBF24 !important;
+}
+
+.mode-dark .bg-emerald-50\/30 {
+  background-color: rgba(16, 185, 129, 0.15) !important;
 }
 
 /* Border overrides for dark mode */
@@ -163,160 +182,6 @@ body {
 .mode-dark select option {
   background-color: #0A0E1A !important;
   color: #F1F5F9 !important;
-}
-
-/* --- EMERALD CLINICAL PALETTE OVERRIDES --- */
-.mode-emerald {
-  background-color: #F0F8F6 !important;
-  color: #064E3B !important;
-  --color-bg-base: #F0F8F6;
-  --color-card-base: #FFFFFF;
-  --color-border-base: #D1FAE5;
-  --color-text-title: #064E3B;
-  --color-text-sub: #0D9488;
-}
-.mode-emerald .bg-card-theme {
-  background-color: #FFFFFF !important;
-  border-color: #D1FAE5 !important;
-}
-.mode-emerald .bg-white {
-  background-color: #FFFFFF !important;
-  color: #064E3B !important;
-  border-color: #D1FAE5 !important;
-}
-.mode-emerald .bg-slate-50,
-.mode-emerald .bg-slate-50\/50,
-.mode-emerald .bg-slate-50\/60,
-.mode-emerald .bg-gray-50,
-.mode-emerald .bg-slate-100,
-.mode-emerald .bg-gray-100 {
-  background-color: #E6F4F1 !important;
-  color: #064E3B !important;
-  border-color: #A7F3D0 !important;
-}
-
-/* Natural clinical text overrides */
-.mode-emerald .text-gray-950,
-.mode-emerald .text-slate-950,
-.mode-emerald .text-gray-900,
-.mode-emerald .text-slate-900,
-.mode-emerald .text-\[\#0D1B2A\],
-.mode-emerald .text-slate-850,
-.mode-emerald .text-slate-800,
-.mode-emerald .text-gray-800,
-.mode-emerald .text-slate-700,
-.mode-emerald .text-gray-700 {
-  color: #064E3B !important;
-}
-.mode-emerald .text-gray-600,
-.mode-emerald .text-slate-600,
-.mode-emerald .text-gray-500,
-.mode-emerald .text-slate-500,
-.mode-emerald .text-gray-400,
-.mode-emerald .text-slate-400 {
-  color: #0F766E !important;
-}
-
-/* Border overrides for emerald mode */
-.mode-emerald .border-gray-100,
-.mode-emerald .border-gray-150,
-.mode-emerald .border-gray-200,
-.mode-emerald .border-gray-250,
-.mode-emerald .border-gray-300,
-.mode-emerald .border-slate-100,
-.mode-emerald .border-slate-200,
-.mode-emerald .border-slate-250,
-.mode-emerald .divide-gray-100 > *,
-.mode-emerald .divide-gray-150 > *,
-.mode-emerald .divide-gray-200 > *,
-.mode-emerald .divide-slate-200 > * {
-  border-color: #D1FAE5 !important;
-}
-
-/* Controls overrides for emerald mode */
-.mode-emerald input,
-.mode-emerald textarea,
-.mode-emerald select {
-  background-color: #FFFFFF !important;
-  color: #064E3B !important;
-  border-color: #A7F3D0 !important;
-}
-
-/* --- AMBER STATIONERY SEPIA PALETTE OVERRIDES --- */
-.mode-amber {
-  background-color: #FCF8F0 !important;
-  color: #451A03 !important;
-  --color-bg-base: #FCF8F0;
-  --color-card-base: #FAF5E8;
-  --color-border-base: #FEF3C7;
-  --color-text-title: #451A03;
-  --color-text-sub: #D4820A;
-}
-.mode-amber .bg-card-theme {
-  background-color: #FAF5E8 !important;
-  border-color: #FEF3C7 !important;
-}
-.mode-amber .bg-white {
-  background-color: #FAF5E8 !important;
-  color: #451A03 !important;
-  border-color: #FEF3C7 !important;
-}
-.mode-amber .bg-slate-50,
-.mode-amber .bg-slate-50\/50,
-.mode-amber .bg-slate-50\/60,
-.mode-amber .bg-gray-50,
-.mode-amber .bg-slate-100,
-.mode-amber .bg-gray-100 {
-  background-color: #F3EBD6 !important;
-  color: #451A03 !important;
-  border-color: #FDE68A !important;
-}
-
-/* Rich warm sepia text overrides */
-.mode-amber .text-gray-950,
-.mode-amber .text-slate-950,
-.mode-amber .text-gray-900,
-.mode-amber .text-slate-900,
-.mode-amber .text-\[\#0D1B2A\],
-.mode-amber .text-slate-850,
-.mode-amber .text-slate-800,
-.mode-amber .text-gray-800,
-.mode-amber .text-slate-700,
-.mode-amber .text-gray-700 {
-  color: #451A03 !important;
-}
-.mode-amber .text-gray-600,
-.mode-amber .text-slate-600,
-.mode-amber .text-gray-500,
-.mode-amber .text-slate-500,
-.mode-amber .text-gray-400,
-.mode-amber .text-slate-400 {
-  color: #B45309 !important;
-}
-
-/* Border overrides for amber mode */
-.mode-amber .border-gray-100,
-.mode-amber .border-gray-150,
-.mode-amber .border-gray-200,
-.mode-amber .border-gray-250,
-.mode-amber .border-gray-300,
-.mode-amber .border-slate-100,
-.mode-amber .border-slate-200,
-.mode-amber .border-slate-250,
-.mode-amber .divide-gray-100 > *,
-.mode-amber .divide-gray-150 > *,
-.mode-amber .divide-gray-200 > *,
-.mode-amber .divide-slate-200 > * {
-  border-color: #FEF3C7 !important;
-}
-
-/* Controls overrides for amber mode */
-.mode-amber input,
-.mode-amber textarea,
-.mode-amber select {
-  background-color: #FFFFFF !important;
-  color: #451A03 !important;
-  border-color: #FDE68A !important;
 }
 
 /* Luxury visual styling accents */
@@ -487,12 +352,138 @@ button:hover svg.lucide-map-pin,
 
 /* 14. Scrolling marquee banner animation */
 .animate-marquee {
-  display: inline-block;
-  white-space: nowrap;
+  display: flex;
   animation: marquee 30s linear infinite;
 }
 @keyframes marquee {
-  0% { transform: translateX(100%); }
-  100% { transform: translateX(-100%); }
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* 15. Infinite Testimonials scrolling animation */
+.animate-testimonial-marquee {
+  display: flex;
+  animation: testimonialMarquee 45s linear infinite;
+}
+.animate-testimonial-marquee:hover {
+  animation-play-state: paused;
+}
+@keyframes testimonialMarquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* 16. Action Button (Wishlist/Share) High Contrast Color Scheme & Overrides in Light/Dark Modes */
+.action-btn-override {
+  background-color: rgba(255, 255, 255, 0.98) !important;
+  color: #0F172A !important;
+  border-color: rgba(255, 255, 255, 0.8) !important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15) !important;
+}
+.action-btn-override svg {
+  color: #0F172A !important;
+  fill: none;
+  stroke: currentColor;
+}
+.action-btn-override svg.fill-red-600 {
+  fill: #EF4444 !important;
+  stroke: #EF4444 !important;
+  color: #EF4444 !important;
+}
+
+/* Ensure ultra high visibility in Dark mode and eliminate any camouflage */
+.mode-dark .action-btn-override {
+  background-color: rgba(255, 255, 255, 0.98) !important;
+  color: #0F172A !important;
+  border-color: rgba(255, 255, 255, 0.8) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
+}
+.mode-dark .action-btn-override svg {
+  color: #0F172A !important;
+}
+.mode-dark .action-btn-override svg.fill-red-600 {
+  fill: #EF4444 !important;
+  stroke: #EF4444 !important;
+  color: #EF4444 !important;
+}
+
+/* Hover behaviors */
+.action-btn-override:hover {
+  background-color: #FFFFFF !important;
+}
+.action-btn-override:hover svg {
+  color: #0F9B8E !important; /* teal */
+}
+.wishlist-btn-override:hover svg {
+  color: #DC2626 !important; /* red */
+}
+
+.mode-dark .action-btn-override:hover {
+  background-color: #FFFFFF !important;
+}
+.mode-dark .action-btn-override:hover svg {
+  color: #0F9B8E !important; /* teal */
+}
+.mode-dark .wishlist-btn-override:hover svg {
+  color: #EF4444 !important; /* red */
+}
+
+
+/* 17. Premium Production UX Shimmer, Fade-In-Up & Hover Micro-Animations */
+@keyframes shimmer-effect {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Glassmorphism subtle backdrop filters */
+.glass-panel {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Button hover ripple micro-interactions */
+.btn-premium-ripple {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-premium-ripple::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 120%;
+  height: 120%;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  opacity: 0;
+  transition: transform 0.6s ease-out, opacity 0.6s ease-out;
+}
+
+.btn-premium-ripple:active::after {
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 1;
+  transition: transform 0s, opacity 0s;
 }
 

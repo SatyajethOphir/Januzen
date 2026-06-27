@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { Product, Order, Message, User } from "../types";
 
-export default function AdminDashboardView() {
+export default function AdminDashboardView({ onNavigate }: { onNavigate?: (page: string, params?: any) => void }) {
   const [activeTab, setActiveTab] = React.useState<"stats" | "products" | "orders" | "messages" | "users" | "coupons" | "marquee" | "storage" | "settings">("stats");
   const [token, setToken] = React.useState<string | null>(null);
 
@@ -193,6 +193,10 @@ export default function AdminDashboardView() {
   const [formCategory, setFormCategory] = React.useState("");
   const [formShop, setFormShop] = React.useState<"medicals" | "stationery">("medicals");
   const [formStock, setFormStock] = React.useState("");
+  const [formBrand, setFormBrand] = React.useState("");
+  const [formPricePerPiece, setFormPricePerPiece] = React.useState("");
+  const [formPiecesPerUnit, setFormPiecesPerUnit] = React.useState("");
+  const [formTotalUnitsAvailable, setFormTotalUnitsAvailable] = React.useState("");
   const [formImage, setFormImage] = React.useState("");
   const [formTags, setFormTags] = React.useState("");
   const [formFeatured, setFormFeatured] = React.useState(false);
@@ -385,6 +389,10 @@ export default function AdminDashboardView() {
     setFormCategory("");
     setFormShop("medicals");
     setFormStock("");
+    setFormBrand("JANUZEN");
+    setFormPricePerPiece("");
+    setFormPiecesPerUnit("1");
+    setFormTotalUnitsAvailable("");
     setFormImage("");
     setFormTags("");
     setFormFeatured(false);
@@ -401,6 +409,10 @@ export default function AdminDashboardView() {
     setFormCategory(p.category);
     setFormShop(p.shop);
     setFormStock(String(p.stock));
+    setFormBrand(p.brand || "JANUZEN");
+    setFormPricePerPiece(String(p.pricePerPiece || p.price));
+    setFormPiecesPerUnit(String(p.piecesPerUnit || 1));
+    setFormTotalUnitsAvailable(String(p.totalUnitsAvailable || p.stock));
     setFormImage(p.image);
     setFormTags(p.tags.join(", "));
     setFormFeatured(p.featured);
@@ -411,17 +423,26 @@ export default function AdminDashboardView() {
 
   const handleSaveProduct = (e: React.FormEvent) => {
     e.preventDefault();
+    const resolvedPieces = Number(formPiecesPerUnit) || 1;
+    const resolvedUnits = Number(formTotalUnitsAvailable) || 0;
+    const computedStock = resolvedPieces * resolvedUnits;
+    const computedPrice = (Number(formPricePerPiece) || Number(formPrice)) * resolvedPieces;
+
     const payload = {
       name: formName,
       description: formDesc,
-      price: Number(formPrice),
+      price: computedPrice || Number(formPrice),
       category: formCategory,
       shop: formShop,
-      stock: Number(formStock),
+      stock: computedStock || Number(formStock),
       image: formImage || "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?q=80&w=600",
       tags: formTags.split(",").map(t => t.trim()).filter(Boolean),
       featured: formFeatured,
-      isActive: true
+      isActive: true,
+      brand: formBrand || "JANUZEN",
+      pricePerPiece: Number(formPricePerPiece) || Number(formPrice),
+      piecesPerUnit: resolvedPieces,
+      totalUnitsAvailable: resolvedUnits
     };
 
     if (editingProduct) {
@@ -1015,6 +1036,12 @@ export default function AdminDashboardView() {
                       <div className="space-y-2 sm:col-span-1 text-right">
                         <span className="text-[10px] font-bold text-gray-400 block pb-1">COURIER DISPATCH CONTROL</span>
                         <div className="flex flex-col sm:items-end gap-1.5 font-sans">
+                          <button
+                            onClick={() => onNavigate?.("invoice", { orderId: o.id })}
+                            className="w-full sm:w-36 p-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded text-xs font-bold font-mono tracking-wider text-center cursor-pointer shadow-sm transition-colors mb-1"
+                          >
+                            📄 VIEW INVOICE
+                          </button>
                           <select
                             value={o.status}
                             onChange={(e) => handleOrderStatusUpdate(o.id, e.target.value)}
@@ -1382,12 +1409,20 @@ export default function AdminDashboardView() {
                 {/* Simulated Marquee Live Preview */}
                 <div className="border border-gray-100 rounded-xl p-4 bg-slate-50 space-y-2">
                   <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Live Banner Simulation</span>
-                  <div className="bg-black text-amber-300 py-1.5 px-4 rounded-md overflow-hidden relative">
-                    <div 
-                      className="whitespace-nowrap inline-block font-semibold text-xs tracking-wide animate-marquee"
-                      style={{ animationDuration: `${marqueeSpeed}s` }}
-                    >
-                      {marqueeText || "No active message logged — fallback placeholder marquee text"}
+                  <div className="bg-black text-amber-300 py-1.5 px-4 rounded-md overflow-hidden relative flex">
+                    <div className="flex w-max">
+                      <div 
+                        className="whitespace-nowrap inline-block font-semibold text-xs tracking-wide animate-marquee pr-6"
+                        style={{ animationDuration: `${marqueeSpeed}s` }}
+                      >
+                        {marqueeText || "No active message logged — fallback placeholder marquee text"} ⚡
+                      </div>
+                      <div 
+                        className="whitespace-nowrap inline-block font-semibold text-xs tracking-wide animate-marquee pr-6"
+                        style={{ animationDuration: `${marqueeSpeed}s` }}
+                      >
+                        {marqueeText || "No active message logged — fallback placeholder marquee text"} ⚡
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1889,28 +1924,71 @@ export default function AdminDashboardView() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-gray-400 uppercase font-bold tracking-widest block">Unit Price (₹)</label>
+                <label className="text-gray-400 uppercase font-bold tracking-widest block">Brand</label>
                 <input
-                  type="number"
-                  step="0.01"
+                  type="text"
                   required
-                  placeholder="14.50"
-                  value={formPrice}
-                  onChange={(e) => setFormPrice(e.target.value)}
+                  placeholder="JANUZEN"
+                  value={formBrand}
+                  onChange={(e) => setFormBrand(e.target.value)}
                   className="w-full bg-slate-50 border border-gray-200 p-2.5 rounded-lg text-sm text-gray-800 focus:outline-none focus:border-slate-850"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-gray-400 uppercase font-bold tracking-widest block">Initial Warehouse Stock</label>
+                <label className="text-gray-400 uppercase font-bold tracking-widest block">Price Per Piece (₹)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  required
+                  placeholder="10.00"
+                  value={formPricePerPiece}
+                  onChange={(e) => setFormPricePerPiece(e.target.value)}
+                  className="w-full bg-slate-50 border border-gray-200 p-2.5 rounded-lg text-sm text-gray-800 focus:outline-none focus:border-slate-850"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-gray-400 uppercase font-bold tracking-widest block">Pieces Per Unit / Pack</label>
                 <input
                   type="number"
                   required
-                  placeholder="100"
-                  value={formStock}
-                  onChange={(e) => setFormStock(e.target.value)}
+                  placeholder="10"
+                  value={formPiecesPerUnit}
+                  onChange={(e) => setFormPiecesPerUnit(e.target.value)}
                   className="w-full bg-slate-50 border border-gray-200 p-2.5 rounded-lg text-sm text-gray-800 focus:outline-none focus:border-slate-850"
                 />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-gray-400 uppercase font-bold tracking-widest block">Total Units Available</label>
+                <input
+                  type="number"
+                  required
+                  placeholder="15"
+                  value={formTotalUnitsAvailable}
+                  onChange={(e) => setFormTotalUnitsAvailable(e.target.value)}
+                  className="w-full bg-slate-50 border border-gray-200 p-2.5 rounded-lg text-sm text-gray-800 focus:outline-none focus:border-slate-850"
+                />
+              </div>
+
+              {/* Automatic Live Calculations Display */}
+              <div className="sm:col-span-2 bg-emerald-50/50 border border-emerald-150 p-3.5 rounded-xl space-y-1 font-sans text-xs">
+                <p className="font-bold text-[#0F6E56] uppercase tracking-wider text-[10px] mb-1">⚡ Dynamic Inventory Matrix (Auto-Calculated)</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-slate-400 block">Total Pieces Available:</span>
+                    <span className="font-mono font-black text-sm text-slate-800">
+                      {(Number(formPiecesPerUnit) || 1) * (Number(formTotalUnitsAvailable) || 0)} pieces
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block">Unit Retail Price:</span>
+                    <span className="font-mono font-black text-sm text-[#0F6E56]">
+                      ₹{((Number(formPricePerPiece) || 0) * (Number(formPiecesPerUnit) || 1)).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-1">

@@ -20,6 +20,7 @@ import ProfileView from "./components/ProfileView";
 import DeliveryHubView from "./components/DeliveryHubView";
 import SideCartDrawer from "./components/SideCartDrawer";
 import Error404View from "./components/Error404View";
+import InvoiceOnlineView from "./components/InvoiceOnlineView";
 
 interface NavState {
   page: "home" | "medicals" | "stationery" | "product-detail" | "cart" | "checkout" | "about" | "contact" | "login" | "admin" | "orders" | "profile" | "delivery" | "error" | string;
@@ -43,16 +44,17 @@ export default function App() {
   const [loadProgress, setLoadProgress] = React.useState(10);
   const [pageLoading, setPageLoading] = React.useState(false);
   
-  // Theme state: light, dark, emerald (clinical), amber (stationery), device
-  const [theme, setTheme] = React.useState<"light" | "dark" | "emerald" | "amber" | "device">(() => {
+  // Theme state: light, dark
+  const [theme, setTheme] = React.useState<"light" | "dark">(() => {
     try {
-      return (localStorage.getItem("januzen_theme") as any) || "light";
+      const saved = localStorage.getItem("januzen_theme");
+      return (saved === "dark" || saved === "light") ? saved : "light";
     } catch (e) {
       return "light";
     }
   });
 
-  const [resolvedTheme, setResolvedTheme] = React.useState<"light" | "dark" | "emerald" | "amber">("light");
+  const [resolvedTheme, setResolvedTheme] = React.useState<"light" | "dark">("light");
 
   // Deep Link product parsing on mount
   React.useEffect(() => {
@@ -137,21 +139,7 @@ export default function App() {
   }, []);
 
   React.useEffect(() => {
-    if (theme === "device") {
-      if (typeof window !== "undefined" && window.matchMedia) {
-        const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-        const handleChange = () => {
-          setResolvedTheme(mediaQuery.matches ? "dark" : "light");
-        };
-        handleChange();
-        mediaQuery.addEventListener("change", handleChange);
-        return () => mediaQuery.removeEventListener("change", handleChange);
-      } else {
-        setResolvedTheme("light");
-      }
-    } else {
-      setResolvedTheme(theme);
-    }
+    setResolvedTheme(theme);
   }, [theme]);
 
   // Core master session and featured items loader on initial mount
@@ -221,6 +209,16 @@ export default function App() {
 
     verifySession();
     loadFeatured();
+  }, []);
+
+  // Parse URL search parameters on mount for direct invoice routing (e.g. from QR Codes)
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const pageParam = params.get("page");
+    const orderIdParam = params.get("orderId");
+    if (pageParam === "invoice" && orderIdParam) {
+      setNav({ page: "invoice", params: { orderId: orderIdParam } });
+    }
   }, []);
 
   // Lightweight background sync when switching pages of the portal (completely non-blocking)
@@ -451,21 +449,37 @@ export default function App() {
       {marquee && (
         <div className="w-full bg-slate-900 text-amber-300 py-1.5 border-b border-slate-800 overflow-hidden relative z-50 flex items-center h-8 select-none">
           <div 
-            className="animate-marquee font-mono text-[10px] font-bold tracking-wider flex items-center gap-6 whitespace-nowrap"
+            className="animate-marquee flex w-max"
             style={{ animationDuration: `${marqueeSpeed}s` }}
           >
-            <span>⚡ ANNOUNCEMENT: {marquee} ⚡</span>
-            <span className="opacity-40">|</span>
-            <span>⚡ ANNOUNCEMENT: {marquee} ⚡</span>
-            <span className="opacity-40">|</span>
-            <span>⚡ ANNOUNCEMENT: {marquee} ⚡</span>
-            <span className="opacity-40">|</span>
-            <span>⚡ ANNOUNCEMENT: {marquee} ⚡</span>
-            <span className="opacity-40">|</span>
-            <span>⚡ ANNOUNCEMENT: {marquee} ⚡</span>
-            <span className="opacity-40">|</span>
-            <span>⚡ ANNOUNCEMENT: {marquee} ⚡</span>
-            <span className="opacity-40">|</span>
+            <div className="font-mono text-[10px] font-bold tracking-wider flex items-center gap-6 whitespace-nowrap pr-6">
+              <span>⚡ ANNOUNCEMENT: {marquee} ⚡</span>
+              <span className="opacity-40">|</span>
+              <span>⚡ ANNOUNCEMENT: {marquee} ⚡</span>
+              <span className="opacity-40">|</span>
+              <span>⚡ ANNOUNCEMENT: {marquee} ⚡</span>
+              <span className="opacity-40">|</span>
+              <span>⚡ ANNOUNCEMENT: {marquee} ⚡</span>
+              <span className="opacity-40">|</span>
+              <span>⚡ ANNOUNCEMENT: {marquee} ⚡</span>
+              <span className="opacity-40">|</span>
+              <span>⚡ ANNOUNCEMENT: {marquee} ⚡</span>
+              <span className="opacity-40">|</span>
+            </div>
+            <div className="font-mono text-[10px] font-bold tracking-wider flex items-center gap-6 whitespace-nowrap pr-6" aria-hidden="true">
+              <span>⚡ ANNOUNCEMENT: {marquee} ⚡</span>
+              <span className="opacity-40">|</span>
+              <span>⚡ ANNOUNCEMENT: {marquee} ⚡</span>
+              <span className="opacity-40">|</span>
+              <span>⚡ ANNOUNCEMENT: {marquee} ⚡</span>
+              <span className="opacity-40">|</span>
+              <span>⚡ ANNOUNCEMENT: {marquee} ⚡</span>
+              <span className="opacity-40">|</span>
+              <span>⚡ ANNOUNCEMENT: {marquee} ⚡</span>
+              <span className="opacity-40">|</span>
+              <span>⚡ ANNOUNCEMENT: {marquee} ⚡</span>
+              <span className="opacity-40">|</span>
+            </div>
           </div>
         </div>
       )}
@@ -588,7 +602,7 @@ export default function App() {
             />
           )}
 
-          {nav.page === "admin" && <AdminDashboardView />}
+          {nav.page === "admin" && <AdminDashboardView onNavigate={handleNavigate} />}
           
           {nav.page === "profile" && (
             <ProfileView
@@ -608,6 +622,14 @@ export default function App() {
 
           {nav.page === "delivery" && (
             <DeliveryHubView currentUser={currentUser} onNavigate={handleNavigate} />
+          )}
+
+          {nav.page === "invoice" && (
+            <InvoiceOnlineView
+              orderId={nav.params.orderId}
+              onNavigate={handleNavigate}
+              currentUser={currentUser}
+            />
           )}
         </Suspense>
       </main>

@@ -328,27 +328,6 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
                     <span className="inline-block w-2.5 h-2.5 rounded-full bg-slate-900 border border-slate-600"></span>
                     Dark Obsidian
                   </button>
-                  <button
-                    onClick={() => onThemeChange?.("emerald")}
-                    className={`w-full text-left px-3 py-2 text-xs font-medium flex items-center gap-2 hover:bg-[#1E293B] cursor-pointer transition-colors ${theme === "emerald" ? "text-amber-400 bg-slate-800" : "text-gray-300"}`}
-                  >
-                    <span className="inline-block w-2.5 h-2.5 rounded-full bg-teal-500"></span>
-                    Clinical Emerald
-                  </button>
-                  <button
-                    onClick={() => onThemeChange?.("amber")}
-                    className={`w-full text-left px-3 py-2 text-xs font-medium flex items-center gap-2 hover:bg-[#1E293B] cursor-pointer transition-colors ${theme === "amber" ? "text-amber-400 bg-slate-800" : "text-gray-300"}`}
-                  >
-                    <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-                    Warm Amber
-                  </button>
-                  <button
-                    onClick={() => onThemeChange?.("device")}
-                    className={`w-full text-left px-3 py-2 text-xs font-medium flex items-center gap-2 hover:bg-[#1E293B] cursor-pointer transition-colors ${theme === "device" ? "text-teal-400 bg-slate-800" : "text-gray-300"}`}
-                  >
-                    <span className="inline-block w-2.5 h-2.5 rounded-full bg-slate-400"></span>
-                    Device Theme
-                  </button>
                 </div>
               </div>
             </div>
@@ -530,24 +509,6 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
                   className={`py-1.5 px-3 rounded text-center text-xs font-medium border h-9 flex items-center justify-center cursor-pointer ${theme === "dark" ? "bg-white text-black border-white font-bold" : "text-gray-300 border-gray-700 hover:bg-gray-800"}`}
                 >
                   🌙 Dark
-                </button>
-                <button
-                  onClick={() => { onThemeChange?.("emerald"); setMobileMenuOpen(false); }}
-                  className={`py-1.5 px-3 rounded text-center text-xs font-medium border h-9 flex items-center justify-center cursor-pointer ${theme === "emerald" ? "bg-[#0F9B8E] text-white border-[#0F9B8E] font-bold" : "text-gray-300 border-gray-700 hover:bg-[#1E293B]/60"}`}
-                >
-                  🧪 Emerald
-                </button>
-                <button
-                  onClick={() => { onThemeChange?.("amber"); setMobileMenuOpen(false); }}
-                  className={`py-1.5 px-3 rounded text-center text-xs font-medium border h-9 flex items-center justify-center cursor-pointer ${theme === "amber" ? "bg-[#D4820A] text-white border-[#D4820A] font-bold" : "text-gray-300 border-gray-700 hover:bg-[#1E293B]/60"}`}
-                >
-                  ✍️ Amber
-                </button>
-                <button
-                  onClick={() => { onThemeChange?.("device"); setMobileMenuOpen(false); }}
-                  className={`col-span-2 py-1.5 px-3 rounded text-center text-xs font-medium border h-9 flex items-center justify-center cursor-pointer ${theme === "device" ? "bg-slate-600 text-white border-slate-600 font-bold" : "text-gray-300 border-gray-700 hover:bg-[#1E293B]/60"}`}
-                >
-                  🖥️ Device Preference
                 </button>
               </div>
             </div>

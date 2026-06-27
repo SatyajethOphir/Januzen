@@ -1,5 +1,6 @@
 import React from "react";
 import { Mail, Phone, MapPin, Clock, Send, ShieldAlert, CheckCircle, ChevronDown, ChevronUp, Map, Briefcase } from "lucide-react";
+import { FAQSkeleton } from "./SkeletonLoader";
 
 export default function ContactView() {
   // Form Submission states
@@ -11,6 +12,12 @@ export default function ContactView() {
   const [submitting, setSubmitting] = React.useState(false);
   const [success, setSuccess] = React.useState("");
   const [error, setError] = React.useState("");
+  const [faqsLoading, setFaqsLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => setFaqsLoading(false), 900);
+    return () => clearTimeout(timer);
+  }, []);
 
   // FAQ Accordion states
   const [faqOpen, setFaqOpen] = React.useState<Record<number, boolean>>({
@@ -24,7 +31,7 @@ export default function ContactView() {
     },
     {
       q: "What is your shipping fee grid and delivery timeline framework?",
-      a: "All orders over $35 enjoy immediate Free Secured Freight Delivery across Hyderabad and Telangana suburbs. Orders below $35 incur a minor freight charge of $4.99. Goods are dispatched from local unit hubs within 4 hours, targeting arrival within 24 hours."
+      a: "All orders over ₹1000 enjoy immediate Free Secured Freight Delivery across Hyderabad and Telangana suburbs. Orders below ₹1000 incur a minor freight charge of ₹150. Goods are dispatched from local unit hubs within 4 hours, targeting arrival within 24 hours."
     },
     {
       q: "Do you support commercial wholesale pricing accounts for offices, clinics, or schools?",
@@ -113,6 +120,13 @@ export default function ContactView() {
               <div>
                 <p className="text-[9px] uppercase text-gray-400 font-bold">Helpline Support</p>
                 <p className="text-gray-500 font-serif text-xs">09666588553</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2.5 pt-2 border-t border-gray-200/50">
+              <Mail className="h-4 w-4 text-amber-600 shrink-0" />
+              <div>
+                <p className="text-[9px] uppercase text-gray-400 font-bold">Bulk B2B Sales Desk</p>
+                <p className="text-amber-700 font-bold text-xs"><a href="mailto:sales@januzen.in" className="hover:underline">sales@januzen.in</a></p>
               </div>
             </div>
           </div>
@@ -332,32 +346,43 @@ export default function ContactView() {
         </div>
 
         <div className="max-w-3xl mx-auto divide-y divide-gray-200 border bg-card-theme rounded-2xl overflow-hidden shadow-sm">
-          {faqs.map((faq, idx) => {
-            const isOpen = !!faqOpen[idx];
-            return (
-              <div key={idx} className="transition-all">
-                <button
-                  onClick={() => toggleFaq(idx)}
-                  className="w-full flex items-center justify-between text-left p-5 text-current hover:bg-black/5 transition-colors cursor-pointer"
-                >
-                  <span className="font-serif font-bold text-base leading-snug pr-4">
-                    {faq.q}
-                  </span>
-                  {isOpen ? (
-                    <ChevronUp className="h-4 w-4 text-gray-400 shrink-0" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4 text-gray-400 shrink-0" />
-                  )}
-                </button>
-                {isOpen && (
-                  <div className="px-5 pb-5 pt-1 text-xs sm:text-sm text-gray-500 leading-relaxed border-t border-gray-150 bg-black/5">
-                    {faq.a}
+          {faqsLoading ? (
+            <div className="p-6 space-y-4">
+              {[...Array(4)].map((_, i) => (
+                <FAQSkeleton key={i} />
+              ))}
+            </div>
+          ) : (
+            <div className="animate-fade-in-up divide-y divide-gray-200">
+              {faqs.map((faq, idx) => {
+                const isOpen = !!faqOpen[idx];
+                return (
+                  <div key={idx} className="transition-all">
+                    <button
+                      onClick={() => toggleFaq(idx)}
+                      className="w-full flex items-center justify-between text-left p-5 text-current hover:bg-black/5 transition-colors cursor-pointer"
+                    >
+                      <span className="font-serif font-bold text-base leading-snug pr-4">
+                        {faq.q}
+                      </span>
+                      {isOpen ? (
+                        <ChevronUp className="h-4 w-4 text-gray-400 shrink-0" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 text-gray-400 shrink-0" />
+                      )}
+                    </button>
+                    {isOpen && (
+                      <div className="px-5 pb-5 pt-1 text-xs sm:text-sm text-gray-500 leading-relaxed border-t border-gray-150 bg-black/5">
+                        {faq.a}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            );
-          })}
+                );
+              })}
+            </div>
+          )}
         </div>
+
       </section>
 
     </div>

@@ -455,13 +455,17 @@ async function startServer() {
 
   // Admin CRUD: Create product
   app.post("/api/admin/products", authenticateAdmin, async (req, res) => {
-    const { name, description, price, category, shop, stock, image, tags, featured } = req.body;
+    const { name, description, price, category, shop, stock, image, tags, featured, brand, pricePerPiece, piecesPerUnit, totalUnitsAvailable } = req.body;
 
-    if (!name || !description || !price || !category || !shop || stock === undefined) {
+    if (!name || !description || !price || !category || !shop) {
       return res.status(400).json({ error: "Missing required core product fields" });
     }
 
     try {
+      const resolvedPiecesPerUnit = piecesPerUnit !== undefined ? Math.max(1, parseInt(piecesPerUnit, 10)) : 1;
+      const resolvedTotalUnits = totalUnitsAvailable !== undefined ? Math.max(0, parseInt(totalUnitsAvailable, 10)) : Math.max(0, parseInt(stock || "0", 10));
+      const calculatedStock = resolvedPiecesPerUnit * resolvedTotalUnits;
+
       const newProduct: Product = {
         id: "p_" + Date.now(),
         name,
@@ -469,11 +473,15 @@ async function startServer() {
         price: parseFloat(price),
         category,
         shop: shop as "medicals" | "stationery",
-        stock: parseInt(stock, 10),
+        stock: calculatedStock,
         image: image || "https://images.unsplash.com/photo-1517842645767-c639042777db?w=600&auto=format&fit=crop",
         tags: Array.isArray(tags) ? tags : (tags ? String(tags).split(",").map(t => t.trim()) : []),
         featured: !!featured,
-        isActive: true
+        isActive: true,
+        brand: brand || "JANUZEN",
+        pricePerPiece: pricePerPiece !== undefined ? parseFloat(pricePerPiece) : parseFloat(price),
+        piecesPerUnit: resolvedPiecesPerUnit,
+        totalUnitsAvailable: resolvedTotalUnits
       };
 
       await dbClient.createProduct(newProduct);
@@ -496,7 +504,11 @@ async function startServer() {
         return res.status(404).json({ error: "Product not found" });
       }
 
-      const { name, description, price, category, shop, stock, image, tags, featured } = req.body;
+      const { name, description, price, category, shop, stock, image, tags, featured, brand, pricePerPiece, piecesPerUnit, totalUnitsAvailable } = req.body;
+
+      const resolvedPiecesPerUnit = piecesPerUnit !== undefined ? Math.max(1, parseInt(piecesPerUnit, 10)) : (current.piecesPerUnit || 1);
+      const resolvedTotalUnits = totalUnitsAvailable !== undefined ? Math.max(0, parseInt(totalUnitsAvailable, 10)) : (stock !== undefined ? Math.max(0, parseInt(stock, 10)) : (current.totalUnitsAvailable || current.stock));
+      const calculatedStock = piecesPerUnit !== undefined || totalUnitsAvailable !== undefined ? (resolvedPiecesPerUnit * resolvedTotalUnits) : (stock !== undefined ? parseInt(stock, 10) : current.stock);
 
       const updates: Partial<Product> = {
         name: name !== undefined ? name : current.name,
@@ -504,10 +516,14 @@ async function startServer() {
         price: price !== undefined ? parseFloat(price) : current.price,
         category: category !== undefined ? category : current.category,
         shop: shop !== undefined ? shop : current.shop,
-        stock: stock !== undefined ? parseInt(stock, 10) : current.stock,
+        stock: calculatedStock,
         image: image !== undefined ? image : current.image,
         tags: tags !== undefined ? (Array.isArray(tags) ? tags : String(tags).split(",").map(t => t.trim())) : current.tags,
-        featured: featured !== undefined ? !!featured : current.featured
+        featured: featured !== undefined ? !!featured : current.featured,
+        brand: brand !== undefined ? brand : (current.brand || "JANUZEN"),
+        pricePerPiece: pricePerPiece !== undefined ? parseFloat(pricePerPiece) : (current.pricePerPiece || current.price),
+        piecesPerUnit: resolvedPiecesPerUnit,
+        totalUnitsAvailable: resolvedTotalUnits
       };
 
       const updated = await dbClient.updateProduct(req.params.id, updates);
@@ -616,10 +632,12 @@ async function startServer() {
       const orderIdCode = `JAN-${yyyy}${mm}${dd}-${randCode}`;
 
       const deliveryOTP = String(Math.floor(1000 + Math.random() * 9000));
+      const invoiceIdCode = `INV-${yyyy}${mm}${dd}-${randCode}`;
 
       const newOrder: any = {
         id: "o_" + Date.now(),
         orderId: orderIdCode,
+        invoiceId: invoiceIdCode,
         userId: req.user.id,
         userName: req.user.name,
         userEmail: req.user.email,
@@ -635,8 +653,23 @@ async function startServer() {
         },
         status: "placed",
         paymentMethod: paymentMethod || "Cash on Delivery",
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        stockAdjusted: true
       };
+
+      // Deduct product stock immediately
+      for (const item of orderItems) {
+        const prod = await dbClient.getProductById(item.productId);
+        if (prod) {
+          const newStock = Math.max(0, prod.stock - item.quantity);
+          const piecesPerUnit = prod.piecesPerUnit || 1;
+          const newUnitsAvailable = Math.floor(newStock / piecesPerUnit);
+          await dbClient.updateProduct(item.productId, {
+            stock: newStock,
+            totalUnitsAvailable: newUnitsAvailable
+          });
+        }
+      }
 
       await dbClient.createOrder(newOrder);
 

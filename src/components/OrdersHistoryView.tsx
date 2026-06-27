@@ -5,6 +5,7 @@ import {
   Calendar, CreditCard, MapPin, Sparkles, RefreshCw 
 } from "lucide-react";
 import { Order } from "../types";
+import { OrderHistorySkeleton } from "./SkeletonLoader";
 
 interface OrdersHistoryViewProps {
   onNavigate: (view: string, params?: Record<string, any>) => void;
@@ -178,9 +179,10 @@ export default function OrdersHistoryView({ onNavigate, currentUser }: OrdersHis
       </div>
 
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-24 space-y-4">
-          <span className="animate-spin h-9 w-9 border-4 border-[#0D1B2A] border-t-transparent rounded-full"></span>
-          <p className="text-xs font-mono font-bold text-gray-500">Retrieving secure purchase catalog...</p>
+        <div className="space-y-6 animate-pulse">
+          {[...Array(2)].map((_, i) => (
+            <OrderHistorySkeleton key={i} />
+          ))}
         </div>
       ) : error ? (
         <div className="max-w-md mx-auto bg-white border border-red-150 rounded-xl p-8 text-center space-y-4">
@@ -452,6 +454,16 @@ export default function OrdersHistoryView({ onNavigate, currentUser }: OrdersHis
                           <span className="font-mono text-base font-black text-[#0D1B2A]">
                             ₹{(order.totals?.total || 0).toFixed(2)}
                           </span>
+                        </div>
+
+                        <div className="pt-2">
+                          <button
+                            onClick={() => onNavigate("invoice", { orderId: order.id })}
+                            style={{ cursor: "pointer" }}
+                            className="w-full py-2 px-3 border border-emerald-200 hover:border-[#0F6E56]/30 bg-emerald-50 hover:bg-[#0F6E56]/10 text-[#0F6E56] text-xs font-mono font-bold uppercase rounded-lg transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            📄 View Digital Invoice
+                          </button>
                         </div>
 
                         {/* Customer Cancel action button */}

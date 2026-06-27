@@ -2,6 +2,8 @@ import React from "react";
 import { gsap } from "gsap";
 import { Search, Filter, RotateCcw, AlertCircle, ShoppingBag, Grid, ChevronLeft, ChevronRight, Heart, Share2, Check } from "lucide-react";
 import { Product } from "../types";
+import { ProductCardSkeleton } from "./SkeletonLoader";
+import ImageWithLoader from "./ImageWithLoader";
 
 interface ShopViewProps {
   division: "medicals" | "stationery";
@@ -37,6 +39,7 @@ export default function ShopView({
   
   const [search, setSearch] = React.useState("");
   const [selectedCategory, setSelectedCategory] = React.useState("");
+  const [priceMin, setPriceMin] = React.useState<string>("");
   const [priceMax, setPriceMax] = React.useState<string>("");
   const [sort, setSort] = React.useState("");
   const [page, setPage] = React.useState(1);
@@ -60,6 +63,7 @@ export default function ShopView({
     loadMeta();
     setSelectedCategory("");
     setSearch("");
+    setPriceMin("");
     setPriceMax("");
     setSort("");
     setPage(1);
@@ -73,6 +77,7 @@ export default function ShopView({
       params.append("shop", division);
       if (search) params.append("search", search);
       if (selectedCategory) params.append("category", selectedCategory);
+      if (priceMin) params.append("priceMin", priceMin);
       if (priceMax) params.append("priceMax", priceMax);
       if (sort) params.append("sort", sort);
       params.append("page", String(page));
@@ -90,7 +95,7 @@ export default function ShopView({
     } finally {
       setLoading(false);
     }
-  }, [division, search, selectedCategory, priceMax, sort, page]);
+  }, [division, search, selectedCategory, priceMin, priceMax, sort, page]);
 
   React.useEffect(() => {
     fetchProducts();
@@ -109,6 +114,7 @@ export default function ShopView({
   const handleResetFilters = () => {
     setSearch("");
     setSelectedCategory("");
+    setPriceMin("");
     setPriceMax("");
     setSort("");
     setPage(1);
@@ -201,27 +207,46 @@ export default function ShopView({
               </div>
             </div>
 
-            {/* Max Budget Limit */}
-            <div className="space-y-2">
+            {/* Budget Maximizer */}
+            <div className="space-y-3 pt-2 border-t border-gray-100">
               <label className="text-xs font-extrabold uppercase tracking-widest text-[#0D1B2A] block">Budget Maximizer</label>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-400 font-mono font-semibold">$0</span>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  step="5"
-                  value={priceMax || "100"}
-                  onChange={(e) => { setPriceMax(e.target.value); setPage(1); }}
-                  className="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                />
-                <span className="text-xs text-gray-400 font-mono font-semibold">$100</span>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <span className="text-[10px] text-gray-400 font-mono font-bold block">From (₹)</span>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="Min ₹"
+                    value={priceMin}
+                    onChange={(e) => { setPriceMin(e.target.value); setPage(1); }}
+                    className={`w-full bg-slate-50 border border-gray-200 focus:outline-none focus:ring-1 ${borderFocus} rounded-lg px-2.5 py-1.5 text-xs text-gray-800 font-mono`}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] text-gray-400 font-mono font-bold block">To (₹)</span>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="Max ₹"
+                    value={priceMax}
+                    onChange={(e) => { setPriceMax(e.target.value); setPage(1); }}
+                    className={`w-full bg-slate-50 border border-gray-200 focus:outline-none focus:ring-1 ${borderFocus} rounded-lg px-2.5 py-1.5 text-xs text-gray-800 font-mono`}
+                  />
+                </div>
               </div>
-              {priceMax && (
-                <div className="text-xs text-right font-mono font-bold text-gray-600">
-                  Maximum Limit: <span className="text-slate-900">${parseFloat(priceMax).toFixed(2)}</span>
+              {(priceMin || priceMax) && (
+                <div className="text-[10px] text-right font-mono font-bold text-gray-500">
+                  Range: <span className="text-slate-900">₹{priceMin || "0"} - ₹{priceMax || "∞"}</span>
                 </div>
               )}
+            </div>
+
+            {/* Bulk B2B Sidebar Notice */}
+            <div className="pt-4 border-t border-gray-100 space-y-1.5">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-600 block">Bulk B2B Requirements</span>
+              <p className="text-[11px] text-gray-500 leading-relaxed font-serif">
+                Ordering wholesale? For Bulk B2B requests, contact us directly at <a href="mailto:sales@januzen.in" className="font-bold underline text-slate-800 hover:text-amber-600">sales@januzen.in</a>.
+              </p>
             </div>
 
           </div>
@@ -254,9 +279,10 @@ export default function ShopView({
 
           {/* Real inventory grid */}
           {loading ? (
-            <div className="py-24 text-center">
-              <div className={`mx-auto h-10 w-10 border-4 border-slate-200 border-t-current rounded-full animate-spin ${accentColor}`}></div>
-              <p className="mt-4 text-sm text-gray-400 font-mono font-medium">Querying warehouse catalog ledgers...</p>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-pulse">
+              {[...Array(8)].map((_, i) => (
+                <ProductCardSkeleton key={i} />
+              ))}
             </div>
           ) : products.length === 0 ? (
             <div className="py-16 text-center border border-dashed border-gray-200 rounded-2xl bg-slate-50/40">
@@ -291,14 +317,14 @@ export default function ShopView({
                 return (
                   <div
                     key={p.id}
-                    className="gsap-shop-card group bg-white border border-gray-200/60 rounded-xl overflow-hidden hover:shadow-lg transition-all flex flex-col justify-between relative group/tile"
+                    className="gsap-shop-card group bg-white border border-gray-200/60 rounded-xl overflow-hidden hover:shadow-lg transition-all flex flex-col justify-between relative group/tile animate-fade-in-up"
                   >
                     <div className="relative overflow-hidden">
-                      <img
+                      <ImageWithLoader
                         src={p.image}
                         alt={p.name}
-                        referrerPolicy="no-referrer"
-                        className="w-full h-44 object-cover cursor-pointer group-hover:scale-[1.03] transition-transform duration-300"
+                        className="w-full h-44 cursor-pointer group-hover:scale-[1.03] transition-transform duration-300"
+                        containerClassName="w-full h-44"
                         onClick={() => onNavigate("product-detail", { productId: p.id })}
                       />
                       
@@ -309,7 +335,7 @@ export default function ShopView({
                             e.stopPropagation();
                             if (onToggleWishlist) onToggleWishlist(p.id, p.shop);
                           }}
-                          className="h-7 w-7 bg-white/95 hover:bg-white text-slate-700 hover:text-red-600 rounded-full flex items-center justify-center shadow border border-gray-200 transition-all cursor-pointer"
+                          className="h-7 w-7 rounded-full flex items-center justify-center border transition-all cursor-pointer action-btn-override wishlist-btn-override"
                           title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
                         >
                           <Heart className={`h-3.5 w-3.5 transition-colors ${isWishlisted ? "fill-red-600 stroke-red-600" : ""}`} />
@@ -317,7 +343,7 @@ export default function ShopView({
 
                         <button
                           onClick={handleShareLink}
-                          className="h-7 w-7 bg-white/95 hover:bg-white text-slate-700 hover:text-teal-600 rounded-full flex items-center justify-center shadow border border-gray-200 transition-all cursor-pointer"
+                          className="h-7 w-7 rounded-full flex items-center justify-center border transition-all cursor-pointer action-btn-override"
                           title="Copy product link"
                         >
                           {isCopied ? (
@@ -408,9 +434,12 @@ export default function ShopView({
             </div>
           )}
 
-          <div className="border border-dashed border-gray-200 rounded-xl p-5 bg-slate-50 text-center">
-            <p className="text-xs text-grat-500 italic">
-              ⭐ Are you ordering corporate volumes or specialized medical clinic requisitions? Receive extra custom concessions by heading to our <span className="underline hover:text-blue-600 cursor-pointer font-bold" onClick={() => onNavigate("contact")}>Contact Enquiries page</span>.
+          <div className="border border-dashed border-gray-200 rounded-xl p-5 bg-slate-50 text-center space-y-1">
+            <p className="text-xs text-slate-600 font-serif">
+              💼 <b>Bulk B2B Requirements:</b> For specialized hospital procurements, retail distribution deals, corporate workspaces, and custom tax invoices, please contact us at <a href="mailto:sales@januzen.in" className="font-bold underline text-teal-600 hover:text-teal-700">sales@januzen.in</a>.
+            </p>
+            <p className="text-[11px] text-gray-400 italic">
+              You can also submit structured wholesale query tickets via our <span className="underline hover:text-teal-600 cursor-pointer font-bold" onClick={() => onNavigate("contact")}>Contact Enquiries desk</span>.
             </p>
           </div>
 
