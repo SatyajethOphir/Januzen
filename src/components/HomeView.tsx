@@ -514,9 +514,9 @@ export default function HomeView({
 
         {/* Seamless Infinite Scrolling Track */}
         <div className="relative w-full overflow-hidden select-none py-4">
-          {/* Edge fades for smooth visual blending */}
-          <div className="absolute left-0 top-0 bottom-0 w-16 sm:w-32 bg-gradient-to-r from-white via-white/80 to-transparent dark:from-slate-950 dark:via-slate-950/85 z-10 pointer-events-none"></div>
-          <div className="absolute right-0 top-0 bottom-0 w-16 sm:w-32 bg-gradient-to-l from-white via-white/80 to-transparent dark:from-slate-950 dark:via-slate-950/85 z-10 pointer-events-none"></div>
+          {/* Edge fades for smooth visual blending matching the exact page backgrounds (#FAFAF9 in Light, #0A0E1A in Dark) */}
+          <div className="absolute left-0 top-0 bottom-0 w-6 sm:w-12 bg-gradient-to-r from-[#FAFAF9] to-transparent dark:from-[#0A0E1A] to-transparent z-10 pointer-events-none"></div>
+          <div className="absolute right-0 top-0 bottom-0 w-6 sm:w-12 bg-gradient-to-l from-[#FAFAF9] to-transparent dark:from-[#0A0E1A] to-transparent z-10 pointer-events-none"></div>
 
           {testimonialsLoading ? (
             <div className="max-w-7xl mx-auto px-4 grid md:grid-cols-3 gap-6 animate-pulse">
@@ -574,7 +574,7 @@ export default function HomeView({
               ].map((t, idx) => (
                 <div 
                   key={`track1-${idx}`} 
-                  className="w-[360px] md:w-[400px] shrink-0 bg-white dark:bg-slate-900 p-8 rounded-xl border border-gray-200/60 dark:border-slate-800 shadow-sm relative space-y-6 flex flex-col justify-between hover:border-amber-400 dark:hover:border-amber-400 transition-colors duration-300"
+                  className="w-[360px] md:w-[400px] shrink-0 bg-card-theme p-8 rounded-xl border border-stone-200/80 dark:border-slate-800/80 shadow-md relative space-y-6 flex flex-col justify-between hover:border-amber-500/50 dark:hover:border-amber-500/50 hover:shadow-lg transition-all duration-300"
                 >
                   <div className="space-y-4">
                     <div className="text-[#D4820A] fill-current opacity-30">
@@ -585,8 +585,8 @@ export default function HomeView({
                     </p>
                   </div>
 
-                  <div className="pt-6 border-t border-gray-100 dark:border-slate-800 flex items-center gap-4">
-                    <div className={`h-10 w-10 rounded-full flex items-center justify-center font-bold text-xs uppercase shrink-0 ${t.color}`}>
+                  <div className="pt-6 border-t border-stone-100 dark:border-slate-800 flex items-center gap-4">
+                    <div className={`h-10 w-10 rounded-full flex items-center justify-center font-bold text-xs uppercase shrink-0 border ${t.color}`}>
                       {t.avatar}
                     </div>
                     <div>
@@ -646,7 +646,7 @@ export default function HomeView({
               ].map((t, idx) => (
                 <div 
                   key={`track2-${idx}`} 
-                  className="w-[360px] md:w-[400px] shrink-0 bg-white dark:bg-slate-900 p-8 rounded-xl border border-gray-200/60 dark:border-slate-800 shadow-sm relative space-y-6 flex flex-col justify-between hover:border-amber-400 dark:hover:border-amber-400 transition-colors duration-300"
+                  className="w-[360px] md:w-[400px] shrink-0 bg-card-theme p-8 rounded-xl border border-stone-200/80 dark:border-slate-800/80 shadow-md relative space-y-6 flex flex-col justify-between hover:border-amber-500/50 dark:hover:border-amber-500/50 hover:shadow-lg transition-all duration-300"
                 >
                   <div className="space-y-4">
                     <div className="text-[#D4820A] fill-current opacity-30">
@@ -657,8 +657,8 @@ export default function HomeView({
                     </p>
                   </div>
 
-                  <div className="pt-6 border-t border-gray-100 dark:border-slate-800 flex items-center gap-4">
-                    <div className={`h-10 w-10 rounded-full flex items-center justify-center font-bold text-xs uppercase shrink-0 ${t.color}`}>
+                  <div className="pt-6 border-t border-stone-100 dark:border-slate-800 flex items-center gap-4">
+                    <div className={`h-10 w-10 rounded-full flex items-center justify-center font-bold text-xs uppercase shrink-0 border ${t.color}`}>
                       {t.avatar}
                     </div>
                     <div>

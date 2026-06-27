@@ -20,7 +20,7 @@ function ShimmerBase({ className = "" }: { className?: string; key?: any }) {
 // 🛒 1. Product / Menu Card Skeleton
 export function ProductCardSkeleton() {
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 rounded-2xl p-4 space-y-4 shadow-sm flex flex-col justify-between h-[410px]">
+    <div className="bg-card-theme border border-slate-100 dark:border-slate-800/80 rounded-2xl p-4 space-y-4 shadow-sm flex flex-col justify-between h-[410px]">
       <div className="space-y-3">
         {/* Aspect Ratio Image Shimmer */}
         <ShimmerBase className="aspect-square w-full rounded-xl" />
@@ -123,7 +123,7 @@ export function CategorySkeleton() {
 // 📰 5. Blog / News Card Skeleton
 export function BlogCardSkeleton() {
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 rounded-2xl overflow-hidden shadow-xs flex flex-col h-[420px]">
+    <div className="bg-card-theme border border-slate-100 dark:border-slate-800/80 rounded-2xl overflow-hidden shadow-xs flex flex-col h-[420px]">
       <ShimmerBase className="h-48 w-full rounded-t-2xl" />
       <div className="p-5 flex-1 flex flex-col justify-between">
         <div className="space-y-3">
@@ -169,7 +169,7 @@ export function GallerySkeleton() {
 // ❓ 8. FAQ Accordion Item Skeleton
 export function FAQSkeleton() {
   return (
-    <div className="border border-slate-100 dark:border-slate-800 rounded-xl p-4 space-y-3 bg-white dark:bg-slate-900">
+    <div className="border border-slate-100 dark:border-slate-800 rounded-xl p-4 space-y-3 bg-card-theme">
       <div className="flex justify-between items-center">
         <ShimmerBase className="h-5 w-3/4 rounded" />
         <ShimmerBase className="h-5 w-5 rounded-full" />
@@ -209,7 +209,7 @@ export function CartItemSkeleton() {
 // 📦 10. Order History Card Skeleton
 export function OrderHistorySkeleton() {
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-5 space-y-5 shadow-xs">
+    <div className="bg-card-theme border border-slate-100 dark:border-slate-800 rounded-2xl p-5 space-y-5 shadow-xs">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-4 border-b border-slate-50 dark:border-slate-800 gap-3">
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
