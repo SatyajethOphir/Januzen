@@ -22,7 +22,11 @@ export default function InvoiceOnlineView({ orderId, onNavigate, currentUser }: 
     }
 
     // Fetch the order details
-    fetch(`/api/orders`)
+    fetch(`/api/orders`, {
+      headers: {
+        "Authorization": `Bearer ${token}`
+      }
+    })
       .then((res) => {
         if (!res.ok) throw new Error("Failed to fetch order history");
         return res.json();

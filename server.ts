@@ -757,6 +757,49 @@ async function startServer() {
     }
   });
 
+  // Download Digital Invoice PDF
+  app.get("/api/orders/:id/invoice/download", async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const authHeader = req.headers["authorization"];
+      const token = (authHeader && authHeader.split(" ")[1]) || (req.query.token as string);
+
+      if (!token) {
+        return res.status(401).json({ error: "Access token is missing" });
+      }
+
+      let decodedUser: any = null;
+      try {
+        decodedUser = jwt.verify(token, JWT_SECRET);
+      } catch (err) {
+        return res.status(403).json({ error: "Access token is invalid or expired" });
+      }
+
+      // Retrieve all orders to find by id or orderId
+      const orders = await dbClient.getOrders();
+      const order = orders.find((o: any) => o.id === id || o.orderId === id);
+
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+
+      // Check ownership or if the user is an admin
+      if (order.userId !== decodedUser.id && decodedUser.role !== "admin") {
+        return res.status(403).json({ error: "You are not authorized to download this invoice." });
+      }
+
+      // Generate invoice buffer
+      const buffer = await generateInvoice(order);
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="Invoice-${order.orderId}.pdf"`);
+      res.send(buffer);
+    } catch (err: any) {
+      console.error("[INVOICE DOWNLOAD ERROR]:", err);
+      res.status(500).json({ error: "Failed to generate dynamic invoice PDF" });
+    }
+  });
+
   // View Customer's own orders
   app.get("/api/orders", authenticateToken, async (req: any, res) => {
     try {
