@@ -110,20 +110,7 @@ async function startServer() {
     next();
   });
 
-  // Subdomain redirects
-  // rx.januzen.in     → Nuthan Medicals (pharmacy)
-  // desk.januzen.in   → JA Stationery
-  app.use((req, res, next) => {
-    const host = (req.headers.host || "").toLowerCase();
 
-    if (host.startsWith("rx.")) {
-      return res.redirect(301, "https://januzen.in/?shop=medicals");
-    }
-    if (host.startsWith("desk.")) {
-      return res.redirect(301, "https://januzen.in/?shop=stationery");
-    }
-    next();
-  });
 
   // Sitemap routing
   app.use("/", sitemapRouter);
