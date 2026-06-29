@@ -72,7 +72,7 @@ export async function generateInvoice(order: Order, outputPath?: string): Promis
       // Address & metadata
       const startTextX = logoBuffer ? 115 : 50;
       doc.fontSize(8).fillColor("#475569").font("Helvetica")
-         .text("Central Corporate Facility, Gajularamaram, Hyderabad - 500055", startTextX, 63)
+         .text("Gajularamaram, Hyderabad, Telangana", startTextX, 63)
          .text("Email: team@januzen.in | Phone: +91-9666588553", startTextX, 75);
 
       // Title & GSTIN
@@ -186,6 +186,159 @@ export async function generateInvoice(order: Order, outputPath?: string): Promis
       doc.rect(50, 750, 495, 0.5).fill("#CBD5E1");
       doc.fontSize(8).fillColor("#64748b").font("Helvetica").text("Thank you for your order! For support: team@januzen.in", 50, 760, { align: "center", width: 495 });
       doc.fontSize(7).fillColor("#94A3B8").font("Helvetica").text("This is a computer-generated invoice.", 50, 772, { align: "center", width: 495 });
+
+      doc.end();
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+export async function generateOfflineBill(data: {
+  billNumber: string;
+  customerName: string;
+  customerPhone?: string;
+  shopDivision: "medicals" | "stationery" | "mixed";
+  items: Array<{ name: string; quantity: number; unitPrice: number }>;
+  totals: { subtotal: number; tax: number; total: number };
+  belowMinimum: boolean;
+}): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    try {
+      const paperWidthMm = parseInt(process.env.THERMAL_PAPER_WIDTH || "80", 10);
+      const paperWidthPt = paperWidthMm * 2.8346; // mm to points
+      const margin = 8;
+      
+      // Calculate dynamic page height to avoid empty trailing space on thermal rolls
+      // Height budget: ~160pt header/meta, ~15/20pt per item, ~120pt totals/footer, margin
+      const itemRowHeight = paperWidthMm === 58 ? 16 : 14;
+      const calculatedHeight = 160 + (data.items.length * itemRowHeight) + 120 + (data.belowMinimum ? 15 : 0) + (margin * 2);
+      
+      const doc = new PDFDocument({
+        size: [paperWidthPt, calculatedHeight],
+        margins: { top: margin, bottom: margin, left: margin, right: margin },
+        bufferPages: true,
+        font: "Courier"
+      });
+      
+      const buffers: Buffer[] = [];
+      doc.on("data", buffers.push.bind(buffers));
+      doc.on("end", () => {
+        const pdfData = Buffer.concat(buffers);
+        resolve(pdfData);
+      });
+
+      const charWidth = paperWidthMm === 58 ? 30 : 40;
+      
+      const fillChar = (char: string, count: number) => char.repeat(count);
+      const divider = fillChar("-", charWidth);
+      const doubleDivider = fillChar("=", charWidth);
+      
+      function formatLine(left: string, right: string): string {
+        const leftSpace = charWidth - right.length;
+        if (left.length > leftSpace - 1) {
+          return left.substring(0, leftSpace - 3) + ".." + " " + right;
+        } else {
+          const spaces = " ".repeat(leftSpace - left.length);
+          return left + spaces + right;
+        }
+      }
+
+      function formatThreeCols(col1: string, col2: string, col3: string, w1: number, w2: number, w3: number): string {
+        let c1 = col1;
+        if (c1.length > w1) {
+          c1 = c1.substring(0, w1 - 3) + "...";
+        } else {
+          c1 = c1 + " ".repeat(w1 - c1.length);
+        }
+        
+        let c2 = col2;
+        if (c2.length < w2) {
+          c2 = " ".repeat(w2 - c2.length) + c2;
+        }
+        
+        let c3 = col3;
+        if (c3.length < w3) {
+          c3 = " ".repeat(w3 - c3.length) + c3;
+        }
+        
+        return c1 + c2 + c3;
+      }
+
+      function centerText(text: string): string {
+        if (text.length >= charWidth) return text.substring(0, charWidth);
+        const leftSpace = Math.floor((charWidth - text.length) / 2);
+        return " ".repeat(leftSpace) + text;
+      }
+
+      // Title & Header details
+      doc.fontSize(8).fillColor("#000000");
+      doc.text(doubleDivider);
+      doc.text(centerText("JANUZEN GLOBAL LLP"));
+      
+      let divisionLabel = "Nuthan Meds & JA Stationery";
+      if (data.shopDivision === "medicals") {
+        divisionLabel = "Nuthan Medicals";
+      } else if (data.shopDivision === "stationery") {
+        divisionLabel = "JA Stationery";
+      }
+      doc.text(centerText(divisionLabel));
+      doc.text(centerText("Gajularamaram, Hyderabad, TS"));
+      doc.text(centerText("Ph: +91-9666588553"));
+      doc.text(centerText("team@januzen.in | januzen.in"));
+      doc.text(doubleDivider);
+      
+      // Receipt Meta
+      doc.text(centerText("CASH RECEIPT"));
+      doc.text(`Bill No: ${data.billNumber}`);
+      
+      const now = new Date();
+      const dateStr = now.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+      const timeStr = now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false });
+      doc.text(`Date: ${dateStr}  Time: ${timeStr}`);
+      
+      const custName = data.customerName || "Walk-in Customer";
+      const custPhoneSuffix = data.customerPhone ? ` (${data.customerPhone})` : "";
+      doc.text(`Customer: ${custName}${custPhoneSuffix}`);
+      doc.text(doubleDivider);
+
+      // Line items table header
+      if (paperWidthMm === 58) {
+        doc.text(formatLine("Item Name", "Qty Amount"));
+      } else {
+        doc.text(formatThreeCols("Item Name", "Qty", "Amount", 22, 6, 12));
+      }
+      doc.text(divider);
+
+      // Line items rows
+      data.items.forEach((item) => {
+        const itemTotalStr = `Rs.${(item.quantity * item.unitPrice).toFixed(2)}`;
+        if (paperWidthMm === 58) {
+          doc.text(formatLine(item.name, `${item.quantity} ${itemTotalStr}`));
+        } else {
+          doc.text(formatThreeCols(item.name, item.quantity.toString(), itemTotalStr, 22, 6, 12));
+        }
+      });
+      doc.text(divider);
+
+      // Totals
+      doc.text(formatLine("Subtotal:", `Rs.${data.totals.subtotal.toFixed(2)}`));
+      doc.text(formatLine("Tax (5% GST):", `Rs.${data.totals.tax.toFixed(2)}`));
+      doc.text(doubleDivider);
+      doc.text(formatLine("TOTAL:", `Rs.${data.totals.total.toFixed(2)}`));
+      doc.text(doubleDivider);
+
+      // Below threshold warning
+      if (data.belowMinimum) {
+        doc.text("* Below Rs.750 threshold");
+      }
+
+      // Footer
+      doc.text("\nPayment: Cash / UPI");
+      doc.text("\nSignature: _______________");
+      doc.text("\n" + centerText("Thank you for visiting JANUZEN!"));
+      doc.text(centerText("** januzen.in **"));
+      doc.text(centerText("--- Computer generated bill ---"));
 
       doc.end();
     } catch (err) {

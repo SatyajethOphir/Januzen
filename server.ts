@@ -10,8 +10,8 @@ import fs from "fs";
 import { Product, User, Order, Message } from "./src/types";
 import { dbClient, connectAndSeedDB, isMongo } from "./server/db";
 import sitemapRouter from "./server/routes/sitemap";
-import { generateInvoice } from "./server/invoice";
-import { sendInvoiceEmail } from "./server/mailer";
+import { generateInvoice, generateOfflineBill } from "./server/invoice";
+import { sendInvoiceEmail, sendOfflineBillEmail } from "./server/mailer";
 
 const PORT = 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "JANUZEN_JWT_SECRET_KEY";
@@ -562,6 +562,75 @@ async function startServer() {
     } catch (e) {
       console.error(e);
       res.status(500).json({ error: "Internal server error retrieving product details." });
+    }
+  });
+
+  // Admin Offline Bill Generator Route
+  app.post("/api/admin/offline-bill", authenticateAdmin, async (req: any, res: any) => {
+    try {
+      const { customerName, customerPhone, customerEmail, shopDivision, items, deliveryMethod } = req.body;
+
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ error: "At least one item is required to generate a bill." });
+      }
+
+      const subtotal = items.reduce((sum, item) => sum + (Number(item.unitPrice) * Number(item.quantity)), 0);
+      const tax = Math.round((subtotal * 0.05) * 100) / 100;
+      const total = Math.round((subtotal + tax) * 100) / 100;
+      const belowMinimum = total < 750;
+      const billNumber = `JZ-OFFLINE-${Date.now()}`;
+
+      const pdfBuffer = await generateOfflineBill({
+        billNumber,
+        customerName: customerName || "Walk-in Customer",
+        customerPhone,
+        shopDivision: shopDivision || "mixed",
+        items: items.map(it => ({
+          name: it.name,
+          quantity: Number(it.quantity),
+          unitPrice: Number(it.unitPrice)
+        })),
+        totals: { subtotal, tax, total },
+        belowMinimum
+      });
+
+      if (deliveryMethod === "email") {
+        if (!customerEmail) {
+          return res.status(400).json({ error: "Customer email is required for email delivery." });
+        }
+        await sendOfflineBillEmail({
+          customerName: customerName || "Walk-in Customer",
+          customerEmail,
+          billNumber,
+          total
+        }, pdfBuffer);
+
+        return res.json({
+          message: `Bill sent to ${customerEmail} successfully.`,
+          billNumber,
+          belowMinimum,
+          total
+        });
+      }
+
+      // Default PDF headers for other delivery methods
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="JANUZEN-Bill-${billNumber}.pdf"`);
+      res.setHeader("X-Bill-Number", billNumber);
+      res.setHeader("X-Below-Minimum", belowMinimum.toString());
+      res.setHeader("X-Total", total.toString());
+
+      if (deliveryMethod === "whatsapp") {
+        const cleanPhone = (customerPhone || "").replace(/[^0-9+]/g, "");
+        res.setHeader("X-WhatsApp-Link", `https://wa.me/${cleanPhone}?text=${encodeURIComponent(
+          `Hi! Here is your bill from JANUZEN.\nBill No: ${billNumber}\nTotal: ₹${total}\nFor details: team@januzen.in`
+        )}`);
+      }
+
+      return res.send(pdfBuffer);
+    } catch (err: any) {
+      console.error("Error generating offline bill:", err);
+      return res.status(500).json({ error: "Failed to generate offline bill: " + err.message });
     }
   });
 

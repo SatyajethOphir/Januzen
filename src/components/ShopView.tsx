@@ -32,6 +32,51 @@ export default function ShopView({
     : "bg-slate-900/95 text-amber-300 border-amber-800/60";
   const primaryLightBg = isMed ? "bg-teal-50/50" : "bg-amber-50/50";
 
+  // Premium GSAP product card hover handlers
+  const handleProductCardEnter = (e: React.MouseEvent<HTMLDivElement>) => {
+    const card = e.currentTarget;
+    const img = card.querySelector(".gsap-product-img img");
+    const badge = card.querySelector(".gsap-product-badge");
+    const btn = card.querySelector(".gsap-product-btn");
+    
+    gsap.to(card, { 
+      y: -8, 
+      borderColor: isMed ? "rgba(15, 155, 142, 0.4)" : "rgba(212, 130, 10, 0.4)",
+      boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.04)", 
+      duration: 0.35, 
+      ease: "power2.out" 
+    });
+    if (img) gsap.to(img, { scale: 1.06, duration: 0.4, ease: "power2.out" });
+    if (badge) gsap.to(badge, { scale: 1.05, duration: 0.3, ease: "back.out(1.5)" });
+    if (btn) gsap.to(btn, { scale: 1.03, duration: 0.25, ease: "power2.out" });
+  };
+
+  const handleProductCardLeave = (e: React.MouseEvent<HTMLDivElement>) => {
+    const card = e.currentTarget;
+    const img = card.querySelector(".gsap-product-img img");
+    const badge = card.querySelector(".gsap-product-badge");
+    const btn = card.querySelector(".gsap-product-btn");
+    
+    gsap.to(card, { 
+      y: 0, 
+      borderColor: "rgba(229, 231, 235, 0.6)",
+      boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05)", 
+      duration: 0.35, 
+      ease: "power2.out" 
+    });
+    if (img) gsap.to(img, { scale: 1, duration: 0.4, ease: "power2.out" });
+    if (badge) gsap.to(badge, { scale: 1, duration: 0.3, ease: "power2.out" });
+    if (btn) gsap.to(btn, { scale: 1, duration: 0.25, ease: "power2.out" });
+  };
+
+  const handleActionBtnEnter = (e: React.MouseEvent<HTMLButtonElement>) => {
+    gsap.to(e.currentTarget, { scale: 1.15, rotation: 5, duration: 0.25, ease: "back.out(1.8)" });
+  };
+
+  const handleActionBtnLeave = (e: React.MouseEvent<HTMLButtonElement>) => {
+    gsap.to(e.currentTarget, { scale: 1, rotation: 0, duration: 0.25, ease: "power2.out" });
+  };
+
   // Filter States
   const [products, setProducts] = React.useState<Product[]>([]);
   const [total, setTotal] = React.useState(0);
@@ -317,14 +362,16 @@ export default function ShopView({
                 return (
                   <div
                     key={p.id}
-                    className="gsap-shop-card group bg-white border border-gray-200/60 rounded-xl overflow-hidden hover:shadow-lg transition-all flex flex-col justify-between relative group/tile animate-fade-in-up"
+                    className="gsap-shop-card group bg-white border border-gray-200/60 rounded-xl overflow-hidden shadow-sm flex flex-col justify-between relative group/tile"
+                    onMouseEnter={handleProductCardEnter}
+                    onMouseLeave={handleProductCardLeave}
                   >
                     <div className="relative overflow-hidden">
                       <ImageWithLoader
                         src={p.image}
                         alt={p.name}
-                        className="w-full h-44 cursor-pointer group-hover:scale-[1.03] transition-transform duration-300"
-                        containerClassName="w-full h-44"
+                        className="w-full h-44 cursor-pointer"
+                        containerClassName="gsap-product-img w-full h-44"
                         onClick={() => onNavigate("product-detail", { productId: p.id })}
                       />
                       
@@ -335,7 +382,9 @@ export default function ShopView({
                             e.stopPropagation();
                             if (onToggleWishlist) onToggleWishlist(p.id, p.shop);
                           }}
-                          className="h-7 w-7 rounded-full flex items-center justify-center border transition-all cursor-pointer action-btn-override wishlist-btn-override"
+                          onMouseEnter={handleActionBtnEnter}
+                          onMouseLeave={handleActionBtnLeave}
+                          className="h-7 w-7 rounded-full flex items-center justify-center border transition-all cursor-pointer action-btn-override wishlist-btn-override bg-white/90 backdrop-blur-sm"
                           title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
                         >
                           <Heart className={`h-3.5 w-3.5 transition-colors ${isWishlisted ? "fill-red-600 stroke-red-600" : ""}`} />
@@ -343,7 +392,9 @@ export default function ShopView({
 
                         <button
                           onClick={handleShareLink}
-                          className="h-7 w-7 rounded-full flex items-center justify-center border transition-all cursor-pointer action-btn-override"
+                          onMouseEnter={handleActionBtnEnter}
+                          onMouseLeave={handleActionBtnLeave}
+                          className="h-7 w-7 rounded-full flex items-center justify-center border transition-all cursor-pointer action-btn-override bg-white/90 backdrop-blur-sm"
                           title="Copy product link"
                         >
                           {isCopied ? (
@@ -365,7 +416,7 @@ export default function ShopView({
                         </span>
                       ) : null}
 
-                      <span className={`absolute bottom-3 left-3 text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full border ${badgeStyle} backdrop-blur-md z-10`}>
+                      <span className={`gsap-product-badge absolute bottom-3 left-3 text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full border ${badgeStyle} backdrop-blur-md z-10`}>
                         {p.category}
                       </span>
                     </div>
@@ -390,7 +441,7 @@ export default function ShopView({
                         <button
                           onClick={() => onAddToBag(p)}
                           disabled={isOutOfStock}
-                          className={`text-white text-xs font-bold py-1.5 px-3 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                          className={`gsap-product-btn text-white text-xs font-bold py-1.5 px-3 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
                             isOutOfStock 
                               ? "bg-gray-200 text-gray-400 border border-gray-300 cursor-not-allowed" 
                               : btnColor

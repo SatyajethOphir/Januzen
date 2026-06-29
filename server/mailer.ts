@@ -136,3 +136,123 @@ export async function sendInvoiceEmail(order: any, pdfBuffer: Buffer): Promise<v
     }
   }
 }
+
+export async function sendOfflineBillEmail(
+  data: {
+    customerName: string;
+    customerEmail: string;
+    billNumber: string;
+    total: number;
+  },
+  pdfBuffer: Buffer
+): Promise<void> {
+  const emailUser = process.env.EMAIL_USER || "team@januzen.in";
+  const emailPass = process.env.EMAIL_PASS;
+
+  if (!emailPass) {
+    console.warn(`⚠️ [MAILER] Skipping sending offline bill email because EMAIL_PASS is not configured.`);
+    return;
+  }
+
+  const emailHost = process.env.EMAIL_HOST || "smtp.hostinger.com";
+  const emailPortStr = process.env.EMAIL_PORT;
+  const emailSecureStr = process.env.EMAIL_SECURE;
+
+  let port = 465;
+  let secure = true;
+
+  if (emailPortStr) {
+    port = parseInt(emailPortStr, 10);
+  }
+  if (emailSecureStr) {
+    secure = emailSecureStr === "true";
+  }
+
+  const mailOptions = {
+    from: `"JANUZEN Global LLP" <${emailUser}>`,
+    to: data.customerEmail,
+    subject: `Your JANUZEN Bill — ${data.billNumber}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+        <div style="background: #0F6E56; padding: 20px; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 24px; letter-spacing: 1px;">JANUZEN Global LLP</h1>
+          <p style="color: #a7f3d0; margin: 4px 0 0; font-size: 13px;">Gajularamaram, Hyderabad, Telangana</p>
+        </div>
+        <div style="padding: 24px; background: #f9f9f9;">
+          <p style="font-size: 16px; color: #1e293b; margin-top: 0;">Dear <strong>${data.customerName}</strong>,</p>
+          <p style="color: #475569; line-height: 1.6;">Thank you for your purchase! Your bill is attached as a PDF receipt.</p>
+          <div style="background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px; margin: 16px 0;">
+            <p style="margin: 4px 0;"><strong>Bill No:</strong> ${data.billNumber}</p>
+            <p style="margin: 4px 0;"><strong>Total:</strong> Rs. ${Number(data.total).toFixed(2)}</p>
+            <p style="margin: 4px 0;"><strong>Payment:</strong> Cash / UPI</p>
+          </div>
+          <p style="color: #666; font-size: 13px;">Visit us again at <a href="https://januzen.in">januzen.in</a></p>
+        </div>
+        <div style="background: #f1f5f9; padding: 16px; text-align: center; color: #64748b; font-size: 11px; border-top: 1px solid #e2e8f0;">
+          JANUZEN Global LLP | Nuthan Medicals & JA Stationery | <a href="https://januzen.in" style="color: #0F6E56; text-decoration: none;">januzen.in</a>
+        </div>
+      </div>
+    `,
+    attachments: [
+      {
+        filename: `JANUZEN-Bill-${data.billNumber}.pdf`,
+        content: pdfBuffer,
+        contentType: "application/pdf"
+      }
+    ]
+  };
+
+  let primarySuccess = false;
+  try {
+    const transporter = nodemailer.createTransport({
+      host: emailHost,
+      port: port,
+      secure: secure,
+      auth: {
+        user: emailUser,
+        pass: emailPass,
+      },
+      tls: {
+        rejectUnauthorized: false
+      },
+      connectionTimeout: 8000,
+      greetingTimeout: 8000,
+      socketTimeout: 8000,
+    });
+
+    await transporter.sendMail(mailOptions);
+    primarySuccess = true;
+    console.log(`✅ [MAILER] Offline bill email successfully sent via primary SMTP to ${data.customerEmail}`);
+  } catch (err: any) {
+    console.warn(`⚠️ [MAILER] Primary SMTP failed/timed out for offline bill: ${err.message || err}`);
+  }
+
+  if (!primarySuccess) {
+    const fallbackPort = port === 465 ? 587 : 465;
+    const fallbackSecure = fallbackPort === 465;
+    console.log(`🔄 [MAILER] Retrying offline bill email with fallback SMTP: ${emailHost}:${fallbackPort}...`);
+
+    try {
+      const fallbackTransporter = nodemailer.createTransport({
+        host: emailHost,
+        port: fallbackPort,
+        secure: fallbackSecure,
+        auth: {
+          user: emailUser,
+          pass: emailPass,
+        },
+        tls: {
+          rejectUnauthorized: false
+        },
+        connectionTimeout: 8000,
+        greetingTimeout: 8000,
+        socketTimeout: 8000,
+      });
+
+      await fallbackTransporter.sendMail(mailOptions);
+      console.log(`✅ [MAILER] Offline bill email successfully sent via fallback SMTP to ${data.customerEmail}`);
+    } catch (fallbackErr: any) {
+      console.error(`❌ [MAILER] Fallback SMTP attempt also failed for offline bill:`, fallbackErr);
+    }
+  }
+}

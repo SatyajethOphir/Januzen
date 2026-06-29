@@ -30,6 +30,141 @@ export default function HomeView({
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
   const [testimonialsLoading, setTestimonialsLoading] = React.useState(true);
 
+  // Elite GSAP interactive handlers for smooth micro-animations and section hovers
+  const handleCard1Enter = (e: React.MouseEvent<HTMLDivElement>) => {
+    const card = e.currentTarget;
+    const logo = card.querySelector(".gsap-division-logo");
+    const arrow = card.querySelector(".gsap-division-arrow");
+    const tag = card.querySelector(".gsap-division-tag");
+    
+    gsap.to(card, { 
+      y: -10, 
+      scale: 1.01, 
+      borderColor: "rgba(15, 155, 142, 0.5)", 
+      boxShadow: "0 25px 40px -15px rgba(15, 155, 142, 0.18)", 
+      duration: 0.4, 
+      ease: "power2.out" 
+    });
+    if (logo) gsap.to(logo, { scale: 1.14, rotation: 10, duration: 0.45, ease: "back.out(1.8)" });
+    if (arrow) gsap.to(arrow, { x: 6, duration: 0.3, ease: "power2.out" });
+    if (tag) gsap.to(tag, { scale: 1.05, duration: 0.3, ease: "back.out(1.5)" });
+  };
+
+  const handleCard1Leave = (e: React.MouseEvent<HTMLDivElement>) => {
+    const card = e.currentTarget;
+    const logo = card.querySelector(".gsap-division-logo");
+    const arrow = card.querySelector(".gsap-division-arrow");
+    const tag = card.querySelector(".gsap-division-tag");
+    
+    gsap.to(card, { 
+      y: 0, 
+      scale: 1, 
+      borderColor: "rgba(20, 184, 166, 0.2)", 
+      boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)", 
+      duration: 0.4, 
+      ease: "power2.out" 
+    });
+    if (logo) gsap.to(logo, { scale: 1, rotation: 0, duration: 0.4, ease: "power2.out" });
+    if (arrow) gsap.to(arrow, { x: 0, duration: 0.3, ease: "power2.out" });
+    if (tag) gsap.to(tag, { scale: 1, duration: 0.3, ease: "power2.out" });
+  };
+
+  const handleCard2Enter = (e: React.MouseEvent<HTMLDivElement>) => {
+    const card = e.currentTarget;
+    const logo = card.querySelector(".gsap-division-logo");
+    const arrow = card.querySelector(".gsap-division-arrow");
+    const tag = card.querySelector(".gsap-division-tag");
+    
+    gsap.to(card, { 
+      y: -10, 
+      scale: 1.01, 
+      borderColor: "rgba(212, 130, 10, 0.5)", 
+      boxShadow: "0 25px 40px -15px rgba(212, 130, 10, 0.18)", 
+      duration: 0.4, 
+      ease: "power2.out" 
+    });
+    if (logo) gsap.to(logo, { scale: 1.14, rotation: -10, duration: 0.45, ease: "back.out(1.8)" });
+    if (arrow) gsap.to(arrow, { x: 6, duration: 0.3, ease: "power2.out" });
+    if (tag) gsap.to(tag, { scale: 1.05, duration: 0.3, ease: "back.out(1.5)" });
+  };
+
+  const handleCard2Leave = (e: React.MouseEvent<HTMLDivElement>) => {
+    const card = e.currentTarget;
+    const logo = card.querySelector(".gsap-division-logo");
+    const arrow = card.querySelector(".gsap-division-arrow");
+    const tag = card.querySelector(".gsap-division-tag");
+    
+    gsap.to(card, { 
+      y: 0, 
+      scale: 1, 
+      borderColor: "rgba(245, 158, 11, 0.2)", 
+      boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)", 
+      duration: 0.4, 
+      ease: "power2.out" 
+    });
+    if (logo) gsap.to(logo, { scale: 1, rotation: 0, duration: 0.4, ease: "power2.out" });
+    if (arrow) gsap.to(arrow, { x: 0, duration: 0.3, ease: "power2.out" });
+    if (tag) gsap.to(tag, { scale: 1, duration: 0.3, ease: "power2.out" });
+  };
+
+  const handleStatEnter = (e: React.MouseEvent<HTMLDivElement>) => {
+    const box = e.currentTarget;
+    const val = box.querySelector(".gsap-stat-val");
+    gsap.to(box, { y: -6, duration: 0.3, ease: "power2.out" });
+    if (val) gsap.to(val, { scale: 1.08, duration: 0.3, ease: "back.out(1.5)" });
+  };
+
+  const handleStatLeave = (e: React.MouseEvent<HTMLDivElement>) => {
+    const box = e.currentTarget;
+    const val = box.querySelector(".gsap-stat-val");
+    gsap.to(box, { y: 0, duration: 0.3, ease: "power2.out" });
+    if (val) gsap.to(val, { scale: 1, duration: 0.3, ease: "power2.out" });
+  };
+
+  const handleProductCardEnter = (e: React.MouseEvent<HTMLDivElement>) => {
+    const card = e.currentTarget;
+    const img = card.querySelector(".gsap-product-img img");
+    const badge = card.querySelector(".gsap-product-badge");
+    const btn = card.querySelector(".gsap-product-btn");
+    
+    gsap.to(card, { 
+      y: -8, 
+      borderColor: "rgba(212, 130, 10, 0.3)",
+      boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.04)", 
+      duration: 0.35, 
+      ease: "power2.out" 
+    });
+    if (img) gsap.to(img, { scale: 1.06, duration: 0.4, ease: "power2.out" });
+    if (badge) gsap.to(badge, { scale: 1.05, duration: 0.3, ease: "back.out(1.5)" });
+    if (btn) gsap.to(btn, { scale: 1.03, duration: 0.25, ease: "power2.out" });
+  };
+
+  const handleProductCardLeave = (e: React.MouseEvent<HTMLDivElement>) => {
+    const card = e.currentTarget;
+    const img = card.querySelector(".gsap-product-img img");
+    const badge = card.querySelector(".gsap-product-badge");
+    const btn = card.querySelector(".gsap-product-btn");
+    
+    gsap.to(card, { 
+      y: 0, 
+      borderColor: "rgba(229, 231, 235, 0.8)",
+      boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05)", 
+      duration: 0.35, 
+      ease: "power2.out" 
+    });
+    if (img) gsap.to(img, { scale: 1, duration: 0.4, ease: "power2.out" });
+    if (badge) gsap.to(badge, { scale: 1, duration: 0.3, ease: "power2.out" });
+    if (btn) gsap.to(btn, { scale: 1, duration: 0.25, ease: "power2.out" });
+  };
+
+  const handleActionBtnEnter = (e: React.MouseEvent<HTMLButtonElement>) => {
+    gsap.to(e.currentTarget, { scale: 1.15, rotation: 5, duration: 0.25, ease: "back.out(1.8)" });
+  };
+
+  const handleActionBtnLeave = (e: React.MouseEvent<HTMLButtonElement>) => {
+    gsap.to(e.currentTarget, { scale: 1, rotation: 0, duration: 0.25, ease: "power2.out" });
+  };
+
   React.useEffect(() => {
     const timer = setTimeout(() => setTestimonialsLoading(false), 1200);
     return () => clearTimeout(timer);
@@ -260,8 +395,13 @@ export default function HomeView({
               { val: "2", desc: "Specialist Corporate Divisions", color: "text-teal-600" },
               { val: "100%", desc: "Authorized Distribute Guarantee", color: "text-amber-600" },
             ].map((stat, i) => (
-              <div key={i} className="gsap-stat-box text-center px-4">
-                <span className={`font-serif text-3xl sm:text-4xl lg:text-5xl font-light ${stat.color}`}>{stat.val}</span>
+              <div 
+                key={i} 
+                className="gsap-stat-box text-center px-4 cursor-pointer"
+                onMouseEnter={handleStatEnter}
+                onMouseLeave={handleStatLeave}
+              >
+                <span className={`gsap-stat-val inline-block font-serif text-3xl sm:text-4xl lg:text-5xl font-light ${stat.color}`}>{stat.val}</span>
                 <p className="text-[10px] text-gray-400 uppercase tracking-[0.15em] font-mono font-bold mt-2 leading-relaxed">{stat.desc}</p>
               </div>
             ))}
@@ -284,22 +424,26 @@ export default function HomeView({
 
         <div className="grid md:grid-cols-2 gap-10">
           {/* Card 1: Nuthan Medicals */}
-          <div className="gsap-division-card bg-card-theme border-2 border-teal-500/20 rounded-2xl overflow-hidden shadow-md hover:shadow-2xl hover:border-teal-500/50 transition-all duration-300 flex flex-col justify-between group relative">
+          <div 
+            className="gsap-division-card bg-card-theme border-2 border-teal-500/20 rounded-2xl overflow-hidden shadow-md transition-all duration-300 flex flex-col justify-between group relative"
+            onMouseEnter={handleCard1Enter}
+            onMouseLeave={handleCard1Leave}
+          >
             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-teal-400 to-[#0F9B8E]"></div>
             
             <div className="p-8 lg:p-12 space-y-6">
               <div className="flex justify-between items-start">
-                <div className="inline-flex h-16 w-16 text-teal-600 bg-teal-50 rounded-2xl items-center justify-center p-2.5 border border-teal-100 shadow-sm transition-all duration-300 group-hover:bg-[#0F9B8E] group-hover:text-white">
-                  <NuthanMedicalsLogo size={56} className="group-hover:scale-110 transition-transform duration-350" />
+                <div className="gsap-division-logo inline-flex h-16 w-16 text-teal-600 bg-teal-50 rounded-2xl items-center justify-center p-2.5 border border-teal-100 shadow-sm transition-all duration-300">
+                  <NuthanMedicalsLogo size={56} />
                 </div>
-                <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#0F9B8E] bg-[#0F9B8E]/10 border border-[#0F9B8E]/20 px-2.5 py-1 rounded-full">
+                <span className="gsap-division-tag text-[9px] font-mono font-bold uppercase tracking-widest text-[#0F9B8E] bg-[#0F9B8E]/10 border border-[#0F9B8E]/20 px-2.5 py-1 rounded-full">
                   WHO-GMP Vetted
                 </span>
               </div>
               
               <div className="space-y-2">
                 <span className="text-[10px] font-mono tracking-widest text-teal-600 uppercase font-black block">Pharmacological Dispensary</span>
-                <h3 className="font-serif text-3xl font-regular tracking-tight text-slate-900 group-hover:text-teal-900 transition-colors">Nuthan Medicals</h3>
+                <h3 className="font-serif text-3xl font-regular tracking-tight text-slate-900 transition-colors">Nuthan Medicals</h3>
               </div>
 
               <p className="text-gray-500 text-sm leading-relaxed font-serif">
@@ -308,7 +452,7 @@ export default function HomeView({
 
               <div className="flex flex-wrap gap-2 pt-2">
                 {["Formulations", "Diagnostic Monitors", "WHO Certified", "Trauma kits"].map((tag) => (
-                  <span key={tag} className="text-[10px] font-sans font-bold border border-teal-100 bg-teal-50/50 text-teal-800 px-3 py-1 rounded-full group-hover:bg-teal-100 transition-colors">
+                  <span key={tag} className="text-[10px] font-sans font-bold border border-teal-100 bg-teal-50/50 text-teal-800 px-3 py-1 rounded-full">
                     {tag}
                   </span>
                 ))}
@@ -321,28 +465,32 @@ export default function HomeView({
                 className="w-full py-4 px-6 bg-[#0F9B8E] hover:bg-[#0c7f74] text-white font-mono text-xs font-bold uppercase tracking-wider rounded-lg flex items-center justify-center gap-3 transition-colors cursor-pointer shadow-md hover:shadow-teal-500/25 active:scale-98"
               >
                 Enter Medicals Division
-                <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                <ArrowRight className="gsap-division-arrow h-4 w-4" />
               </button>
             </div>
           </div>
 
           {/* Card 2: JA Stationery */}
-          <div className="gsap-division-card bg-card-theme border-2 border-amber-500/20 rounded-2xl overflow-hidden shadow-md hover:shadow-2xl hover:border-amber-500/50 transition-all duration-300 flex flex-col justify-between group relative">
+          <div 
+            className="gsap-division-card bg-card-theme border-2 border-amber-500/20 rounded-2xl overflow-hidden shadow-md transition-all duration-300 flex flex-col justify-between group relative"
+            onMouseEnter={handleCard2Enter}
+            onMouseLeave={handleCard2Leave}
+          >
             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-amber-400 to-[#D4820A]"></div>
             
             <div className="p-8 lg:p-12 space-y-6">
               <div className="flex justify-between items-start">
-                <div className="inline-flex h-16 w-16 text-amber-600 bg-amber-50 rounded-2xl items-center justify-center p-2.5 border border-amber-100 shadow-sm transition-all duration-300 group-hover:bg-[#D4820A] group-hover:text-white">
-                  <JaStationeryLogo size={56} className="group-hover:scale-110 transition-transform duration-350" />
+                <div className="gsap-division-logo inline-flex h-16 w-16 text-amber-600 bg-amber-50 rounded-2xl items-center justify-center p-2.5 border border-amber-100 shadow-sm transition-all duration-300">
+                  <JaStationeryLogo size={56} />
                 </div>
-                <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[#D4820A] bg-[#D4820A]/10 border border-[#D4820A]/20 px-2.5 py-1 rounded-full">
+                <span className="gsap-division-tag text-[9px] font-mono font-bold uppercase tracking-widest text-[#D4820A] bg-[#D4820A]/10 border border-[#D4820A]/20 px-2.5 py-1 rounded-full">
                   Archival Premium
                 </span>
               </div>
 
               <div className="space-y-2">
                 <span className="text-[10px] font-mono tracking-widest text-amber-600 uppercase font-black block">Fine Writing & Archives</span>
-                <h3 className="font-serif text-3xl font-regular tracking-tight text-slate-900 group-hover:text-amber-900 transition-colors">JA Stationery</h3>
+                <h3 className="font-serif text-3xl font-regular tracking-tight text-slate-900 transition-colors">JA Stationery</h3>
               </div>
 
               <p className="text-gray-500 text-sm leading-relaxed font-serif">
@@ -351,7 +499,7 @@ export default function HomeView({
 
               <div className="flex flex-wrap gap-2 pt-2">
                 {["Fine Stationery", "Drawing Reams", "Leather Notebooks", "Studio Pens"].map((tag) => (
-                  <span key={tag} className="text-[10px] font-sans font-bold border border-amber-100 bg-amber-50/50 text-amber-800 px-3 py-1 rounded-full group-hover:bg-amber-100 transition-colors">
+                  <span key={tag} className="text-[10px] font-sans font-bold border border-amber-100 bg-amber-50/50 text-amber-800 px-3 py-1 rounded-full">
                     {tag}
                   </span>
                 ))}
@@ -364,7 +512,7 @@ export default function HomeView({
                 className="w-full py-4 px-6 bg-[#D4820A] hover:bg-[#b56e07] text-white font-mono text-xs font-bold uppercase tracking-wider rounded-lg flex items-center justify-center gap-3 transition-colors cursor-pointer shadow-md hover:shadow-amber-500/25 active:scale-98"
               >
                 Enter Stationery Division
-                <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                <ArrowRight className="gsap-division-arrow h-4 w-4" />
               </button>
             </div>
           </div>
@@ -413,15 +561,17 @@ export default function HomeView({
                 <div 
                   key={product.id} 
                   className="gsap-product-tile bg-card-theme border rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between relative group/tile"
+                  onMouseEnter={handleProductCardEnter}
+                  onMouseLeave={handleProductCardLeave}
                 >
                   <div className="relative overflow-hidden group/img">
                     <ImageWithLoader
                       src={product.image}
                       alt={product.name}
-                      className="w-full h-56 group-hover/img:scale-105 transition-transform duration-500"
-                      containerClassName="w-full h-56"
+                      className="w-full h-56"
+                      containerClassName="gsap-product-img w-full h-56"
                     />
-                    <span className={`absolute top-4 left-4 text-[9px] font-mono font-bold tracking-wider uppercase px-3 py-1 rounded-full border shadow-sm ${shopBadge}`}>
+                    <span className={`gsap-product-badge absolute top-4 left-4 text-[9px] font-mono font-bold tracking-wider uppercase px-3 py-1 rounded-full border shadow-sm ${shopBadge}`}>
                       {product.shop === "medicals" ? "💊 Nuthan Med" : "🖋️ JA Stationery"}
                     </span>
 
@@ -432,7 +582,9 @@ export default function HomeView({
                           e.stopPropagation();
                           if (onToggleWishlist) onToggleWishlist(product.id, product.shop);
                         }}
-                        className="h-8 w-8 rounded-full flex items-center justify-center border transition-all cursor-pointer action-btn-override wishlist-btn-override"
+                        onMouseEnter={handleActionBtnEnter}
+                        onMouseLeave={handleActionBtnLeave}
+                        className="h-8 w-8 rounded-full flex items-center justify-center border transition-all cursor-pointer action-btn-override wishlist-btn-override bg-white/90 backdrop-blur-sm"
                         title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
                       >
                         <Heart className={`h-4.5 w-4.5 transition-colors ${isWishlisted ? "fill-red-600 stroke-red-600" : ""}`} />
@@ -440,7 +592,9 @@ export default function HomeView({
 
                       <button
                         onClick={handleShareLink}
-                        className="h-8 w-8 rounded-full flex items-center justify-center border transition-all cursor-pointer action-btn-override"
+                        onMouseEnter={handleActionBtnEnter}
+                        onMouseLeave={handleActionBtnLeave}
+                        className="h-8 w-8 rounded-full flex items-center justify-center border transition-all cursor-pointer action-btn-override bg-white/90 backdrop-blur-sm"
                         title="Copy product link"
                       >
                         {isCopied ? (
@@ -485,7 +639,7 @@ export default function HomeView({
                       <button
                         onClick={() => onAddToBag(product)}
                         disabled={isOutOfStock}
-                        className={`text-white text-[10px] font-mono font-bold uppercase tracking-wider py-2 px-4 rounded-lg transition-colors cursor-pointer ${
+                        className={`gsap-product-btn text-white text-[10px] font-mono font-bold uppercase tracking-wider py-2 px-4 rounded-lg transition-colors cursor-pointer ${
                           isOutOfStock 
                             ? "bg-slate-200 text-slate-400 border border-slate-300 cursor-not-allowed" 
                             : btnTheme

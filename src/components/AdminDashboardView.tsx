@@ -8,8 +8,235 @@ import {
 import { Product, Order, Message, User } from "../types";
 
 export default function AdminDashboardView({ onNavigate }: { onNavigate?: (page: string, params?: any) => void }) {
-  const [activeTab, setActiveTab] = React.useState<"stats" | "products" | "orders" | "messages" | "users" | "coupons" | "marquee" | "storage" | "settings">("stats");
+  const [activeTab, setActiveTab] = React.useState<"stats" | "products" | "orders" | "messages" | "users" | "coupons" | "marquee" | "storage" | "settings" | "offline-bill">("stats");
   const [token, setToken] = React.useState<string | null>(null);
+
+  // Offline Bill States
+  const [offlineCustName, setOfflineCustName] = React.useState("");
+  const [offlineCustPhone, setOfflineCustPhone] = React.useState("");
+  const [offlineCustEmail, setOfflineCustEmail] = React.useState("");
+  const [offlineShopDivision, setOfflineShopDivision] = React.useState<"medicals" | "stationery" | "mixed">("mixed");
+  const [offlineItems, setOfflineItems] = React.useState<Array<{ name: string; quantity: number; unitPrice: number; isCustomItem: boolean }>>([]);
+  
+  const [offlineSearch, setOfflineSearch] = React.useState("");
+  const [offlineSearchResults, setOfflineSearchResults] = React.useState<Product[]>([]);
+  const [offlineSearchLoading, setOfflineSearchLoading] = React.useState(false);
+  
+  const [customItemName, setCustomItemName] = React.useState("");
+  const [customItemQty, setCustomItemQty] = React.useState<number>(1);
+  const [customItemPrice, setCustomItemPrice] = React.useState<string>("");
+  
+  const [offlineBillError, setOfflineBillError] = React.useState("");
+  const [offlineBillSuccess, setOfflineBillSuccess] = React.useState("");
+  const [offlineGenerating, setOfflineGenerating] = React.useState(false);
+
+  // Debounced Catalogue Search logic
+  React.useEffect(() => {
+    if (!offlineSearch.trim()) {
+      setOfflineSearchResults([]);
+      return;
+    }
+    
+    setOfflineSearchLoading(true);
+    const delayDebounceFn = setTimeout(() => {
+      fetch(`/api/products?search=${encodeURIComponent(offlineSearch)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          const list = Array.isArray(data) ? data : (data.products || []);
+          setOfflineSearchResults(list.slice(0, 8));
+          setOfflineSearchLoading(false);
+        })
+        .catch((err) => {
+          console.error("Error searching products:", err);
+          setOfflineSearchLoading(false);
+        });
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [offlineSearch]);
+
+  const handleAddCustomItem = () => {
+    if (!customItemName.trim()) {
+      setOfflineBillError("Please enter a custom item name.");
+      return;
+    }
+    const qty = Number(customItemQty);
+    if (isNaN(qty) || qty <= 0) {
+      setOfflineBillError("Quantity must be a positive number.");
+      return;
+    }
+    const price = Number(customItemPrice);
+    if (isNaN(price) || price < 0) {
+      setOfflineBillError("Unit price must be a non-negative number.");
+      return;
+    }
+
+    setOfflineItems(prev => [
+      ...prev,
+      {
+        name: customItemName.trim(),
+        quantity: qty,
+        unitPrice: price,
+        isCustomItem: true
+      }
+    ]);
+
+    // Reset fields
+    setCustomItemName("");
+    setCustomItemQty(1);
+    setCustomItemPrice("");
+    setOfflineBillError("");
+  };
+
+  const handleAddCatalogItem = (product: Product) => {
+    const exists = offlineItems.find(it => it.name === product.name);
+    if (exists) {
+      setOfflineItems(prev => prev.map(it => it.name === product.name ? { ...it, quantity: it.quantity + 1 } : it));
+    } else {
+      setOfflineItems(prev => [
+        ...prev,
+        {
+          name: product.name,
+          quantity: 1,
+          unitPrice: product.price,
+          isCustomItem: false
+        }
+      ]);
+    }
+    setOfflineSearch("");
+    setOfflineSearchResults([]);
+  };
+
+  const handleUpdateQty = (index: number, newQty: number) => {
+    if (newQty <= 0) {
+      handleRemoveItem(index);
+      return;
+    }
+    setOfflineItems(prev => prev.map((it, idx) => idx === index ? { ...it, quantity: newQty } : it));
+  };
+
+  const handleRemoveItem = (index: number) => {
+    setOfflineItems(prev => prev.filter((_, idx) => idx !== index));
+  };
+
+  const handleResetOfflineBill = () => {
+    setOfflineCustName("");
+    setOfflineCustPhone("");
+    setOfflineCustEmail("");
+    setOfflineShopDivision("mixed");
+    setOfflineItems([]);
+    setOfflineSearch("");
+    setOfflineSearchResults([]);
+    setCustomItemName("");
+    setCustomItemQty(1);
+    setCustomItemPrice("");
+    setOfflineBillError("");
+    setOfflineBillSuccess("");
+  };
+
+  const handleOfflineBillGenerate = async (method: "download" | "print" | "whatsapp" | "email") => {
+    if (offlineItems.length === 0) {
+      setOfflineBillError("Please add at least one item first.");
+      return;
+    }
+
+    if (method === "whatsapp" && !offlineCustPhone.trim()) {
+      setOfflineBillError("Enter customer phone number for WhatsApp delivery.");
+      return;
+    }
+
+    if (method === "email" && !offlineCustEmail.trim()) {
+      setOfflineBillError("Enter customer email for email delivery.");
+      return;
+    }
+
+    setOfflineBillError("");
+    setOfflineBillSuccess("");
+    setOfflineGenerating(true);
+
+    try {
+      const response = await fetch("/api/admin/offline-bill", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          customerName: offlineCustName.trim() || undefined,
+          customerPhone: offlineCustPhone.trim() || undefined,
+          customerEmail: offlineCustEmail.trim() || undefined,
+          shopDivision: offlineShopDivision,
+          items: offlineItems.map(it => ({
+            name: it.name,
+            quantity: it.quantity,
+            unitPrice: it.unitPrice,
+            isCustomItem: it.isCustomItem
+          })),
+          deliveryMethod: method
+        })
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || "Failed to process request");
+      }
+
+      // Read custom headers from response
+      const billNumber = response.headers.get("X-Bill-Number") || `JZ-OFFLINE-${Date.now()}`;
+      const totalStr = response.headers.get("X-Total") || "0.00";
+
+      if (method === "email") {
+        const result = await response.json();
+        setOfflineBillSuccess(`Bill [${result.billNumber || billNumber}] generated — Rs. ${Number(result.total || totalStr).toFixed(2)}. Sent to ${offlineCustEmail}!`);
+      } else {
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+
+        if (method === "download") {
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `JANUZEN-Bill-${billNumber}.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setOfflineBillSuccess(`Bill [${billNumber}] successfully downloaded — Rs. ${Number(totalStr).toFixed(2)}`);
+        } else if (method === "print") {
+          const newWindow = window.open(url, "_blank");
+          if (!newWindow) {
+            setOfflineBillError("Pop-up blocked. Please allow pop-ups for this site to print.");
+          } else {
+            setOfflineBillSuccess(`Bill [${billNumber}] opened in a new tab for printing — Rs. ${Number(totalStr).toFixed(2)}`);
+          }
+        } else if (method === "whatsapp") {
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `JANUZEN-Bill-${billNumber}.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+
+          const waLink = response.headers.get("X-WhatsApp-Link");
+          if (waLink) {
+            const newWindow = window.open(waLink, "_blank");
+            if (!newWindow) {
+              setOfflineBillError("Pop-up blocked. Please allow pop-ups to open WhatsApp link.");
+            }
+          }
+          setOfflineBillSuccess(`Bill [${billNumber}] generated and downloaded — Rs. ${Number(totalStr).toFixed(2)}. Opening WhatsApp chat...`);
+        }
+      }
+    } catch (err: any) {
+      console.error(err);
+      setOfflineBillError(err.message || "An error occurred while generating offline bill.");
+    } finally {
+      setOfflineGenerating(false);
+    }
+  };
+
+  const offlineSubtotal = offlineItems.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
+  const offlineTax = Math.round((offlineSubtotal * 0.05) * 100) / 100;
+  const offlineTotal = Math.round((offlineSubtotal + offlineTax) * 100) / 100;
+  const isBelowMinimum = offlineTotal < 750;
 
   // States
   const [stats, setStats] = React.useState<any>(null);
@@ -750,7 +977,7 @@ export default function AdminDashboardView({ onNavigate }: { onNavigate?: (page:
         
         {/* Rapid selectors menu */}
         <div className="flex flex-wrap gap-1 bg-slate-100 p-1 rounded-xl">
-          {(["stats", "products", "orders", "messages", "users", "coupons", "marquee", "storage", "settings"] as const).map((tab) => (
+          {(["stats", "products", "orders", "messages", "users", "coupons", "marquee", "storage", "settings", "offline-bill"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -760,7 +987,7 @@ export default function AdminDashboardView({ onNavigate }: { onNavigate?: (page:
                   : "text-gray-500 hover:text-black hover:bg-white/50"
               }`}
             >
-              {tab === "stats" ? "Analytics Stats" : tab === "marquee" ? "Edit Marquee" : tab === "storage" ? "Storage Guardrails" : tab === "settings" ? "GST & Shipping" : tab}
+              {tab === "stats" ? "Analytics Stats" : tab === "marquee" ? "Edit Marquee" : tab === "storage" ? "Storage Guardrails" : tab === "settings" ? "GST & Shipping" : tab === "offline-bill" ? "Offline Bill" : tab}
             </button>
           ))}
         </div>
@@ -1882,6 +2109,381 @@ export default function AdminDashboardView({ onNavigate }: { onNavigate?: (page:
                   ✓ {settingsSuccess}
                 </p>
               )}
+            </div>
+          )}
+
+          {/* TAB 10: OFFLINE BILL GENERATOR */}
+          {activeTab === "offline-bill" && (
+            <div className="space-y-6">
+              
+              {/* Header card */}
+              <div className="bg-white border border-gray-150 p-6 rounded-2xl shadow-sm">
+                <span className="text-xs font-mono uppercase tracking-widest text-[#D4820A] font-bold">OFFLINE TRANSACTION TERMINAL</span>
+                <h2 className="font-serif text-xl font-black text-[#0D1B2A] mt-1">Walk-in Customer Offline Bill Generator</h2>
+                <p className="text-xs text-gray-500 mt-1">
+                  Generate official monochrome thermal receipts (80mm/58mm standard) for walk-in transactions instantly. Note: these records bypass database storage.
+                </p>
+              </div>
+
+              {/* Grid Layout for Configuration vs Items list */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                {/* Left column: customer info & add items (span 5) */}
+                <div className="lg:col-span-5 space-y-6">
+                  
+                  {/* Section 1: Customer & Shop Details */}
+                  <div className="bg-white border border-gray-150 p-5 rounded-2xl shadow-sm space-y-4">
+                    <h3 className="text-sm font-bold font-serif text-gray-950 border-b border-gray-100 pb-2">Customer & Shop Details</h3>
+                    
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-[11px] font-mono font-bold uppercase tracking-wider text-gray-500 mb-1">Customer Name (Optional)</label>
+                        <input
+                          type="text"
+                          placeholder="Walk-in Customer"
+                          value={offlineCustName}
+                          onChange={(e) => setOfflineCustName(e.target.value)}
+                          className="w-full px-3 py-1.5 bg-slate-50 border border-gray-200 rounded-lg text-xs font-sans focus:bg-white focus:outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-mono font-bold uppercase tracking-wider text-gray-500 mb-1">Phone Number (For WhatsApp)</label>
+                        <input
+                          type="text"
+                          placeholder="+91XXXXXXXXXX"
+                          value={offlineCustPhone}
+                          onChange={(e) => setOfflineCustPhone(e.target.value)}
+                          className="w-full px-3 py-1.5 bg-slate-50 border border-gray-200 rounded-lg text-xs font-sans focus:bg-white focus:outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-mono font-bold uppercase tracking-wider text-gray-500 mb-1">Email Address (For Email)</label>
+                        <input
+                          type="email"
+                          placeholder="customer@email.com"
+                          value={offlineCustEmail}
+                          onChange={(e) => setOfflineCustEmail(e.target.value)}
+                          className="w-full px-3 py-1.5 bg-slate-50 border border-gray-200 rounded-lg text-xs font-sans focus:bg-white focus:outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-mono font-bold uppercase tracking-wider text-gray-500 mb-1">Shop Division</label>
+                        <select
+                          value={offlineShopDivision}
+                          onChange={(e) => setOfflineShopDivision(e.target.value as any)}
+                          className="w-full px-3 py-1.5 bg-slate-50 border border-gray-200 rounded-lg text-xs font-sans focus:bg-white focus:outline-none cursor-pointer"
+                        >
+                          <option value="mixed">Mixed (Both Divisions)</option>
+                          <option value="medicals">Nuthan Medicals</option>
+                          <option value="stationery">JA Stationery</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Section 2: Add Items */}
+                  <div className="bg-white border border-gray-150 p-5 rounded-2xl shadow-sm space-y-4">
+                    <h3 className="text-sm font-bold font-serif text-gray-950 border-b border-gray-100 pb-2">Add Items to Bill</h3>
+                    
+                    {/* Option A: Search Catalogue */}
+                    <div className="space-y-2">
+                      <label className="block text-[11px] font-mono font-bold uppercase tracking-wider text-gray-500">Option A: Search Catalogue</label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder="Type product name to search..."
+                          value={offlineSearch}
+                          onChange={(e) => setOfflineSearch(e.target.value)}
+                          className="w-full px-3 py-1.5 bg-slate-50 border border-gray-200 rounded-lg text-xs pl-8 focus:bg-white focus:outline-none"
+                        />
+                        <Search className="h-3.5 w-3.5 text-gray-400 absolute left-2.5 top-2" />
+                      </div>
+
+                      {/* Search Results list */}
+                      {offlineSearchLoading && (
+                        <div className="text-[10px] text-gray-500 flex items-center gap-1 font-mono p-1">
+                          <Loader2 className="h-3 w-3 animate-spin text-slate-500" /> Searching...
+                        </div>
+                      )}
+                      
+                      {offlineSearchResults.length > 0 && (
+                        <div className="bg-white border border-gray-200 rounded-lg shadow-sm max-h-48 overflow-y-auto divide-y divide-gray-100 mt-1">
+                          {offlineSearchResults.map((prod) => (
+                            <button
+                              key={prod.id}
+                              type="button"
+                              onClick={() => handleAddCatalogItem(prod)}
+                              className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 flex justify-between items-center cursor-pointer transition-colors"
+                            >
+                              <div>
+                                <span className="font-semibold text-gray-900">{prod.name}</span>
+                                <span className="ml-2 text-[10px] text-slate-400 uppercase font-mono bg-slate-100 px-1.5 py-0.5 rounded">
+                                  {prod.shop === "medicals" ? "Meds" : "Stat"}
+                                </span>
+                              </div>
+                              <span className="font-mono font-bold text-[#0F6E56]">₹{prod.price.toFixed(2)}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="relative flex py-1 items-center">
+                      <div className="flex-grow border-t border-gray-100"></div>
+                      <span className="flex-shrink mx-3 text-[10px] font-mono text-gray-400 uppercase">OR</span>
+                      <div className="flex-grow border-t border-gray-100"></div>
+                    </div>
+
+                    {/* Option B: Custom Item */}
+                    <div className="space-y-2">
+                      <label className="block text-[11px] font-mono font-bold uppercase tracking-wider text-gray-500">Option B: Custom Line Item</label>
+                      <div className="space-y-2.5">
+                        <input
+                          type="text"
+                          placeholder="Custom item description..."
+                          value={customItemName}
+                          onChange={(e) => setCustomItemName(e.target.value)}
+                          className="w-full px-3 py-1.5 bg-slate-50 border border-gray-200 rounded-lg text-xs focus:bg-white focus:outline-none"
+                        />
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[9px] font-mono font-bold uppercase text-gray-400 mb-0.5">Quantity</label>
+                            <input
+                              type="number"
+                              min="1"
+                              placeholder="1"
+                              value={customItemQty}
+                              onChange={(e) => setCustomItemQty(parseInt(e.target.value) || 1)}
+                              className="w-full px-3 py-1.5 bg-slate-50 border border-gray-200 rounded-lg text-xs font-mono focus:bg-white focus:outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[9px] font-mono font-bold uppercase text-gray-400 mb-0.5">Price (₹)</label>
+                            <input
+                              type="text"
+                              placeholder="0.00"
+                              value={customItemPrice}
+                              onChange={(e) => setCustomItemPrice(e.target.value)}
+                              className="w-full px-3 py-1.5 bg-slate-50 border border-gray-200 rounded-lg text-xs font-mono focus:bg-white focus:outline-none"
+                            />
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleAddCustomItem}
+                          className="w-full py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold uppercase tracking-wider rounded-lg flex items-center justify-center gap-1 cursor-pointer transition-colors shadow-sm"
+                        >
+                          <PlusCircle className="h-4 w-4" />
+                          Add Custom Item
+                        </button>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+
+                {/* Right column: active items list & bill summary (span 7) */}
+                <div className="lg:col-span-7 space-y-6">
+                  
+                  {/* Bill Items List Table */}
+                  <div className="bg-white border border-gray-150 p-5 rounded-2xl shadow-sm space-y-4">
+                    <div className="flex justify-between items-center border-b border-gray-100 pb-2">
+                      <h3 className="text-sm font-bold font-serif text-gray-950">Active Bill Line Items</h3>
+                      {offlineItems.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={handleResetOfflineBill}
+                          className="text-[10px] text-red-500 font-mono hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                          <RotateCcw className="h-3 w-3" /> Clear Bill
+                        </button>
+                      )}
+                    </div>
+
+                    {offlineItems.length === 0 ? (
+                      <div className="py-16 text-center text-xs text-gray-400 font-sans border-2 border-dashed border-gray-100 rounded-xl">
+                        No items added to the bill yet. Use the left panel to search products or add custom items.
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left text-xs border-collapse font-sans">
+                            <thead>
+                              <tr className="bg-slate-50 font-mono font-bold uppercase text-[10px] tracking-wider text-gray-500 border-b border-gray-100">
+                                <th className="py-2 px-3">Item Description</th>
+                                <th className="py-2 px-3 text-center w-20">Qty</th>
+                                <th className="py-2 px-3 text-right w-24">Unit Price</th>
+                                <th className="py-2 px-3 text-right w-28">Line Total</th>
+                                <th className="py-2 px-3 text-center w-10"></th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                              {offlineItems.map((item, index) => (
+                                <tr key={index} className="hover:bg-slate-50/50">
+                                  <td className="py-2.5 px-3">
+                                    <div className="font-semibold text-gray-900">{item.name}</div>
+                                    <div className="text-[9px] text-gray-400 uppercase font-mono mt-0.5">
+                                      {item.isCustomItem ? "Custom Line" : "Catalog Asset"}
+                                    </div>
+                                  </td>
+                                  <td className="py-2.5 px-3 text-center">
+                                    <div className="flex items-center justify-center gap-1.5">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleUpdateQty(index, item.quantity - 1)}
+                                        className="h-5 w-5 rounded border border-gray-200 bg-white hover:bg-slate-100 flex items-center justify-center text-xs cursor-pointer"
+                                      >
+                                        -
+                                      </button>
+                                      <span className="font-mono font-semibold w-6 text-center text-xs">{item.quantity}</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleUpdateQty(index, item.quantity + 1)}
+                                        className="h-5 w-5 rounded border border-gray-200 bg-white hover:bg-slate-100 flex items-center justify-center text-xs cursor-pointer"
+                                      >
+                                        +
+                                      </button>
+                                    </div>
+                                  </td>
+                                  <td className="py-2.5 px-3 text-right font-mono font-bold text-gray-650">
+                                    ₹{item.unitPrice.toFixed(2)}
+                                  </td>
+                                  <td className="py-2.5 px-3 text-right font-mono font-bold text-gray-900">
+                                    ₹{(item.unitPrice * item.quantity).toFixed(2)}
+                                  </td>
+                                  <td className="py-2.5 px-3 text-center">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveItem(index)}
+                                      className="text-gray-400 hover:text-red-500 transition-colors p-1 rounded hover:bg-red-50 cursor-pointer"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Running totals panel */}
+                        <div className="bg-slate-50 border border-gray-150 p-4 rounded-xl space-y-2">
+                          <div className="flex justify-between text-xs text-gray-500 font-sans">
+                            <span>Subtotal:</span>
+                            <span className="font-mono font-bold">₹{offlineSubtotal.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between text-xs text-gray-500 font-sans">
+                            <span>CGST & SGST (5%):</span>
+                            <span className="font-mono font-bold">₹{offlineTax.toFixed(2)}</span>
+                          </div>
+                          <div className="border-t border-gray-200/60 pt-2 flex justify-between text-sm font-bold text-gray-900 font-serif">
+                            <span>TOTAL DUE:</span>
+                            <span className="font-mono text-[#0F6E56]">₹{offlineTotal.toFixed(2)}</span>
+                          </div>
+                        </div>
+
+                        {/* Minimum ₹750 Warning banner */}
+                        {isBelowMinimum && (
+                          <div className="flex gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-800 leading-relaxed font-sans">
+                            <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                            <div>
+                              <span className="font-bold">Notice:</span> Total bill amount (₹{offlineTotal.toFixed(2)}) is below the recommended ₹750 threshold for home delivery invoices. However, walk-in cash bills can still be finalized and generated successfully.
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Status errors or successes */}
+                        {offlineBillError && (
+                          <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 font-sans">
+                            ⚠️ {offlineBillError}
+                          </div>
+                        )}
+
+                        {offlineBillSuccess && (
+                          <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 space-y-2 font-sans">
+                            <div className="flex items-center gap-1.5 font-bold">
+                              <Check className="h-4 w-4 text-emerald-600" />
+                              <span>Success! Receipt Action Complete</span>
+                            </div>
+                            <p className="leading-relaxed">{offlineBillSuccess}</p>
+                            <button
+                              type="button"
+                              onClick={handleResetOfflineBill}
+                              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold uppercase text-[10px] tracking-wider rounded-md cursor-pointer transition-colors"
+                            >
+                              + Start New Bill
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Delivery Control Buttons */}
+                        <div className="border-t border-gray-100 pt-4">
+                          <p className="text-[10px] font-mono font-bold text-gray-400 uppercase tracking-wider mb-2.5">
+                            Select Deliverable Method & Generate
+                          </p>
+                          
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            {/* Download */}
+                            <button
+                              type="button"
+                              disabled={offlineGenerating}
+                              onClick={() => handleOfflineBillGenerate("download")}
+                              className="py-2.5 px-3 bg-slate-900 text-white hover:bg-black font-bold uppercase text-[10px] tracking-widest rounded-xl flex flex-col items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <Upload className="h-4 w-4 rotate-180" />
+                              <span>Download</span>
+                            </button>
+
+                            {/* Print */}
+                            <button
+                              type="button"
+                              disabled={offlineGenerating}
+                              onClick={() => handleOfflineBillGenerate("print")}
+                              className="py-2.5 px-3 bg-[#0D1B2A] text-white hover:bg-[#1a2e40] font-bold uppercase text-[10px] tracking-widest rounded-xl flex flex-col items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <Activity className="h-4 w-4" />
+                              <span>Print</span>
+                            </button>
+
+                            {/* WhatsApp */}
+                            <button
+                              type="button"
+                              disabled={offlineGenerating}
+                              onClick={() => handleOfflineBillGenerate("whatsapp")}
+                              className="py-2.5 px-3 bg-[#25D366] text-white hover:bg-[#20ba59] font-bold uppercase text-[10px] tracking-widest rounded-xl flex flex-col items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <Phone className="h-4 w-4" />
+                              <span>WhatsApp</span>
+                            </button>
+
+                            {/* Email */}
+                            <button
+                              type="button"
+                              disabled={offlineGenerating}
+                              onClick={() => handleOfflineBillGenerate("email")}
+                              className="py-2.5 px-3 bg-[#0F6E56] text-white hover:bg-[#0c5946] font-bold uppercase text-[10px] tracking-widest rounded-xl flex flex-col items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <Mail className="h-4 w-4" />
+                              <span>Email</span>
+                            </button>
+                          </div>
+                          
+                          {offlineGenerating && (
+                            <div className="text-center text-xs text-gray-500 font-mono mt-3 flex items-center justify-center gap-1.5">
+                              <Loader2 className="h-4 w-4 animate-spin text-[#0D1B2A]" /> Processing dispatch request...
+                            </div>
+                          )}
+                        </div>
+
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+              </div>
             </div>
           )}
 

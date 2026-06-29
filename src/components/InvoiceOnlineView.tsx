@@ -195,8 +195,8 @@ export default function InvoiceOnlineView({ orderId, onNavigate, currentUser }: 
             </div>
             <h2 className="text-sm font-extrabold tracking-tight text-slate-900">JANUZEN GLOBAL LLP</h2>
             <p className="text-[10px] text-[#0F6E56] font-bold tracking-wider uppercase">Nuthan Medicals & JA Stationery</p>
-            <p className="text-[9px] text-slate-500">Central Corporate Facility</p>
-            <p className="text-[9px] text-slate-500">Gajularamaram, Hyderabad - 500055</p>
+            <p className="text-[9px] text-slate-500">Gajularamaram, Hyderabad,</p>
+            <p className="text-[9px] text-slate-500">Telangana - 500055</p>
             <p className="text-[9px] text-slate-500">Email: team@januzen.in | Phone: +91-9666588553</p>
             <p className="text-[9px] text-slate-400">GSTIN: Pending Registration</p>
           </div>
@@ -321,8 +321,8 @@ export default function InvoiceOnlineView({ orderId, onNavigate, currentUser }: 
                 </div>
               </div>
               <div className="text-xs text-slate-500 font-mono space-y-1">
-                <p className="font-bold text-slate-700">Central Corporate Facility</p>
-                <p>Gajularamaram, Hyderabad - 500055</p>
+                <p className="font-bold text-slate-700">Gajularamaram, Hyderabad,</p>
+                <p>Telangana - 500055</p>
                 <p>Email: team@januzen.in | Phone: +91-9666588553</p>
                 <p className="text-[10px] text-slate-400">GSTIN: 29AAAFJ0427R1Z5 (Pending Registration)</p>
               </div>
