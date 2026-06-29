@@ -90,6 +90,9 @@ export async function sendInvoiceEmail(order: any, pdfBuffer: Buffer): Promise<v
         user: emailUser,
         pass: emailPass,
       },
+      tls: {
+        rejectUnauthorized: false
+      },
       connectionTimeout: 8000, // 8 seconds fast fail
       greetingTimeout: 8000,
       socketTimeout: 8000,
@@ -116,6 +119,9 @@ export async function sendInvoiceEmail(order: any, pdfBuffer: Buffer): Promise<v
         auth: {
           user: emailUser,
           pass: emailPass,
+        },
+        tls: {
+          rejectUnauthorized: false
         },
         connectionTimeout: 8000,
         greetingTimeout: 8000,
