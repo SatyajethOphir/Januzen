@@ -350,7 +350,9 @@ async function startServer() {
     }
   });
 
-  // Upload asset image to Cloudinary (Protected for Admins)
+  // Upload asset image — tries Cloudinary first, falls back to GitHub
+  // Cloudinary: primary storage (fast CDN, image transformations)
+  // GitHub:     fallback storage (free, reliable, public raw URLs)
   app.post("/api/upload", authenticateAdmin, filterMulter.single("file"), async (req: any, res) => {
     if (!req.file) {
       return res.status(400).json({ error: "Please provide a file to upload." });
@@ -362,48 +364,121 @@ async function startServer() {
       process.env.CLOUDINARY_API_SECRET
     );
 
-    if (!hasCloudinary) {
-      return res.status(400).json({
-        error: "Cloudinary credentials (CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET) are missing or incomplete in your .env configuration."
+    const hasGitHub = !!(
+      process.env.GITHUB_TOKEN &&
+      process.env.GITHUB_OWNER &&
+      process.env.GITHUB_REPO
+    );
+
+    // ── LAYER 1: Cloudinary (primary) ──────────────────────────────────────
+    if (hasCloudinary) {
+      try {
+        cloudinary.config({
+          cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+          api_key: process.env.CLOUDINARY_API_KEY,
+          api_secret: process.env.CLOUDINARY_API_SECRET
+        });
+
+        const uploadToCloudinary = (buffer: Buffer): Promise<any> => {
+          return new Promise((resolve, reject) => {
+            const writeStream = cloudinary.uploader.upload_stream(
+              { folder: "januzen_products", resource_type: "auto" },
+              (error, result) => {
+                if (error) return reject(error);
+                resolve(result);
+              }
+            );
+            writeStream.end(buffer);
+          });
+        };
+
+        const result = await uploadToCloudinary(req.file.buffer);
+
+        return res.status(200).json({
+          message: "Image uploaded successfully!",
+          url: result.secure_url,
+          public_id: result.public_id,
+          source: "cloudinary"
+        });
+      } catch (cloudinaryErr: any) {
+        // Cloudinary failed — log and fall through to GitHub
+        console.warn(
+          "[UPLOAD] Cloudinary failed, attempting GitHub fallback:",
+          cloudinaryErr.message
+        );
+      }
+    } else {
+      console.warn("[UPLOAD] Cloudinary credentials not configured, trying GitHub fallback.");
+    }
+
+    // ── LAYER 2: GitHub (fallback) ─────────────────────────────────────────
+    if (!hasGitHub) {
+      return res.status(500).json({
+        error: hasCloudinary
+          ? "Cloudinary upload failed and GitHub fallback is not configured. Please set GITHUB_TOKEN, GITHUB_OWNER, and GITHUB_REPO environment variables."
+          : "No image storage configured. Please set Cloudinary or GitHub environment variables."
       });
     }
 
     try {
-      // Lazy config just before uploading
-      cloudinary.config({
-        cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-        api_key: process.env.CLOUDINARY_API_KEY,
-        api_secret: process.env.CLOUDINARY_API_SECRET
+      const owner = process.env.GITHUB_OWNER!;
+      const repo = process.env.GITHUB_REPO!;
+      const branch = process.env.GITHUB_BRANCH || "main";
+
+      // Build a unique, clean filename
+      const timestamp = Date.now();
+      const safeName = req.file.originalname
+        .replace(/\s+/g, "-")
+        .replace(/[^a-zA-Z0-9.\-_]/g, "")
+        .toLowerCase();
+      const fileName = `${timestamp}-${safeName}`;
+      const filePath = `uploads/${fileName}`;
+
+      // GitHub Contents API requires base64-encoded file content
+      const base64Content = req.file.buffer.toString("base64");
+
+      const githubResponse = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+            "Content-Type": "application/json",
+            Accept: "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "User-Agent": "JANUZEN-Portal"
+          },
+          body: JSON.stringify({
+            message: `chore: upload product image ${fileName}`,
+            content: base64Content,
+            branch
+          })
+        }
+      );
+
+      if (!githubResponse.ok) {
+        const errBody = await githubResponse.json().catch(() => ({}));
+        throw new Error(
+          `GitHub API ${githubResponse.status}: ${(errBody as any).message || "Unknown error"}`
+        );
+      }
+
+      const githubData = await githubResponse.json();
+
+      // raw.githubusercontent.com serves files directly — no auth needed for public repos
+      const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${filePath}`;
+
+      return res.status(200).json({
+        message: "Image uploaded successfully via GitHub!",
+        url: rawUrl,
+        public_id: githubData.content?.sha || fileName,
+        source: "github"
       });
-
-      const uploadToCloudinary = (buffer: Buffer) => {
-        return new Promise<any>((resolve, reject) => {
-          const writeStream = cloudinary.uploader.upload_stream(
-            {
-              folder: "januzen_products",
-              resource_type: "auto"
-            },
-            (error, result) => {
-              if (error) return reject(error);
-              resolve(result);
-            }
-          );
-          writeStream.end(buffer);
-        });
-      };
-
-      const uploadResult = await uploadToCloudinary(req.file.buffer);
-
-      res.status(200).json({
-        message: "Image uploaded successfully!",
-        url: uploadResult.secure_url,
-        public_id: uploadResult.public_id
-      });
-    } catch (err: any) {
-      console.error("Cloudinary connection execution error:", err);
-      res.status(500).json({
-        error: "Failed to upload image to Cloudinary.",
-        details: err?.message || String(err)
+    } catch (githubErr: any) {
+      console.error("[UPLOAD] GitHub fallback failed:", githubErr.message);
+      return res.status(500).json({
+        error: "Image upload failed on both Cloudinary and GitHub.",
+        details: githubErr.message
       });
     }
   });
@@ -771,7 +846,7 @@ async function startServer() {
             shop: "stationery"
           }
         ],
-        shippingAddress: "JANUZEN Corporate Testing Lab, Sector IV, Bangalore, Karnataka - 560001",
+        shippingAddress: "JANUZEN Corporate Testing Lab, Gajularamaram, Hyderabad - 500055",
         deliveryOTP: "1234",
         totals: {
           subtotal: 1350.00,

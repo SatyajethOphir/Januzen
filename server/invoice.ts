@@ -72,7 +72,7 @@ export async function generateInvoice(order: Order, outputPath?: string): Promis
       // Address & metadata
       const startTextX = logoBuffer ? 115 : 50;
       doc.fontSize(8).fillColor("#475569").font("Helvetica")
-         .text("Central Corporate Facility, Sector IV, Bangalore, Karnataka - 560001", startTextX, 63)
+         .text("Central Corporate Facility, Gajularamaram, Hyderabad - 500055", startTextX, 63)
          .text("Email: team@januzen.in | Phone: +91-9666588553", startTextX, 75);
 
       // Title & GSTIN

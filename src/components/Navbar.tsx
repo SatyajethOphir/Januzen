@@ -20,6 +20,7 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const [notifications, setNotifications] = React.useState<any[]>([]);
   const [notifOpen, setNotifOpen] = React.useState(false);
+  const [mobileNotifOpen, setMobileNotifOpen] = React.useState(false);
 
   // Notification Permission states for native push alerts
   const [notifPermission, setNotifPermission] = React.useState(() => {
@@ -550,6 +551,86 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
                 </span>
               )}
             </button>
+
+            {/* Mobile Notification Bell */}
+            {currentUser && (
+              <div className="relative">
+                <button
+                  onClick={() => setMobileNotifOpen(!mobileNotifOpen)}
+                  className="relative p-2 text-gray-300 hover:text-white transition-colors cursor-pointer"
+                  title="Notifications Alert Panel"
+                >
+                  <Bell className="h-5 w-5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute top-0 right-0 inline-flex items-center justify-center h-4 w-4 text-[9px] font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-rose-500 rounded-full">
+                      {unreadCount}
+                    </span>
+                  )}
+                </button>
+
+                {mobileNotifOpen && (
+                  <div className="fixed right-4 top-16 mt-2 w-[calc(100vw-2rem)] bg-white text-slate-800 border border-gray-200 rounded-xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                    <div className="p-3 bg-[#0D1B2A] text-white flex justify-between items-center">
+                      <span className="font-serif font-bold text-xs tracking-wide">Notifications Box</span>
+                      {unreadCount > 0 && (
+                        <span className="bg-rose-500 text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                          {unreadCount} New
+                        </span>
+                      )}
+                    </div>
+                    {notifPermission !== "granted" && (
+                      <div className="p-3 bg-emerald-50/70 border-b border-emerald-100/50 flex flex-col gap-1.5">
+                        <p className="text-[10px] text-slate-700 leading-normal font-sans">
+                          Stay updated in real-time! To receive native lock-screen alerts, add JANUZEN to your Home Screen (PWA) or enable browser notifications.
+                        </p>
+                        {!("Notification" in window) ? (
+                          <div className="text-[9px] text-[#0F6E56] font-bold font-sans">
+                            📱 Tap Share ➜ "Add to Home Screen" to enable native push!
+                          </div>
+                        ) : (
+                          <button
+                            onClick={handleRequestPermission}
+                            className="w-full py-1 text-center bg-[#0F9B8E] hover:bg-[#0C7C72] text-white text-[10px] font-bold tracking-wider rounded uppercase font-sans cursor-pointer transition-colors"
+                          >
+                            Enable Device Alerts
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    <div className="max-h-64 overflow-y-auto divide-y divide-gray-100">
+                      {notifications.length === 0 ? (
+                        <div className="p-4 text-center text-xs text-gray-400 font-sans">
+                          No pending notifications in your inbox.
+                        </div>
+                      ) : (
+                        notifications.map((notif) => (
+                          <div key={notif.id} className={`p-3 text-xs leading-relaxed transition-colors ${notif.isRead ? "bg-slate-50/50" : "bg-emerald-50/30"}`}>
+                            <div className="flex justify-between items-start gap-1">
+                              <span className="font-serif font-bold text-slate-900 block">{notif.title}</span>
+                              <span className="text-[9px] text-gray-400 shrink-0 font-mono">
+                                {new Date(notif.createdAt).toLocaleDateString([], { month: "short", day: "numeric" })}
+                              </span>
+                            </div>
+                            <p className="text-slate-600 font-sans mt-1 whitespace-pre-wrap">{notif.content}</p>
+                            {!notif.isRead && (
+                              <button
+                                onClick={() => {
+                                  handleMarkAsRead(notif.id);
+                                }}
+                                className="mt-1.5 text-[10px] text-[#0F9B8E] hover:text-[#0C7C72] font-bold font-mono tracking-wide flex items-center gap-0.5 cursor-pointer"
+                              >
+                                Mark as Read
+                              </button>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-2 text-gray-300 hover:text-white hover:bg-gray-800 rounded focus:outline-none"
