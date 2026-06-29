@@ -83,16 +83,19 @@ export async function sendInvoiceEmail(order: any, pdfBuffer: Buffer): Promise<v
   let primarySuccess = false;
   try {
     const transporter = nodemailer.createTransport({
-      host: emailHost,
-      port: port,
-      secure: secure,
+     host: "172.65.255.143",
+    port: 465,
+    secure: true,
+    family: 4,
       auth: {
         user: emailUser,
         pass: emailPass,
       },
       tls: {
-        rejectUnauthorized: false
+        rejectUnauthorized: false,
+        servername: "smtp.hostinger.com",
       },
+      
       connectionTimeout: 8000, // 8 seconds fast fail
       greetingTimeout: 8000,
       socketTimeout: 8000,
