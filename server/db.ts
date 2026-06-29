@@ -1294,11 +1294,17 @@ export const dbClient = {
   // Notifications Methods
   getNotifications: async (userId: string): Promise<Notification[]> => {
     if (isMongo) {
-      return MongoNotification.find({ $or: [{ userId }, { userId: "all" }] }).sort({ createdAt: -1 }).lean() as any;
+      return MongoNotification.find({ $or: [{ userId }, { userId: "all" }] })
+        .sort({ createdAt: -1 })
+        .limit(4)
+        .lean() as any;
     } else {
       const db = loadLocalDB();
       const list = db.notifications || [];
-      return list.filter(n => n.userId === userId || n.userId === "all");
+      return list
+        .filter(n => n.userId === userId || n.userId === "all")
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 4);
     }
   },
 
@@ -1315,11 +1321,37 @@ export const dbClient = {
         ...notif,
         expiresAt: expiry // convert to real Date object for Mongoose TTL index
       });
+
+      // Optimize storage: Keep only the 4 most recent notifications for this specific customer
+      if (notif.userId !== "all") {
+        const userNotifs = await MongoNotification.find({ userId: notif.userId })
+          .sort({ createdAt: -1 })
+          .select("id")
+          .lean();
+        if (userNotifs.length > 4) {
+          const idsToDelete = userNotifs.slice(4).map((n: any) => n.id);
+          await MongoNotification.deleteMany({ id: { $in: idsToDelete } });
+        }
+      }
+
       return doc.toObject() as any;
     } else {
       const db = loadLocalDB();
       if (!db.notifications) db.notifications = [];
       db.notifications.unshift(notif);
+
+      // Optimize storage: Keep only the 4 most recent notifications for this specific customer
+      if (notif.userId !== "all") {
+        let count = 0;
+        db.notifications = db.notifications.filter(n => {
+          if (n.userId === notif.userId) {
+            count++;
+            return count <= 4;
+          }
+          return true;
+        });
+      }
+
       saveLocalDB(db);
       return notif;
     }

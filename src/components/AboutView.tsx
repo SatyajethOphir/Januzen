@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useEffect } from "react";
+import { gsap } from "gsap";
 import { CircleCheck, ShieldCheck, Cpu, Library, Users, Award, Anchor, Milestone } from "lucide-react";
 
 export default function AboutView() {
@@ -42,11 +43,47 @@ export default function AboutView() {
     }
   ];
 
+  useEffect(() => {
+    const tl = gsap.timeline();
+    
+    tl.fromTo(
+      ".gsap-about-header",
+      { opacity: 0, y: 30 },
+      { opacity: 1, y: 0, duration: 0.8, ease: "power3.out" }
+    );
+
+    tl.fromTo(
+      ".gsap-about-story",
+      { opacity: 0, x: -30 },
+      { opacity: 1, x: 0, duration: 0.8, ease: "power2.out" },
+      "-=0.5"
+    );
+
+    tl.fromTo(
+      ".gsap-about-panel",
+      { opacity: 0, x: 30 },
+      { opacity: 1, x: 0, duration: 0.8, ease: "power2.out" },
+      "-=0.8"
+    );
+
+    gsap.fromTo(
+      ".gsap-about-value-card",
+      { opacity: 0, y: 40, scale: 0.95 },
+      { opacity: 1, y: 0, scale: 1, duration: 0.6, stagger: 0.15, ease: "back.out(1.2)", delay: 0.4 }
+    );
+
+    gsap.fromTo(
+      ".gsap-about-timeline-item",
+      { opacity: 0, y: 20 },
+      { opacity: 1, y: 0, duration: 0.8, stagger: 0.25, ease: "power2.out", delay: 0.6 }
+    );
+  }, []);
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 font-sans space-y-20 pb-20">
       
       {/* 🌟 Editorial Header */}
-      <section className="text-center max-w-2xl mx-auto space-y-4">
+      <section className="text-center max-w-2xl mx-auto space-y-4 gsap-about-header">
         <span className="text-xs uppercase tracking-[0.25em] font-extrabold text-[#D4820A] block font-mono">Our Heritage & Values</span>
         <h1 className="font-serif text-4xl sm:text-5xl font-light text-current">The JANUZEN <span className="italic">Legacy</span></h1>
         <div className="w-12 h-[1.5px] bg-[#D4820A] mx-auto"></div>
@@ -57,7 +94,7 @@ export default function AboutView() {
 
       {/* Corporate Story Block */}
       <section className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center bg-card-theme border rounded-2xl p-8 sm:p-12 shadow-sm transition-all">
-        <div className="space-y-6">
+        <div className="space-y-6 gsap-about-story">
           <span className="font-mono text-xs text-teal-600 uppercase tracking-widest font-bold">JANUZEN GLOBAL LLP</span>
           <h2 className="font-serif text-3xl sm:text-4xl font-light text-current tracking-tight leading-tight">
             Bridging vital human needs under one <span className="italic">verified parent banner</span>
@@ -74,7 +111,7 @@ export default function AboutView() {
         </div>
 
         {/* Vision & Mission panels */}
-        <div className="space-y-6">
+        <div className="space-y-6 gsap-about-panel">
           <div className="p-8 rounded-xl bg-teal-500/5 border border-teal-200/40 space-y-2">
             <h3 className="font-serif text-xl font-bold text-[#0F9B8E] flex items-center gap-2.5">
               <Anchor className="h-5 w-5 text-teal-600" />
@@ -108,7 +145,7 @@ export default function AboutView() {
           {values.map((v, i) => {
             const Icon = v.icon;
             return (
-              <div key={i} className="bg-card-theme border p-6 rounded-xl hover:shadow-lg transition-all duration-300">
+              <div key={i} className="bg-card-theme border p-6 rounded-xl hover:shadow-lg transition-all duration-300 gsap-about-value-card">
                 <div className={`h-11 w-11 rounded-lg flex items-center justify-center mb-4 ${v.color}`}>
                   <Icon className="h-5 w-5" />
                 </div>
@@ -138,7 +175,7 @@ export default function AboutView() {
             {timeline.map((evt, idx) => {
               const isEven = idx % 2 === 0;
               return (
-                <div key={idx} className={`flex flex-col sm:flex-row items-stretch sm:justify-between relative ${isEven ? "" : "sm:flex-row-reverse"}`}>
+                <div key={idx} className={`flex flex-col sm:flex-row items-stretch sm:justify-between relative gsap-about-timeline-item ${isEven ? "" : "sm:flex-row-reverse"}`}>
                   
                   {/* Content Block */}
                   <div className={`w-full sm:w-[45%] pl-12 sm:pl-0 space-y-1 ${isEven ? "sm:text-right" : "sm:text-left"}`}>

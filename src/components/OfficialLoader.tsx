@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { JanuzenLogo } from "./Logos";
+import { gsap } from "gsap";
 
 interface OfficialLoaderProps {
   fullScreen?: boolean;
@@ -53,6 +54,28 @@ export default function OfficialLoader({ fullScreen = true, message, progress: p
     setStatusText(statusMessages[msgIndex]);
   }, [progress]);
 
+  // GSAP animation entrance sequence
+  useEffect(() => {
+    const tl = gsap.timeline();
+    tl.fromTo(
+      ".gsap-loader-logo",
+      { scale: 0.6, opacity: 0, rotate: -15 },
+      { scale: 1, opacity: 1, rotate: 0, duration: 0.8, ease: "back.out(1.6)" }
+    );
+    tl.fromTo(
+      ".gsap-loader-title",
+      { y: 15, opacity: 0 },
+      { y: 0, opacity: 1, duration: 0.6, ease: "power3.out" },
+      "-=0.4"
+    );
+    tl.fromTo(
+      ".gsap-loader-progress-container",
+      { scaleX: 0.8, opacity: 0 },
+      { scaleX: 1, opacity: 1, duration: 0.5, ease: "power2.out" },
+      "-=0.3"
+    );
+  }, []);
+
   const containerClasses = fullScreen
     ? "fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#050C16] text-[#E0E6ED] px-6 select-none"
     : "w-full min-h-[400px] flex flex-col items-center justify-center p-8 text-[#E0E6ED] select-none";
@@ -68,7 +91,7 @@ export default function OfficialLoader({ fullScreen = true, message, progress: p
       )}
 
       {/* Modern Static/Glow Brand Mark (Professional - Non Bounce) */}
-      <div className="relative mb-8 flex items-center justify-center">
+      <div className="relative mb-8 flex items-center justify-center gsap-loader-logo">
         <div className="absolute inset-0 bg-amber-500/10 rounded-full blur-2xl scale-125 animate-pulse"></div>
         <div className="relative p-5 bg-slate-900/75 border border-slate-700/60 rounded-2xl shadow-2xl backdrop-blur-md transition-transform duration-500 hover:scale-[1.02]">
           <JanuzenLogo size={64} className="transition-all" />
@@ -76,7 +99,7 @@ export default function OfficialLoader({ fullScreen = true, message, progress: p
       </div>
 
       {/* Branding Header Titles */}
-      <div className="text-center space-y-2 max-w-sm z-10">
+      <div className="text-center space-y-2 max-w-sm z-10 gsap-loader-title">
         <h2 className="text-sm font-sans font-extrabold uppercase tracking-[0.25em] text-[#F5B041]">
           JANUZEN GLOBAL
         </h2>
@@ -86,7 +109,7 @@ export default function OfficialLoader({ fullScreen = true, message, progress: p
       </div>
 
       {/* Progress metrics and animated loading bar */}
-      <div className="w-full max-w-[280px] mt-8 space-y-3 z-10">
+      <div className="w-full max-w-[280px] mt-8 space-y-3 z-10 gsap-loader-progress-container">
         <div className="w-full bg-[#0E1B2A] rounded-full h-[6px] overflow-hidden border border-slate-800 p-[1px]">
           <div
             className="bg-gradient-to-r from-[#0F9B8E] via-[#F5B041] to-[#e11d48] h-full rounded-full transition-all duration-300 ease-out"

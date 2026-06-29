@@ -22,6 +22,20 @@ import SideCartDrawer from "./components/SideCartDrawer";
 import Error404View from "./components/Error404View";
 import InvoiceOnlineView from "./components/InvoiceOnlineView";
 
+const syncServiceWorkerToken = (token: string | null) => {
+  if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+    navigator.serviceWorker.ready.then((reg) => {
+      if (reg.active) {
+        if (token) {
+          reg.active.postMessage({ type: "SET_TOKEN", token });
+        } else {
+          reg.active.postMessage({ type: "CLEAR_TOKEN" });
+        }
+      }
+    }).catch(err => console.error("Error sending token to Service Worker:", err));
+  }
+};
+
 interface NavState {
   page: "home" | "medicals" | "stationery" | "product-detail" | "cart" | "checkout" | "about" | "contact" | "login" | "admin" | "orders" | "profile" | "delivery" | "error" | string;
   params: Record<string, any>;
@@ -173,6 +187,7 @@ export default function App() {
       incrementProgressTo(25);
       const savedToken = localStorage.getItem("januzen_token") || sessionStorage.getItem("januzen_token");
       if (savedToken) {
+        syncServiceWorkerToken(savedToken);
         try {
           const res = await fetch("/api/auth/profile", {
             headers: { "Authorization": `Bearer ${savedToken}` }
@@ -418,6 +433,7 @@ export default function App() {
   // --- AUTH MANAGEMENT ---
   const handleLoginSuccess = (user: User, token: string) => {
     setCurrentUser(user);
+    syncServiceWorkerToken(token);
     showToastMsg(`Welcome back, ${user.name}!`);
   };
 
@@ -427,6 +443,7 @@ export default function App() {
     sessionStorage.removeItem("januzen_token");
     sessionStorage.removeItem("januzen_user");
     setCurrentUser(null);
+    syncServiceWorkerToken(null);
     showToastMsg("Logged out of session. Safe travels!");
     handleNavigate("home");
   };
@@ -525,7 +542,7 @@ export default function App() {
         <Suspense fallback={
           <OfficialLoader fullScreen={false} message="Streaming verified partner view modules..." />
         }>
-          {!["home", "medicals", "stationery", "product-detail", "cart", "checkout", "about", "contact", "login", "admin", "profile", "orders", "delivery"].includes(nav.page) && (
+          {!["home", "medicals", "stationery", "product-detail", "cart", "checkout", "about", "contact", "login", "admin", "profile", "orders", "delivery", "invoice"].includes(nav.page) && (
             <Error404View 
               onNavigate={handleNavigate} 
               searchedTerm={(nav.params && nav.params.query) || ""}

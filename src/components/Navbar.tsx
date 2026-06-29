@@ -158,12 +158,24 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
 
         // Trigger native browser notification
         if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
-          new Notification(notif.title, {
+          const title = notif.title.startsWith("PJ") ? notif.title : `PJ | ${notif.title}`;
+          const options = {
             body: notif.content,
             icon: "/appicon.png",
+            badge: "/logo.png",
             tag: notif.id,
             requireInteraction: true // Keep the notification visible for important details like OTPs
-          });
+          };
+
+          if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+            navigator.serviceWorker.ready.then((reg) => {
+              reg.showNotification(title, options);
+            }).catch(() => {
+              new Notification(title, options);
+            });
+          } else {
+            new Notification(title, options);
+          }
         }
 
         // Trigger in-app toast
