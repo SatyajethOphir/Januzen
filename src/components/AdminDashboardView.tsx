@@ -29,6 +29,8 @@ export default function AdminDashboardView({ onNavigate }: { onNavigate?: (page:
   const [offlineBillError, setOfflineBillError] = React.useState("");
   const [offlineBillSuccess, setOfflineBillSuccess] = React.useState("");
   const [offlineGenerating, setOfflineGenerating] = React.useState(false);
+  const [testingSmtp, setTestingSmtp] = React.useState(false);
+  const [smtpTestResult, setSmtpTestResult] = React.useState<{ success: boolean; details: string } | null>(null);
 
   // Debounced Catalogue Search logic
   React.useEffect(() => {
@@ -132,6 +134,32 @@ export default function AdminDashboardView({ onNavigate }: { onNavigate?: (page:
     setCustomItemPrice("");
     setOfflineBillError("");
     setOfflineBillSuccess("");
+  };
+
+  const handleTestSmtp = async () => {
+    setTestingSmtp(true);
+    setSmtpTestResult(null);
+    try {
+      const response = await fetch("/api/admin/test-smtp", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        }
+      });
+      const data = await response.json();
+      setSmtpTestResult({
+        success: data.success,
+        details: data.details || "No details returned."
+      });
+    } catch (err: any) {
+      setSmtpTestResult({
+        success: false,
+        details: err.message || "Failed to call SMTP testing API."
+      });
+    } finally {
+      setTestingSmtp(false);
+    }
   };
 
   const handleOfflineBillGenerate = async (method: "download" | "print" | "whatsapp" | "email") => {
@@ -2182,6 +2210,38 @@ export default function AdminDashboardView({ onNavigate }: { onNavigate?: (page:
                         </select>
                       </div>
                     </div>
+                  </div>
+
+                  {/* SMTP Connection Diagnostic Card */}
+                  <div className="bg-white border border-gray-150 p-5 rounded-2xl shadow-sm space-y-3">
+                    <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                      <h3 className="text-sm font-bold font-serif text-gray-950">SMTP Mail Diagnostics</h3>
+                      <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-mono uppercase font-bold">SMTP STATUS</span>
+                    </div>
+                    <p className="text-[11px] text-gray-500">
+                      Check if Hostinger mail credentials (`EMAIL_USER`, `EMAIL_PASS`, etc.) connect successfully from this server environment.
+                    </p>
+                    <button
+                      type="button"
+                      disabled={testingSmtp}
+                      onClick={handleTestSmtp}
+                      className="w-full py-1.5 px-3 bg-slate-900 text-white hover:bg-slate-800 font-bold uppercase text-[10px] tracking-wider rounded-lg flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      {testingSmtp ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          <span>Testing SMTP...</span>
+                        </>
+                      ) : (
+                        <span>Verify SMTP Connection</span>
+                      )}
+                    </button>
+                    {smtpTestResult && (
+                      <div className={`p-3 rounded-lg text-xs font-mono break-all ${smtpTestResult.success ? "bg-emerald-50 border border-emerald-200 text-emerald-800" : "bg-rose-50 border border-rose-200 text-rose-800"}`}>
+                        <p className="font-bold mb-1">{smtpTestResult.success ? "✅ Connection Succeeded" : "❌ Connection Failed"}</p>
+                        <p className="text-[10px] leading-relaxed whitespace-pre-wrap">{smtpTestResult.details}</p>
+                      </div>
+                    )}
                   </div>
 
                   {/* Section 2: Add Items */}

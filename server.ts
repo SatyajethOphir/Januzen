@@ -11,7 +11,7 @@ import { Product, User, Order, Message } from "./src/types";
 import { dbClient, connectAndSeedDB, isMongo } from "./server/db";
 import sitemapRouter from "./server/routes/sitemap";
 import { generateInvoice, generateOfflineBill } from "./server/invoice";
-import { sendInvoiceEmail, sendOfflineBillEmail } from "./server/mailer";
+import { sendInvoiceEmail, sendOfflineBillEmail, testSmtpConnection } from "./server/mailer";
 
 const PORT = 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "JANUZEN_JWT_SECRET_KEY";
@@ -631,6 +631,16 @@ async function startServer() {
     } catch (err: any) {
       console.error("Error generating offline bill:", err);
       return res.status(500).json({ error: "Failed to generate offline bill: " + err.message });
+    }
+  });
+
+  // Admin SMTP connection tester
+  app.post("/api/admin/test-smtp", authenticateAdmin, async (req, res) => {
+    try {
+      const result = await testSmtpConnection();
+      return res.json(result);
+    } catch (err: any) {
+      return res.status(500).json({ success: false, details: err.message || err });
     }
   });
 

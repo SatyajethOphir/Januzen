@@ -260,3 +260,56 @@ export async function sendOfflineBillEmail(
     }
   }
 }
+
+export async function testSmtpConnection(): Promise<{ success: boolean; details: string }> {
+  const emailUser = process.env.EMAIL_USER || "team@januzen.in";
+  const emailPass = process.env.EMAIL_PASS;
+
+  if (!emailPass) {
+    return { success: false, details: "EMAIL_PASS is missing in environment variables." };
+  }
+
+  const emailHost = process.env.EMAIL_HOST || "smtp.hostinger.com";
+  const emailPortStr = process.env.EMAIL_PORT;
+  const emailSecureStr = process.env.EMAIL_SECURE;
+
+  let port = 465;
+  let secure = true;
+
+  if (emailPortStr) {
+    port = parseInt(emailPortStr, 10);
+  }
+  if (emailSecureStr) {
+    secure = emailSecureStr === "true";
+  }
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host: emailHost,
+      port: port,
+      secure: secure,
+      auth: {
+        user: emailUser,
+        pass: emailPass,
+      },
+      tls: {
+        rejectUnauthorized: false
+      },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 10000,
+    });
+
+    await transporter.verify();
+    return {
+      success: true,
+      details: `Successfully verified SMTP connection to ${emailHost}:${port} (secure: ${secure}) using user ${emailUser}.`
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      details: `SMTP Verification failed on ${emailHost}:${port} (secure: ${secure}). Error: ${err.message || err.code || err}`
+    };
+  }
+}
+
