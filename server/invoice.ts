@@ -7,17 +7,17 @@ import { Order } from "../src/types";
 function fetchLogo(): Promise<Buffer | null> {
   return new Promise((resolve) => {
     try {
-      // 1. Try local appicon.png first (extremely fast & reliable)
-      const localAppIconPath = path.join(process.cwd(), "public", "appicon.png");
-      if (fs.existsSync(localAppIconPath)) {
-        resolve(fs.readFileSync(localAppIconPath));
-        return;
-      }
-      
-      // 2. Try local logo.png
+      // 1. Try local logo.png first (proper landscape/wide logo)
       const localLogoPath = path.join(process.cwd(), "public", "logo.png");
       if (fs.existsSync(localLogoPath)) {
         resolve(fs.readFileSync(localLogoPath));
+        return;
+      }
+
+      // 2. Try local appicon.png next
+      const localAppIconPath = path.join(process.cwd(), "public", "appicon.png");
+      if (fs.existsSync(localAppIconPath)) {
+        resolve(fs.readFileSync(localAppIconPath));
         return;
       }
     } catch (e) {

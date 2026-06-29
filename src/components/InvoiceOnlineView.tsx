@@ -190,8 +190,8 @@ export default function InvoiceOnlineView({ orderId, onNavigate, currentUser }: 
           
           {/* Receipt Header */}
           <div className="text-center space-y-1.5 pb-4 border-b border-dashed border-slate-300">
-            <div className="mx-auto h-10 w-10 bg-[#0F6E56] text-white flex items-center justify-center font-bold font-serif text-lg rounded-lg shadow-sm">
-              JZ
+            <div className="mx-auto h-12 w-12 bg-white flex items-center justify-center rounded-lg shadow-xs overflow-hidden">
+              <img src="/logo.png" alt="JANUZEN Logo" className="h-12 w-12 object-contain" referrerPolicy="no-referrer" />
             </div>
             <h2 className="text-sm font-extrabold tracking-tight text-slate-900">JANUZEN GLOBAL LLP</h2>
             <p className="text-[10px] text-[#0F6E56] font-bold tracking-wider uppercase">Nuthan Medicals & JA Stationery</p>
@@ -312,8 +312,8 @@ export default function InvoiceOnlineView({ orderId, onNavigate, currentUser }: 
             <div className="space-y-4">
               <div className="flex items-center gap-3">
                 {/* Premium minimal company badge */}
-                <div className="h-12 w-12 bg-[#0F6E56] text-white flex items-center justify-center font-bold font-serif text-2xl rounded-xl shadow-md shadow-[#0F6E56]/10">
-                  JZ
+                <div className="h-14 w-14 bg-white flex items-center justify-center rounded-xl shadow-md border border-slate-100 overflow-hidden">
+                  <img src="/logo.png" alt="JANUZEN Logo" className="h-14 w-14 object-contain" referrerPolicy="no-referrer" />
                 </div>
                 <div>
                   <h1 className="text-xl font-extrabold font-sans text-slate-900 tracking-tight">JANUZEN</h1>

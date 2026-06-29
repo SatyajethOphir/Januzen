@@ -150,8 +150,7 @@ export async function sendOfflineBillEmail(
   const emailPass = process.env.EMAIL_PASS;
 
   if (!emailPass) {
-    console.warn(`⚠️ [MAILER] Skipping sending offline bill email because EMAIL_PASS is not configured.`);
-    return;
+    throw new Error("SMTP credentials (EMAIL_PASS) are not configured. Please add the EMAIL_PASS secret in your environment settings.");
   }
 
   const emailHost = process.env.EMAIL_HOST || "smtp.hostinger.com";
@@ -203,6 +202,7 @@ export async function sendOfflineBillEmail(
   };
 
   let primarySuccess = false;
+  let primaryError: any = null;
   try {
     const transporter = nodemailer.createTransport({
       host: emailHost,
@@ -224,6 +224,7 @@ export async function sendOfflineBillEmail(
     primarySuccess = true;
     console.log(`✅ [MAILER] Offline bill email successfully sent via primary SMTP to ${data.customerEmail}`);
   } catch (err: any) {
+    primaryError = err;
     console.warn(`⚠️ [MAILER] Primary SMTP failed/timed out for offline bill: ${err.message || err}`);
   }
 
@@ -253,6 +254,9 @@ export async function sendOfflineBillEmail(
       console.log(`✅ [MAILER] Offline bill email successfully sent via fallback SMTP to ${data.customerEmail}`);
     } catch (fallbackErr: any) {
       console.error(`❌ [MAILER] Fallback SMTP attempt also failed for offline bill:`, fallbackErr);
+      throw new Error(
+        `All SMTP delivery attempts failed.\nPrimary error: ${primaryError?.message || primaryError?.code || primaryError || "unknown"}.\nFallback error: ${fallbackErr.message || fallbackErr?.code || fallbackErr || "unknown"}.\n\nTypically, outbound port blocks (e.g. 465/587) in serverless hosting can intercept mail traffic. Ensure EMAIL_PASS is correct.`
+      );
     }
   }
 }
