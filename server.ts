@@ -12,7 +12,7 @@ import { dbClient, connectAndSeedDB, isMongo } from "./server/db";
 import sitemapRouter from "./server/routes/sitemap";
 import { generateInvoice, generateOfflineBill } from "./server/invoice";
 import { sendInvoiceEmail, sendOfflineBillEmail, testSmtpConnection } from "./server/mailer";
-import net from "net";
+
 const PORT = 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "JANUZEN_JWT_SECRET_KEY";
 const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY || "phoenix123&";
@@ -1789,25 +1789,6 @@ async function startServer() {
     }
   });
 
-
-app.get("/test-port", (req, res) => {
-  const socket = net.createConnection(465, "smtp.hostinger.com");
-
-  socket.setTimeout(10000);
-
-  socket.on("connect", () => {
-    res.send("Connected");
-    socket.end();
-  });
-
-  socket.on("timeout", () => {
-    res.send("Timeout");
-  });
-
-  socket.on("error", (err) => {
-    res.send(err.message);
-  });
-});
   // --- VITE DEV AND PROD MIDDLEWARE ---
 
   if (process.env.NODE_ENV !== "production") {
