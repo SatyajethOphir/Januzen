@@ -74,8 +74,13 @@ export default function App() {
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const prodId = params.get("product");
+    const shop = params.get("shop");
     if (prodId) {
       setNav({ page: "product-detail", params: { productId: prodId } });
+    } else if (shop === "medicals") {
+      setNav({ page: "medicals", params: {} });
+    } else if (shop === "stationery") {
+      setNav({ page: "stationery", params: {} });
     }
   }, []);
 
