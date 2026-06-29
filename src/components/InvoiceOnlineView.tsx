@@ -125,6 +125,15 @@ export default function InvoiceOnlineView({ orderId, onNavigate, currentUser }: 
 
   const [layout, setLayout] = useState<"standard" | "thermal">("thermal");
 
+  // Safe parsing of shippingAddress to handle both object and string formats
+  const sa = order.shippingAddress;
+  const isAddressObject = sa && typeof sa === "object";
+  const addressPhone = isAddressObject ? ((sa as any).phone || "N/A") : "N/A";
+  const addressFullName = isAddressObject ? ((sa as any).fullName || order.userName) : order.userName;
+  const addressLine = isAddressObject ? ((sa as any).addressLine || "") : String(sa || "");
+  const addressCity = isAddressObject ? ((sa as any).city || "") : "";
+  const addressPostalCode = isAddressObject ? ((sa as any).postalCode || "") : "";
+
   // Render online invoice
   return (
     <div className="min-h-screen bg-slate-50/50 py-10 px-4 sm:px-6 lg:px-8">
@@ -198,15 +207,15 @@ export default function InvoiceOnlineView({ orderId, onNavigate, currentUser }: 
             <p><span className="text-slate-400">RECEIPT #:</span> {order.orderId}</p>
             <p><span className="text-slate-400">INVOICE:</span> {(order as any).invoiceId || `INV-${order.orderId}`}</p>
             <p><span className="text-slate-400">CUST:</span> {order.userName}</p>
-            <p><span className="text-slate-400">PHONE:</span> {order.shippingAddress.phone || "N/A"}</p>
+            <p><span className="text-slate-400">PHONE:</span> {addressPhone}</p>
           </div>
 
           {/* Delivery Address */}
           <div className="py-2.5 border-b border-dashed border-slate-300 text-[10px] space-y-0.5">
             <span className="text-slate-400 block uppercase font-bold">SHIP TO:</span>
-            <p className="font-bold text-slate-700">{order.shippingAddress.fullName}</p>
-            <p className="text-slate-600">{order.shippingAddress.addressLine}</p>
-            <p className="text-slate-600">{order.shippingAddress.city} - {order.shippingAddress.postalCode}</p>
+            <p className="font-bold text-slate-700">{addressFullName}</p>
+            <p className="text-slate-600">{addressLine}</p>
+            {addressCity && <p className="text-slate-600">{addressCity} {addressPostalCode ? `- ${addressPostalCode}` : ""}</p>}
           </div>
 
           {/* Items Table */}
@@ -347,16 +356,16 @@ export default function InvoiceOnlineView({ orderId, onNavigate, currentUser }: 
             <div className="space-y-1">
               <p className="font-bold text-slate-900 text-sm font-sans">{order.userName}</p>
               <p className="text-slate-600">{order.userEmail}</p>
-              <p className="text-slate-500">Phone: {order.shippingAddress.phone || "N/A"}</p>
+              <p className="text-slate-500">Phone: {addressPhone}</p>
             </div>
           </div>
 
           <div className="space-y-2">
             <h3 className="text-[10px] font-bold text-slate-400 tracking-wider uppercase">DELIVERY ADDRESS</h3>
             <div className="space-y-1 text-slate-600">
-              <p className="font-bold text-slate-800">{order.shippingAddress.fullName}</p>
-              <p>{order.shippingAddress.addressLine}</p>
-              <p>{order.shippingAddress.city} - {order.shippingAddress.postalCode}</p>
+              <p className="font-bold text-slate-800">{addressFullName}</p>
+              <p>{addressLine}</p>
+              {addressCity && <p>{addressCity} {addressPostalCode ? `- ${addressPostalCode}` : ""}</p>}
             </div>
           </div>
         </div>

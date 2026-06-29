@@ -997,40 +997,49 @@ export default function AdminDashboardView({ onNavigate }: { onNavigate?: (page:
                 <p className="text-sm text-gray-400 font-mono">No order logs recorded in server register.</p>
               ) : (
                 <div className="divide-y divide-gray-100 space-y-4 max-h-[500px] overflow-y-auto">
-                  {orders.map((o) => (
-                    <div key={o.id} className="py-4 grid grid-cols-1 md:grid-cols-4 gap-6 items-start text-xs font-mono">
-                      
-                      {/* Left: General Order details */}
-                      <div className="space-y-1 sm:col-span-1">
-                        <span className="text-[10px] font-bold text-gray-400">ORDER LOG</span>
-                        <h4 className="text-sm font-black text-slate-900">{o.orderId}</h4>
-                        <div className="text-gray-500 leading-normal font-sans pt-1 space-y-0.5">
-                          <p>Customer: <span className="font-bold">{o.userName}</span></p>
-                          <p>Email: <span className="font-semibold">{o.userEmail}</span></p>
-                          <p>Phone: <span className="font-semibold">{o.shippingAddress.phone}</span></p>
-                        </div>
-                      </div>
+                  {orders.map((o) => {
+                    const oSa = o.shippingAddress;
+                    const isOAddressObject = oSa && typeof oSa === "object";
+                    const oPhone = isOAddressObject ? ((oSa as any).phone || "N/A") : "N/A";
+                    const oAddressLine = isOAddressObject ? ((oSa as any).addressLine || "") : String(oSa || "");
+                    const oCity = isOAddressObject ? ((oSa as any).city || "") : "";
+                    const oPostalCode = isOAddressObject ? ((oSa as any).postalCode || "") : "";
+                    const fullAddressStr = isOAddressObject ? `${oAddressLine}${oCity ? `, ${oCity}` : ""}${oPostalCode ? ` - ${oPostalCode}` : ""}` : oAddressLine;
 
-                      {/* Center: Cargo positions */}
-                      <div className="space-y-1 sm:col-span-1">
-                        <span className="text-[10px] font-bold text-gray-400">CARGO POSITIONS ({o.items.length})</span>
-                        <div className="space-y-1.5 select-all leading-relaxed font-sans pt-1">
-                          {o.items.map((it, idx) => (
-                            <div key={idx} className="text-[11px] text-gray-600">
-                              • {it.name} <span className="font-bold text-black">(x{it.quantity})</span>
-                            </div>
-                          ))}
+                    return (
+                      <div key={o.id} className="py-4 grid grid-cols-1 md:grid-cols-4 gap-6 items-start text-xs font-mono">
+                        
+                        {/* Left: General Order details */}
+                        <div className="space-y-1 sm:col-span-1">
+                          <span className="text-[10px] font-bold text-gray-400">ORDER LOG</span>
+                          <h4 className="text-sm font-black text-slate-900">{o.orderId}</h4>
+                          <div className="text-gray-500 leading-normal font-sans pt-1 space-y-0.5">
+                            <p>Customer: <span className="font-bold">{o.userName}</span></p>
+                            <p>Email: <span className="font-semibold">{o.userEmail}</span></p>
+                            <p>Phone: <span className="font-semibold">{oPhone}</span></p>
+                          </div>
                         </div>
-                      </div>
 
-                      {/* Right-Center: Pricing and Destination */}
-                      <div className="space-y-1 sm:col-span-1 leading-relaxed">
-                        <span className="text-[10px] font-bold text-gray-400">BILLING & ADDRESS</span>
-                        <p className="font-bold text-slate-850">Total Bill: ₹{o.totals.total.toFixed(2)}</p>
-                        <p className="text-gray-500 font-sans text-[11px] mt-1 pr-2">
-                          Address: {o.shippingAddress.addressLine}, {o.shippingAddress.city} - {o.shippingAddress.postalCode}
-                        </p>
-                      </div>
+                        {/* Center: Cargo positions */}
+                        <div className="space-y-1 sm:col-span-1">
+                          <span className="text-[10px] font-bold text-gray-400">CARGO POSITIONS ({o.items.length})</span>
+                          <div className="space-y-1.5 select-all leading-relaxed font-sans pt-1">
+                            {o.items.map((it, idx) => (
+                              <div key={idx} className="text-[11px] text-gray-600">
+                                • {it.name} <span className="font-bold text-black">(x{it.quantity})</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Right-Center: Pricing and Destination */}
+                        <div className="space-y-1 sm:col-span-1 leading-relaxed">
+                          <span className="text-[10px] font-bold text-gray-400">BILLING & ADDRESS</span>
+                          <p className="font-bold text-slate-850">Total Bill: ₹{o.totals.total.toFixed(2)}</p>
+                          <p className="text-gray-500 font-sans text-[11px] mt-1 pr-2">
+                            Address: {fullAddressStr}
+                          </p>
+                        </div>
 
                       {/* Far-Right: Status selection widgets */}
                       <div className="space-y-2 sm:col-span-1 text-right">
@@ -1064,7 +1073,8 @@ export default function AdminDashboardView({ onNavigate }: { onNavigate?: (page:
                       </div>
 
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
