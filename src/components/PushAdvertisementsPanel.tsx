@@ -121,6 +121,50 @@ export default function PushAdvertisementsPanel({ token }: { token: string | nul
         </p>
       </div>
 
+      {subscriberCount === 0 && (
+        <div className="bg-[#FFF9E6] border border-[#FFE0B2] p-5 rounded-2xl text-xs text-amber-900 font-sans space-y-3 shadow-xs">
+          <div className="flex items-start gap-2.5">
+            <span className="text-lg">📢</span>
+            <div className="space-y-1">
+              <h4 className="font-bold text-amber-950 font-serif text-sm">Why did you not receive any notification on your mobile?</h4>
+              <p className="text-amber-800 leading-relaxed">
+                Currently, your database has <strong>0 Device Subscriptions</strong>. Because of standard browser safety and sandboxing policies, 
+                <strong> push notifications are blocked inside iframes</strong> (like this AI Studio preview).
+              </p>
+            </div>
+          </div>
+          <div className="pl-7 space-y-2.5">
+            <p className="text-amber-800 leading-relaxed font-semibold">
+              To test this on your phone or desktop:
+            </p>
+            <ol className="list-decimal pl-4 space-y-1.5 text-amber-900/90 leading-relaxed">
+              <li>
+                Click the button below to **open the app in a new, standalone tab** (this bypasses iframe restrictions).
+              </li>
+              <li>
+                In the top right, click the **Bell icon (Notifications Box)** and tap **"Enable Device Alerts"** (or simply add any product to your bag).
+              </li>
+              <li>
+                When your mobile browser prompts you, tap **"Allow"** to authorize notifications on your device.
+              </li>
+              <li>
+                Once done, refresh this page! The **Target Audience** count will increase from `0` to `1+`, and you can test-broadcast your push advertisements successfully.
+              </li>
+            </ol>
+            <div className="pt-1">
+              <a 
+                href={window.location.origin} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="inline-flex items-center gap-1.5 bg-[#D4820A] hover:bg-[#B76E04] text-white font-bold uppercase text-[10px] tracking-widest px-4.5 py-2.5 rounded-xl transition-all shadow-sm cursor-pointer"
+              >
+                Open App in New Tab ↗
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* Left Column: Form / Compose & Live Preview (span 7) */}
@@ -252,15 +296,29 @@ export default function PushAdvertisementsPanel({ token }: { token: string | nul
             {/* Simulated Notification Card */}
             <div className="max-w-md mx-auto bg-slate-950/80 border border-slate-800 rounded-2xl p-4 shadow-2xl backdrop-blur-md flex gap-3">
               {/* App Icon */}
-              <div className="h-9 w-9 bg-[#0D1B2A] rounded-xl flex items-center justify-center border border-slate-700 shrink-0 font-serif font-black text-xs text-white shadow-inner">
-                PJ
+              <div className="h-9 w-9 bg-[#0D1B2A] rounded-xl flex items-center justify-center border border-slate-700 shrink-0 overflow-hidden shadow-inner">
+                <img 
+                  src="/appicon.png" 
+                  alt="JANUZEN" 
+                  className="h-full w-full object-cover"
+                  onError={(e) => {
+                    // Fallback to text if image fails to load
+                    const target = e.target as HTMLElement;
+                    target.style.display = "none";
+                    const parent = target.parentElement;
+                    if (parent) {
+                      parent.innerText = "JZ";
+                      parent.className += " font-serif font-black text-xs text-white";
+                    }
+                  }}
+                />
               </div>
 
               {/* Notification Content */}
               <div className="flex-1 min-w-0 space-y-1">
                 <div className="flex justify-between items-center">
                   <span className="font-sans font-bold text-xs text-white truncate pr-2">
-                    {title.trim() || "PJ | Promotion Name"}
+                    {title.trim() || "JANUZEN | Promotion Name"}
                   </span>
                   <span className="text-[9px] text-slate-500 font-sans shrink-0 whitespace-nowrap">
                     Just now

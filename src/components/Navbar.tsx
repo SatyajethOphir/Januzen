@@ -4,6 +4,7 @@ import { safeLocalStorage as localStorage, safeSessionStorage as sessionStorage 
 import { ShoppingBag, User, LogOut, ShieldAlert, Activity, BookOpen, Menu, X, Settings, Palette, Bell } from "lucide-react";
 import { User as UserType } from "../types";
 import { JanuzenLogo, NuthanMedicalsLogo, JaStationeryLogo } from "./Logos";
+import { subscribeToPush } from "../lib/push";
 
 interface NavbarProps {
   currentView: string;
@@ -40,6 +41,10 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
       setShowPermissionBanner(false);
       if (permission === "granted") {
         (window as any).showToast?.("Push notifications enabled successfully! 🔔", "success");
+        // Also subscribe client immediately to web push server
+        subscribeToPush(currentUser?.id || undefined).catch((e) => {
+          console.error("[PUSH] Subscription failed in permission handler:", e);
+        });
       } else {
         (window as any).showToast?.("Notifications permission was not granted.", "info");
       }
@@ -159,7 +164,7 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
 
         // Trigger native browser notification
         if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
-          const title = notif.title.startsWith("PJ") ? notif.title : `PJ | ${notif.title}`;
+          const title = notif.title.startsWith("JANUZEN") ? notif.title : `JANUZEN | ${notif.title}`;
           const options = {
             body: notif.content,
             icon: "/appicon.png",

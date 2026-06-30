@@ -78,8 +78,8 @@ self.addEventListener("push", (event) => {
     }
   }
 
-  // Ensure title has "PJ" prefix for mobile drawer
-  const title = payload.title.startsWith("PJ") ? payload.title : `PJ | ${payload.title}`;
+  // Ensure title has "JANUZEN" prefix for mobile drawer
+  const title = payload.title.startsWith("JANUZEN") ? payload.title : `JANUZEN | ${payload.title}`;
 
   const options = {
     body: payload.body,
@@ -162,8 +162,8 @@ async function checkNewNotifications() {
           const isAppVisible = clientsList.some(client => client.visibilityState === "visible");
           
           if (!isAppVisible) {
-            // Show notification with "PJ" in the notification draw on top!
-            const title = notif.title.startsWith("PJ") ? notif.title : `PJ | ${notif.title}`;
+            // Show notification with "JANUZEN" in the notification draw on top!
+            const title = notif.title.startsWith("JANUZEN") ? notif.title : `JANUZEN | ${notif.title}`;
             const options = {
               body: notif.content,
               icon: "/appicon.png",

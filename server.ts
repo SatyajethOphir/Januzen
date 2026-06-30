@@ -54,7 +54,7 @@ async function createAndSendNotification(userId: string, title: string, content:
   const notif = {
     id: "notif_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
     userId,
-    title: title.startsWith("PJ") ? title : "PJ | " + title,
+    title: title.startsWith("JANUZEN") ? title : "JANUZEN | " + title,
     content,
     isRead: false,
     createdAt: new Date().toISOString()
