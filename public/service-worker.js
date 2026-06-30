@@ -83,12 +83,14 @@ self.addEventListener("push", (event) => {
 
   const options = {
     body: payload.body,
-    icon: "/appicon.png",
+    icon: payload.icon || "/appicon.png",
     badge: "/logo.png",
-    vibrate: [100, 50, 100],
+    image: payload.image || payload.imageUrl || undefined,
+    vibrate: [200, 100, 200],
     data: {
       dateOfArrival: Date.now(),
-      primaryKey: "2"
+      primaryKey: "2",
+      url: payload.url || payload.linkUrl || "/"
     }
   };
 
@@ -195,15 +197,24 @@ async function checkNewNotifications() {
 // Handle notification click to open or focus the app
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
+  const targetUrl = event.notification.data?.url || "/";
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
+        if (client.url === targetUrl && "focus" in client) {
+          return client.focus();
+        }
+      }
+      for (const client of clientList) {
         if ("focus" in client) {
+          if ("navigate" in client && client.url !== targetUrl) {
+            client.navigate(targetUrl);
+          }
           return client.focus();
         }
       }
       if (self.clients.openWindow) {
-        return self.clients.openWindow("/");
+        return self.clients.openWindow(targetUrl);
       }
     })
   );

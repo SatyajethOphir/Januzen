@@ -5,6 +5,7 @@ import Navbar from "./components/Navbar";
 import { Product, User, ProductOption } from "./types";
 import type { CartItem } from "./components/CartView";
 import OfficialLoader from "./components/OfficialLoader";
+import { subscribeToPush } from "./lib/push";
 
 import HomeView from "./components/HomeView";
 import ShopView from "./components/ShopView";
@@ -387,6 +388,14 @@ export default function App() {
     if (product.stock === 0) {
       showToastMsg("⚠️ Item is currently out of stock!");
       return;
+    }
+
+    // Push notification opt-in prompt — triggered naturally on first add-to-cart
+    if (typeof window !== "undefined" && !localStorage.getItem("januzen_push_asked")) {
+      localStorage.setItem("januzen_push_asked", "true");
+      subscribeToPush(currentUser?.id || undefined).catch((e) => {
+        console.error("[PUSH] Subscription trigger failed:", e);
+      });
     }
 
     setCart((prev) => {

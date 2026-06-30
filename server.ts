@@ -12,10 +12,23 @@ import { dbClient, connectAndSeedDB, isMongo } from "./server/db";
 import sitemapRouter from "./server/routes/sitemap";
 import { generateInvoice, generateOfflineBill } from "./server/invoice";
 import { sendInvoiceEmail, sendOfflineBillEmail, testSmtpConnection } from "./server/mailer";
+import webpush from "web-push";
 
 const PORT = 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "JANUZEN_JWT_SECRET_KEY";
 const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY || "phoenix123&";
+
+// Initialize Web Push VAPID Details
+if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+  webpush.setVapidDetails(
+    process.env.VAPID_SUBJECT || "mailto:team@januzen.in",
+    process.env.VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY
+  );
+  console.log("🚀 [WEBPUSH] VAPID details configured successfully.");
+} else {
+  console.warn("⚠️ [WEBPUSH] VAPID_PUBLIC_KEY or VAPID_PRIVATE_KEY is missing from environment. Push notifications will be disabled.");
+}
 
 interface SseConnection {
   userId: string;
@@ -158,6 +171,121 @@ async function startServer() {
   };
 
   // --- API ROUTES ---
+
+  // --- WEBPUSH & ADVERTISEMENT SYSTEM ROUTES ---
+
+  // Public: subscribe to push notifications
+  app.post("/api/push/subscribe", async (req, res) => {
+    const { subscription, userId } = req.body;
+    if (!subscription || !subscription.endpoint) {
+      return res.status(400).json({ error: "Invalid subscription object." });
+    }
+    try {
+      const saved = await dbClient.saveSubscription({
+        id: "sub_" + Date.now(),
+        userId: userId || undefined,
+        endpoint: subscription.endpoint,
+        keys: subscription.keys,
+        createdAt: new Date().toISOString()
+      });
+      res.status(201).json({ message: "Subscribed to push notifications.", subscription: saved });
+    } catch (e: any) {
+      console.error("[PUSH SUBSCRIBE] Error:", e);
+      res.status(500).json({ error: "Failed to save push subscription." });
+    }
+  });
+
+  // Public: Get VAPID Public Key for subscription on frontend
+  app.get("/api/push/vapid-public-key", (req, res) => {
+    res.json({ publicKey: process.env.VAPID_PUBLIC_KEY || "" });
+  });
+
+  // Admin: Send push advertisement to all active subscribers
+  app.post("/api/admin/advertisement/send", authenticateAdmin, async (req, res) => {
+    const { title, body, imageUrl, linkUrl } = req.body;
+    if (!title || !body) {
+      return res.status(400).json({ error: "Title and body are required." });
+    }
+
+    if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
+      return res.status(400).json({ error: "VAPID keys are not configured on the server. Unable to send push notifications." });
+    }
+
+    try {
+      const subscriptions = await dbClient.getAllSubscriptions();
+      const payload = JSON.stringify({
+        title,
+        body,
+        image: imageUrl || undefined,
+        url: linkUrl || "https://januzen.in"
+      });
+
+      let successCount = 0;
+      let failCount = 0;
+
+      // Send to all subscriptions — clean up dead subscriptions as they fail
+      for (const sub of subscriptions) {
+        try {
+          await webpush.sendNotification(
+            { endpoint: sub.endpoint, keys: sub.keys },
+            payload
+          );
+          successCount++;
+        } catch (sendErr: any) {
+          failCount++;
+          // 410 Gone / 404 means the subscription is no longer valid — remove it
+          if (sendErr.statusCode === 410 || sendErr.statusCode === 404) {
+            await dbClient.deleteSubscription(sub.endpoint);
+          }
+        }
+      }
+
+      const now = new Date();
+      const expiresAt = new Date(now.getTime() + 48 * 60 * 60 * 1000).toISOString();
+
+      const ad = await dbClient.createAdvertisement({
+        id: "ad_" + Date.now(),
+        title,
+        body,
+        imageUrl,
+        linkUrl,
+        sentAt: now.toISOString(),
+        status: "sent",
+        recipientCount: successCount,
+        expiresAt
+      });
+
+      res.status(201).json({
+        message: `Advertisement sent to ${successCount} subscriber(s). ${failCount} delivery failure(s).`,
+        advertisement: ad
+      });
+    } catch (e: any) {
+      console.error("[AD SEND] Error:", e);
+      res.status(500).json({ error: "Failed to send advertisement." });
+    }
+  });
+
+  // Admin: Get history of active advertisements
+  app.get("/api/admin/advertisement/history", authenticateAdmin, async (req, res) => {
+    try {
+      const ads = await dbClient.getActiveAdvertisements();
+      res.json({ advertisements: ads });
+    } catch (e: any) {
+      console.error("[AD HISTORY] Error:", e);
+      res.status(500).json({ error: "Failed to fetch advertisement history." });
+    }
+  });
+
+  // Admin: Get subscriber count
+  app.get("/api/admin/push/subscribers-count", authenticateAdmin, async (req, res) => {
+    try {
+      const subscriptions = await dbClient.getAllSubscriptions();
+      res.json({ count: subscriptions.length });
+    } catch (e: any) {
+      console.error("[PUSH COUNT] Error:", e);
+      res.status(500).json({ error: "Failed to get subscriber count." });
+    }
+  });
 
   // Auth: Register
   app.post("/api/auth/register", async (req, res) => {

@@ -163,3 +163,27 @@ export interface AuditLog {
   counts: Record<string, number>;
 }
 
+export interface PushSubscription {
+  id: string;
+  userId?: string;        // optional — works for both logged-in and anonymous visitors
+  endpoint: string;
+  keys: {
+    p256dh: string;
+    auth: string;
+  };
+  createdAt: string;
+}
+
+export interface Advertisement {
+  id: string;
+  title: string;
+  body: string;
+  imageUrl?: string;
+  linkUrl?: string;        // where clicking the notification takes the user
+  sentAt: string;          // when it was actually pushed out
+  scheduledFor?: string;   // if scheduled, when it should fire
+  status: "sent" | "scheduled" | "failed";
+  recipientCount: number;
+  expiresAt: string;       // sentAt/scheduledFor + 48 hours — for auto-cleanup
+}
+

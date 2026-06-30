@@ -2,7 +2,7 @@ import mongoose, { Schema } from "mongoose";
 import fs from "fs";
 import path from "path";
 import bcrypt from "bcryptjs";
-import { User, Product, Order, Message, Coupon, Review, Notification, WishlistItem, Session, CouponUsage, AuditLog } from "../src/types";
+import { User, Product, Order, Message, Coupon, Review, Notification, WishlistItem, Session, CouponUsage, AuditLog, PushSubscription, Advertisement } from "../src/types";
 
 // Check if MongoDB URI is available
 export const MONGODB_URI = process.env.MONGODB_URI || "";
@@ -28,6 +28,8 @@ interface DBStructure {
   sessions?: Session[];
   couponUsages?: CouponUsage[];
   auditLogs?: AuditLog[];
+  pushSubscriptions?: PushSubscription[];
+  advertisements?: Advertisement[];
 }
 
 // Default Seed Data
@@ -426,6 +428,30 @@ const AuditLogSchema = new Schema({
   counts: { type: Schema.Types.Mixed, required: true }
 });
 
+const PushSubscriptionSchema = new Schema({
+  id: { type: String, required: true, unique: true },
+  userId: { type: String, index: true },
+  endpoint: { type: String, required: true, unique: true, index: true },
+  keys: {
+    p256dh: { type: String, required: true },
+    auth: { type: String, required: true }
+  },
+  createdAt: { type: String, required: true }
+});
+
+const AdvertisementSchema = new Schema({
+  id: { type: String, required: true, unique: true },
+  title: { type: String, required: true, maxlength: 60 },
+  body: { type: String, required: true, maxlength: 150 },
+  imageUrl: { type: String },
+  linkUrl: { type: String },
+  sentAt: { type: String, required: true },
+  scheduledFor: { type: String },
+  status: { type: String, enum: ["sent", "scheduled", "failed"], required: true },
+  recipientCount: { type: Number, default: 0 },
+  expiresAt: { type: String, required: true, index: true }
+});
+
 // Create Mongoose models with any cast to prevent strict TypeScript query schema checking
 export const MongoUser = (mongoose.models.User || mongoose.model("User", UserSchema)) as any;
 export const MongoProduct = (mongoose.models.Product || mongoose.model("Product", ProductSchema)) as any;
@@ -438,6 +464,8 @@ export const MongoWishlist = (mongoose.models.Wishlist || mongoose.model("Wishli
 export const MongoSession = (mongoose.models.Session || mongoose.model("Session", SessionSchema)) as any;
 export const MongoCouponUsage = (mongoose.models.CouponUsage || mongoose.model("CouponUsage", CouponUsageSchema)) as any;
 export const MongoAuditLog = (mongoose.models.AuditLog || mongoose.model("AuditLog", AuditLogSchema)) as any;
+export const MongoPushSubscription = (mongoose.models.PushSubscription || mongoose.model("PushSubscription", PushSubscriptionSchema)) as any;
+export const MongoAdvertisement = (mongoose.models.Advertisement || mongoose.model("Advertisement", AdvertisementSchema)) as any;
 
 // Custom validation error shape to match Mongoose ValidationError structure
 export class SchemaValidationError extends Error {
@@ -1864,10 +1892,103 @@ export const dbClient = {
       saveLocalDB(db);
     }
 
+    try {
+      await dbClient.deleteExpiredAdvertisements();
+    } catch (e) {
+      console.error("[RETENTION] Failed to clean expired advertisements:", e);
+    }
+
     return {
       notificationPurged,
       sessionPurged,
       couponUsagePurged
     };
+  },
+
+  saveSubscription: async (sub: PushSubscription): Promise<PushSubscription> => {
+    if (isMongo) {
+      await MongoPushSubscription.findOneAndUpdate(
+        { endpoint: sub.endpoint },
+        sub,
+        { upsert: true, new: true }
+      );
+      return sub;
+    } else {
+      const db = loadLocalDB();
+      if (!db.pushSubscriptions) db.pushSubscriptions = [];
+      const idx = db.pushSubscriptions.findIndex(s => s.endpoint === sub.endpoint);
+      if (idx > -1) {
+        db.pushSubscriptions[idx] = sub;
+      } else {
+        db.pushSubscriptions.push(sub);
+      }
+      saveLocalDB(db);
+      return sub;
+    }
+  },
+
+  getAllSubscriptions: async (): Promise<PushSubscription[]> => {
+    if (isMongo) {
+      return await MongoPushSubscription.find({});
+    } else {
+      const db = loadLocalDB();
+      return db.pushSubscriptions || [];
+    }
+  },
+
+  deleteSubscription: async (endpoint: string): Promise<boolean> => {
+    if (isMongo) {
+      const res = await MongoPushSubscription.deleteOne({ endpoint });
+      return (res.deletedCount || 0) > 0;
+    } else {
+      const db = loadLocalDB();
+      if (!db.pushSubscriptions) db.pushSubscriptions = [];
+      const initialLen = db.pushSubscriptions.length;
+      db.pushSubscriptions = db.pushSubscriptions.filter(s => s.endpoint !== endpoint);
+      saveLocalDB(db);
+      return initialLen > db.pushSubscriptions.length;
+    }
+  },
+
+  createAdvertisement: async (ad: Advertisement): Promise<Advertisement> => {
+    if (isMongo) {
+      const newAd = new MongoAdvertisement(ad);
+      await newAd.save();
+      return ad;
+    } else {
+      const db = loadLocalDB();
+      if (!db.advertisements) db.advertisements = [];
+      db.advertisements.push(ad);
+      saveLocalDB(db);
+      return ad;
+    }
+  },
+
+  getActiveAdvertisements: async (): Promise<Advertisement[]> => {
+    if (isMongo) {
+      return await MongoAdvertisement.find({}).sort({ sentAt: -1 });
+    } else {
+      const db = loadLocalDB();
+      const ads = db.advertisements || [];
+      return [...ads].sort((a, b) => b.sentAt.localeCompare(a.sentAt));
+    }
+  },
+
+  deleteExpiredAdvertisements: async (): Promise<number> => {
+    const now = new Date().toISOString();
+    if (isMongo) {
+      const res = await MongoAdvertisement.deleteMany({ expiresAt: { $lte: now } });
+      return res.deletedCount || 0;
+    } else {
+      const db = loadLocalDB();
+      if (!db.advertisements) db.advertisements = [];
+      const initialLen = db.advertisements.length;
+      db.advertisements = db.advertisements.filter(ad => ad.expiresAt > now);
+      const deletedCount = initialLen - db.advertisements.length;
+      if (deletedCount > 0) {
+        saveLocalDB(db);
+      }
+      return deletedCount;
+    }
   }
 };
