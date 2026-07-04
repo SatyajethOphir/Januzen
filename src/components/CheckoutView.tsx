@@ -3,6 +3,7 @@ import { safeLocalStorage as localStorage, safeSessionStorage as sessionStorage 
 import { CheckCircle, Truck, ShoppingBag, ArrowRight, ArrowLeft, Loader2, CreditCard, Lock, ShieldCheck } from "lucide-react";
 import { CartItem } from "./CartView";
 import { User, ShippingAddress, Order } from "../types";
+import { RazorpayGatewayModal } from "./RazorpayGatewayModal";
 
 interface CheckoutViewProps {
   cartItems: CartItem[];
@@ -37,13 +38,6 @@ export default function CheckoutView({ cartItems, currentUser, onNavigate, onCle
 
   // Razorpay Overlay States
   const [showRazorpay, setShowRazorpay] = React.useState(false);
-  const [razorpayMethod, setRazorpayMethod] = React.useState<"card" | "upi" | "netbanking">("card");
-  const [razorpayCardNo, setRazorpayCardNo] = React.useState("");
-  const [razorpayExpiry, setRazorpayExpiry] = React.useState("");
-  const [razorpayCvv, setRazorpayCvv] = React.useState("");
-  const [razorpayUpiId, setRazorpayUpiId] = React.useState("");
-  const [razorpayBank, setRazorpayBank] = React.useState("State Bank of India");
-  const [razorpayStage, setRazorpayStage] = React.useState<"input" | "processing" | "success" >("input");
 
   // Dynamics configuration settings fetched from server
   const [shippingCostPerKm, setShippingCostPerKm] = React.useState(15);
@@ -187,7 +181,6 @@ export default function CheckoutView({ cartItems, currentUser, onNavigate, onCle
   const handlePlaceOrder = async () => {
     if (paymentMethod !== "Cash on Delivery") {
       setShowRazorpay(true);
-      setRazorpayStage("input");
       return;
     }
     await executeSubmission("Cash on Delivery");
@@ -241,11 +234,6 @@ export default function CheckoutView({ cartItems, currentUser, onNavigate, onCle
     } finally {
       setLoading(false);
     }
-  };
-
-  const executeRazorpaySuccess = async (billingPayload: string) => {
-    setShowRazorpay(false);
-    await executeSubmission("Razorpay Gateway (" + billingPayload + ")");
   };
 
   return (
@@ -659,205 +647,27 @@ export default function CheckoutView({ cartItems, currentUser, onNavigate, onCle
         </div>
       )}
 
-      {/* 💳 INTERACTIVE SIMULATED RAZORPAY GATEWAY OVERLAY MODAL */}
-      {showRazorpay && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in font-sans">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-100 flex flex-col shrink-0">
-            {/* Razorpay Banner Header */}
-            <div className="bg-[#0b1b36] text-white p-5 flex justify-between items-center border-b border-slate-800">
-              <div className="flex items-center gap-2">
-                <div className="bg-blue-600 h-8 w-8 rounded-lg flex items-center justify-center font-black font-serif italic text-white text-base">
-                  R
-                </div>
-                <div>
-                  <h3 className="font-sans font-black tracking-wide text-xs flex items-center gap-1.5 uppercase text-white">
-                    Razorpay <span className="text-[8px] bg-blue-500/20 px-1.5 py-0.5 rounded text-blue-300 font-mono tracking-widest font-bold">Secure Gateway</span>
-                  </h3>
-                  <p className="text-[10px] text-slate-300 font-mono">Merchant: JANUZEN LLP</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <span className="block text-[8px] uppercase text-slate-400 font-mono font-extrabold tracking-wider">INR Billing Net</span>
-                <span className="block text-sm font-black font-mono text-emerald-400">₹{total.toFixed(2)}</span>
-              </div>
-            </div>
-
-            {/* Stage content */}
-            {razorpayStage === "input" && (
-              <div className="p-5 space-y-4">
-                {/* Method selector */}
-                <span className="text-[10px] font-bold text-gray-400 tracking-wider font-mono uppercase block">Debit Payment Protocol</span>
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setRazorpayMethod("card")}
-                    className={`py-2 text-center rounded-lg border text-[11px] font-bold transition-all cursor-pointer flex flex-col items-center gap-1.5 p-1 ${
-                      razorpayMethod === "card"
-                        ? "bg-blue-50/50 border-blue-600 text-blue-700"
-                        : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
-                    }`}
-                  >
-                    <CreditCard className="h-4 w-4 text-blue-600" />
-                    Debit/Cards
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRazorpayMethod("upi")}
-                    className={`py-2 text-center rounded-lg border text-[11px] font-bold transition-all cursor-pointer flex flex-col items-center gap-1.5 p-1 ${
-                      razorpayMethod === "upi"
-                        ? "bg-blue-50/50 border-blue-600 text-blue-700"
-                        : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
-                    }`}
-                  >
-                    <ShoppingBag className="h-4 w-4 text-emerald-500" />
-                    UPI / QR Code
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRazorpayMethod("netbanking")}
-                    className={`py-2 text-center rounded-lg border text-[11px] font-bold transition-all cursor-pointer flex flex-col items-center gap-1.5 p-1 ${
-                      razorpayMethod === "netbanking"
-                        ? "bg-blue-50/50 border-blue-600 text-blue-700"
-                        : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
-                    }`}
-                  >
-                    <ShieldCheck className="h-4 w-4 text-amber-500" />
-                    Netbanking
-                  </button>
-                </div>
-
-                {/* Card input details */}
-                {razorpayMethod === "card" && (
-                  <div className="space-y-3.5 text-xs font-sans">
-                    <div className="space-y-1">
-                      <label className="text-slate-500 font-bold block uppercase tracking-wide text-[9px]">Card Number</label>
-                      <input
-                        type="text"
-                        placeholder="4111 2222 3333 4444"
-                        value={razorpayCardNo}
-                        onChange={(e) => setRazorpayCardNo(e.target.value.replace(/\D/g, "").slice(0, 16))}
-                        className="w-full border border-slate-200 p-2.5 rounded-lg text-sm bg-slate-50 focus:outline-none focus:border-blue-600 font-mono tracking-widest text-slate-800"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3 animate-fade-in">
-                      <div className="space-y-1">
-                        <label className="text-slate-500 font-bold block uppercase tracking-wide text-[9px]">Expiry (MM/YY)</label>
-                        <input
-                          type="text"
-                          placeholder="12/28"
-                          value={razorpayExpiry}
-                          onChange={(e) => setRazorpayExpiry(e.target.value.slice(0, 5))}
-                          className="w-full border border-slate-200 p-2.5 rounded-lg text-sm bg-slate-50 focus:outline-none focus:border-blue-600 font-mono text-center text-slate-800"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-slate-500 font-bold block uppercase tracking-wide text-[9px]">CVV Security Code</label>
-                        <input
-                          type="text"
-                          placeholder="123"
-                          value={razorpayCvv}
-                          onChange={(e) => setRazorpayCvv(e.target.value.replace(/\D/g, "").slice(0, 3))}
-                          className="w-full border border-slate-200 p-2.5 rounded-lg text-sm bg-slate-50 focus:outline-none focus:border-blue-600 font-mono text-center text-slate-800"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* UPI details */}
-                {razorpayMethod === "upi" && (
-                  <div className="space-y-2 text-xs font-sans animate-fade-in">
-                    <label className="text-slate-500 font-bold block uppercase tracking-wide text-[9px]">UPI Virtual Payment Address</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. reddyvinuthan@okaxis"
-                      value={razorpayUpiId}
-                      onChange={(e) => setRazorpayUpiId(e.target.value)}
-                      className="w-full border border-slate-200 p-2.5 rounded-lg text-sm bg-slate-50 focus:outline-none focus:border-blue-600 font-mono text-slate-800"
-                    />
-                    <p className="text-[10px] text-slate-400">Securely routing your billing request to your default BHIM Pay, PhonePe, or Google Pay handles.</p>
-                  </div>
-                )}
-
-                {/* Netbanking details */}
-                {razorpayMethod === "netbanking" && (
-                  <div className="space-y-2 text-xs font-sans animate-fade-in">
-                    <label className="text-slate-500 font-bold block uppercase tracking-wide text-[9px]">Select Your Indian Bank Institution</label>
-                    <select
-                      value={razorpayBank}
-                      onChange={(e) => setRazorpayBank(e.target.value)}
-                      className="w-full border border-slate-200 p-2.5 rounded-lg text-sm bg-slate-50 focus:outline-none focus:border-blue-600 text-slate-800 font-bold cursor-pointer"
-                    >
-                      <option value="State Bank of India">State Bank of India (SBI)</option>
-                      <option value="HDFC Bank Limited">HDFC Bank Limited</option>
-                      <option value="ICICI Bank Limited">ICICI Bank Limited</option>
-                      <option value="Axis Bank Limited">Axis Bank Limited</option>
-                      <option value="Andhra Bank">Andhra Bank</option>
-                    </select>
-                  </div>
-                )}
-
-                {/* Actions */}
-                <div className="flex gap-2.5 pt-3 border-t border-slate-100">
-                  <button
-                    type="button"
-                    onClick={() => setShowRazorpay(false)}
-                    className="flex-1 py-2.5 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 text-xs font-bold cursor-pointer transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setRazorpayStage("processing");
-                      setTimeout(() => {
-                        setRazorpayStage("success");
-                        setTimeout(() => {
-                          const payloadString =
-                            razorpayMethod === "card"
-                              ? `Cards (ending in ${razorpayCardNo.slice(-4) || "4111"})`
-                              : razorpayMethod === "upi"
-                              ? `UPI (${razorpayUpiId || "vinuthan@upi"})`
-                              : `Netbanking (${razorpayBank})`;
-                          executeRazorpaySuccess(payloadString);
-                        }, 1200);
-                      }, 2000);
-                    }}
-                    className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-extrabold cursor-pointer shadow-md transition-all uppercase tracking-wide"
-                  >
-                    Resolve ₹{total.toFixed(2)}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {razorpayStage === "processing" && (
-              <div className="p-10 text-center space-y-4">
-                <Loader2 className="h-10 w-10 text-blue-600 animate-spin mx-auto" />
-                <div>
-                  <h4 className="font-bold text-slate-900 text-sm">Validating Handshake Protocol</h4>
-                  <p className="text-[11px] text-slate-400 mt-1">Interacting with Indian bank secure nodal networks...</p>
-                </div>
-              </div>
-            )}
-
-            {razorpayStage === "success" && (
-              <div className="p-10 text-center space-y-4">
-                <div className="h-12 w-12 bg-emerald-50 text-emerald-500 rounded-full border border-emerald-100 flex items-center justify-center mx-auto animate-bounce">
-                  <span className="text-xl">✓</span>
-                </div>
-                <div>
-                  <h4 className="font-extrabold text-slate-900 text-sm">Payment Confirmed Securely!</h4>
-                  <p className="text-[11px] text-emerald-600 font-semibold font-mono bg-emerald-50 inline-block px-2.5 py-0.5 rounded border border-emerald-100 mt-2">
-                    AUTH ID: RZP-{Math.floor(100000 + Math.random() * 900000)}
-                  </p>
-                </div>
-              </div>
-            )}
-
-          </div>
-        </div>
-      )}
+      {/* 💳 INTERACTIVE RAZORPAY GATEWAY MODAL & AUDIT SUITE */}
+      <RazorpayGatewayModal
+        isOpen={showRazorpay}
+        onClose={() => setShowRazorpay(false)}
+        total={total}
+        cartItems={cartItems}
+        shippingAddress={{
+          fullName,
+          addressLine,
+          city,
+          postalCode,
+          phone
+        }}
+        appliedCoupon={appliedCoupon}
+        onSuccess={(order, _paymentRecord) => {
+          setShowRazorpay(false);
+          setPlacedOrder(order);
+          onClearCart();
+          setStep(3);
+        }}
+      />
 
     </div>
   );

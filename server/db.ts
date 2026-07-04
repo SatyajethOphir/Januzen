@@ -2,7 +2,7 @@ import mongoose, { Schema } from "mongoose";
 import fs from "fs";
 import path from "path";
 import bcrypt from "bcryptjs";
-import { User, Product, Order, Message, Coupon, Review, Notification, WishlistItem, Session, CouponUsage, AuditLog, PushSubscription, Advertisement } from "../src/types";
+import { User, Product, Order, Message, Coupon, Review, Notification, WishlistItem, Session, CouponUsage, AuditLog, PushSubscription, Advertisement, PaymentRecord } from "../src/types";
 
 // Check if MongoDB URI is available
 export const MONGODB_URI = process.env.MONGODB_URI || "";
@@ -30,6 +30,7 @@ interface DBStructure {
   auditLogs?: AuditLog[];
   pushSubscriptions?: PushSubscription[];
   advertisements?: Advertisement[];
+  paymentRecords?: PaymentRecord[];
 }
 
 // Default Seed Data
@@ -452,6 +453,28 @@ const AdvertisementSchema = new Schema({
   expiresAt: { type: String, required: true, index: true }
 });
 
+const PaymentRecordSchema = new Schema({
+  id: { type: String, required: true, unique: true },
+  razorpayOrderId: { type: String, index: true },
+  razorpayPaymentId: { type: String, index: true },
+  razorpaySignature: { type: String },
+  orderId: { type: String, index: true },
+  userId: { type: String, required: true, index: true },
+  userName: { type: String },
+  userEmail: { type: String },
+  amount: { type: Number, required: true },
+  currency: { type: String, default: "INR" },
+  paymentMethod: { type: String },
+  status: { type: String, required: true, index: true },
+  verificationStatus: { type: String, required: true },
+  refundStatus: { type: String, default: "None" },
+  timestamp: { type: String, required: true },
+  failureReason: { type: String },
+  webhookEvents: { type: Array, default: [] },
+  retryCount: { type: Number, default: 0 },
+  debitedButUnconfirmed: { type: Boolean, default: false }
+});
+
 // Create Mongoose models with any cast to prevent strict TypeScript query schema checking
 export const MongoUser = (mongoose.models.User || mongoose.model("User", UserSchema)) as any;
 export const MongoProduct = (mongoose.models.Product || mongoose.model("Product", ProductSchema)) as any;
@@ -466,6 +489,7 @@ export const MongoCouponUsage = (mongoose.models.CouponUsage || mongoose.model("
 export const MongoAuditLog = (mongoose.models.AuditLog || mongoose.model("AuditLog", AuditLogSchema)) as any;
 export const MongoPushSubscription = (mongoose.models.PushSubscription || mongoose.model("PushSubscription", PushSubscriptionSchema)) as any;
 export const MongoAdvertisement = (mongoose.models.Advertisement || mongoose.model("Advertisement", AdvertisementSchema)) as any;
+export const MongoPaymentRecord = (mongoose.models.PaymentRecord || mongoose.model("PaymentRecord", PaymentRecordSchema)) as any;
 
 // Custom validation error shape to match Mongoose ValidationError structure
 export class SchemaValidationError extends Error {
@@ -1989,6 +2013,64 @@ export const dbClient = {
         saveLocalDB(db);
       }
       return deletedCount;
+    }
+  },
+
+  createPaymentRecord: async (record: PaymentRecord): Promise<PaymentRecord> => {
+    if (isMongo) {
+      const newRec = new MongoPaymentRecord(record);
+      await newRec.save();
+      return record;
+    } else {
+      const db = loadLocalDB();
+      if (!db.paymentRecords) db.paymentRecords = [];
+      db.paymentRecords.push(record);
+      saveLocalDB(db);
+      return record;
+    }
+  },
+
+  getPaymentRecordById: async (id: string): Promise<PaymentRecord | null> => {
+    if (isMongo) {
+      return await MongoPaymentRecord.findOne({ id }).lean() as any;
+    } else {
+      const db = loadLocalDB();
+      const list = db.paymentRecords || [];
+      return list.find(r => r.id === id) || null;
+    }
+  },
+
+  getPaymentRecordByRazorpayOrderId: async (razorpayOrderId: string): Promise<PaymentRecord | null> => {
+    if (isMongo) {
+      return await MongoPaymentRecord.findOne({ razorpayOrderId }).lean() as any;
+    } else {
+      const db = loadLocalDB();
+      const list = db.paymentRecords || [];
+      return list.find(r => r.razorpayOrderId === razorpayOrderId) || null;
+    }
+  },
+
+  getPaymentRecordsByUserId: async (userId: string): Promise<PaymentRecord[]> => {
+    if (isMongo) {
+      return await MongoPaymentRecord.find({ userId }).sort({ timestamp: -1 }).lean() as any;
+    } else {
+      const db = loadLocalDB();
+      const list = db.paymentRecords || [];
+      return list.filter(r => r.userId === userId).sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+    }
+  },
+
+  updatePaymentRecord: async (id: string, updates: Partial<PaymentRecord>): Promise<PaymentRecord | null> => {
+    if (isMongo) {
+      return await MongoPaymentRecord.findOneAndUpdate({ id }, { $set: updates }, { new: true }).lean() as any;
+    } else {
+      const db = loadLocalDB();
+      if (!db.paymentRecords) db.paymentRecords = [];
+      const idx = db.paymentRecords.findIndex(r => r.id === id);
+      if (idx === -1) return null;
+      db.paymentRecords[idx] = { ...db.paymentRecords[idx], ...updates };
+      saveLocalDB(db);
+      return db.paymentRecords[idx];
     }
   }
 };

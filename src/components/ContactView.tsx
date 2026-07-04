@@ -126,7 +126,7 @@ export default function ContactView() {
               <Mail className="h-4 w-4 text-amber-600 shrink-0" />
               <div>
                 <p className="text-[9px] uppercase text-gray-400 font-bold">Bulk B2B Sales Desk</p>
-                <p className="text-amber-700 font-bold text-xs"><a href="mailto:sales@januzen.in" className="hover:underline">sales@januzen.in</a></p>
+                <p className="font-bold text-xs"><a href="mailto:sales@januzen.in" className="text-gray-900 hover:underline">sales@januzen.in</a></p>
               </div>
             </div>
           </div>
@@ -156,9 +156,9 @@ export default function ContactView() {
                 <Phone className="h-4 w-4 text-teal-600 shrink-0" />
                 <span>09666588553 (Helpline Support)</span>
               </div>
-              <div className="flex items-center gap-3 font-medium text-teal-950 dark:text-teal-300 bg-[#0F9B8E]/15 py-1.5 px-3 rounded-lg border border-[#0F9B8E]/30 shadow-sm">
+              <div className="flex items-center gap-3 font-medium bg-[#0F9B8E]/15 py-1.5 px-3 rounded-lg border border-[#0F9B8E]/30 shadow-sm">
                 <Mail className="h-4 w-4 text-teal-600 shrink-0" />
-                <a href="mailto:team@januzen.in" className="hover:underline hover:text-teal-700 dark:hover:text-teal-200 transition-colors font-bold">team@januzen.in</a>
+                <a href="mailto:team@januzen.in" className="text-gray-900 hover:underline transition-colors font-bold">team@januzen.in</a>
               </div>
               <div className="flex items-center gap-3">
                 <Clock className="h-4 w-4 text-teal-600 shrink-0" />
@@ -190,9 +190,9 @@ export default function ContactView() {
                 <Phone className="h-4 w-4 text-[#D4820A] shrink-0" />
                 <span>09666588553 (Corporate Order-Desk)</span>
               </div>
-              <div className="flex items-center gap-3 font-medium text-amber-950 dark:text-amber-300 bg-[#D4820A]/15 py-1.5 px-3 rounded-lg border border-[#D4820A]/30 shadow-sm">
+              <div className="flex items-center gap-3 font-medium bg-[#D4820A]/15 py-1.5 px-3 rounded-lg border border-[#D4820A]/30 shadow-sm">
                 <Mail className="h-4 w-4 text-[#D4820A] shrink-0" />
-                <a href="mailto:team@januzen.in" className="hover:underline hover:text-amber-800 dark:hover:text-amber-200 transition-colors font-bold">team@januzen.in</a>
+                <a href="mailto:team@januzen.in" className="text-gray-900 hover:underline transition-colors font-bold">team@januzen.in</a>
               </div>
               <div className="flex items-center gap-3">
                 <Clock className="h-4 w-4 text-[#D4820A] shrink-0" />

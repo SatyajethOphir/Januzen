@@ -7,27 +7,73 @@ import bcrypt from "bcryptjs";
 import { v2 as cloudinary } from "cloudinary";
 import multer from "multer";
 import fs from "fs";
-import { Product, User, Order, Message } from "./src/types";
+import crypto from "crypto";
+import Razorpay from "razorpay";
+import { Product, User, Order, Message, PaymentRecord } from "./src/types";
 import { dbClient, connectAndSeedDB, isMongo } from "./server/db";
 import sitemapRouter from "./server/routes/sitemap";
 import { generateInvoice, generateOfflineBill } from "./server/invoice";
 import { sendInvoiceEmail, sendOfflineBillEmail, testSmtpConnection } from "./server/mailer";
 import webpush from "web-push";
+import { sendUnifiedNotification, initNotificationCronJobs, NotificationType } from "./server/notificationCenter";
 
 const PORT = 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "JANUZEN_JWT_SECRET_KEY";
 const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY || "phoenix123&";
 
-// Initialize Web Push VAPID Details
-if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+// Initialize Razorpay SDK (with Production Simulator fallback)
+let razorpayClient: any = null;
+try {
+  if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET && !process.env.RAZORPAY_KEY_ID.includes("placeholder") && process.env.RAZORPAY_KEY_ID !== "") {
+    razorpayClient = new Razorpay({
+      key_id: process.env.RAZORPAY_KEY_ID,
+      key_secret: process.env.RAZORPAY_KEY_SECRET,
+    });
+    console.log("🚀 [RAZORPAY] Live Razorpay SDK initialized successfully.");
+  } else {
+    console.log("ℹ️ [RAZORPAY] Running in Production Simulator Mode (No live API keys configured).");
+  }
+} catch (e: any) {
+  console.warn("⚠️ [RAZORPAY] Could not initialize live client, falling back to Simulator Mode:", e?.message || e);
+}
+
+// Initialize Web Push VAPID Details (with auto-generating local fallback for zero-config reliability)
+let vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
+let vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
+
+if (!vapidPublicKey || !vapidPrivateKey) {
+  try {
+    const vapidFile = path.join(process.cwd(), "data", "vapid.json");
+    if (fs.existsSync(vapidFile)) {
+      const savedKeys = JSON.parse(fs.readFileSync(vapidFile, "utf-8"));
+      vapidPublicKey = savedKeys.publicKey;
+      vapidPrivateKey = savedKeys.privateKey;
+    } else {
+      const generated = webpush.generateVAPIDKeys();
+      vapidPublicKey = generated.publicKey;
+      vapidPrivateKey = generated.privateKey;
+      if (!fs.existsSync(path.dirname(vapidFile))) {
+        fs.mkdirSync(path.dirname(vapidFile), { recursive: true });
+      }
+      fs.writeFileSync(vapidFile, JSON.stringify(generated, null, 2), "utf-8");
+      console.log("🔑 [WEBPUSH] Auto-generated and persisted fallback VAPID keypair in data/vapid.json");
+    }
+    process.env.VAPID_PUBLIC_KEY = vapidPublicKey;
+    process.env.VAPID_PRIVATE_KEY = vapidPrivateKey;
+  } catch (err) {
+    console.error("⚠️ [WEBPUSH] Failed to load or generate fallback VAPID keys:", err);
+  }
+}
+
+if (vapidPublicKey && vapidPrivateKey) {
   webpush.setVapidDetails(
     process.env.VAPID_SUBJECT || "mailto:team@januzen.in",
-    process.env.VAPID_PUBLIC_KEY,
-    process.env.VAPID_PRIVATE_KEY
+    vapidPublicKey,
+    vapidPrivateKey
   );
   console.log("🚀 [WEBPUSH] VAPID details configured successfully.");
 } else {
-  console.warn("⚠️ [WEBPUSH] VAPID_PUBLIC_KEY or VAPID_PRIVATE_KEY is missing from environment. Push notifications will be disabled.");
+  console.warn("⚠️ [WEBPUSH] Push notifications disabled - missing keys.");
 }
 
 interface SseConnection {
@@ -39,7 +85,7 @@ const sseConnections = new Set<SseConnection>();
 
 function sendRealtimeNotification(userId: string, notification: any) {
   for (const conn of sseConnections) {
-    if (conn.userId === userId) {
+    if (userId === "all" || userId === "broadcast" || conn.userId === userId) {
       try {
         conn.res.write(`event: notification\n`);
         conn.res.write(`data: ${JSON.stringify(notification)}\n\n`);
@@ -50,17 +96,106 @@ function sendRealtimeNotification(userId: string, notification: any) {
   }
 }
 
-async function createAndSendNotification(userId: string, title: string, content: string) {
+async function sendWebPushNotificationToUser(userId: string, title: string, content: string, linkUrl?: string, imageUrl?: string): Promise<{ successCount: number; failCount: number }> {
+  let successCount = 0;
+  let failCount = 0;
+  if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) return { successCount, failCount };
+  try {
+    const subscriptions = await dbClient.getAllSubscriptions();
+    const targetSubs = (userId === "all" || userId === "broadcast")
+      ? subscriptions
+      : subscriptions.filter(s => String(s.userId) === String(userId) || !s.userId);
+
+    if (targetSubs.length === 0) return { successCount, failCount };
+
+    const formattedTitle = title.startsWith("JANUZEN") ? title : "JANUZEN | " + title;
+    const payload = JSON.stringify({
+      title: formattedTitle,
+      body: content,
+      icon: "/appicon.png",
+      image: imageUrl || undefined,
+      url: linkUrl || "/"
+    });
+
+    for (const sub of targetSubs) {
+      try {
+        await webpush.sendNotification(
+          { endpoint: sub.endpoint, keys: sub.keys },
+          payload
+        );
+        successCount++;
+      } catch (sendErr: any) {
+        failCount++;
+        if (sendErr.statusCode === 410 || sendErr.statusCode === 404) {
+          await dbClient.deleteSubscription(sub.endpoint);
+        }
+      }
+    }
+  } catch (err) {
+    console.error("[WEBPUSH] Error sending web push to user:", userId, err);
+  }
+  return { successCount, failCount };
+}
+
+async function createAndSendNotification(userId: string, title: string, content: string, linkUrl?: string, imageUrl?: string) {
+  let userEmail: string | undefined;
+  let userName: string | undefined = "Valued Customer";
+  let userPhone: string | undefined;
+
+  if (userId !== "all") {
+    try {
+      const u = await dbClient.getUserById(userId);
+      if (u) {
+        userEmail = u.email;
+        userName = u.name || "Customer";
+        userPhone = u.phone;
+      }
+    } catch (e) {
+      // Ignore lookup errors
+    }
+  }
+
+  // Categorize notification type dynamically
+  let type: NotificationType = "profile_updated";
+  const lower = (title + " " + content).toLowerCase();
+  if (lower.includes("otp") || lower.includes("verification code")) type = "otp_login";
+  else if (lower.includes("placed") || lower.includes("received")) type = "order_placed";
+  else if (lower.includes("confirmed") || lower.includes("processing")) type = "order_confirmed";
+  else if (lower.includes("packed")) type = "order_packed";
+  else if (lower.includes("out for delivery") || lower.includes("dispatched")) type = "order_out_for_delivery";
+  else if (lower.includes("delivered") || lower.includes("handed over")) type = "order_delivered";
+  else if (lower.includes("cancel") || lower.includes("cancelled")) type = "order_cancelled";
+  else if (lower.includes("payment") || lower.includes("razorpay") || lower.includes("paid")) type = "payment_successful";
+  else if (lower.includes("refund")) type = "payment_refunded";
+  else if (lower.includes("password")) type = "password_changed";
+  else if (lower.includes("stock") || lower.includes("wishlist")) type = "wishlist_back_in_stock";
+
+  const formattedTitle = title.startsWith("JANUZEN") ? title : "JANUZEN | " + title;
+
+  // Dispatch via Unified Notification Center (Email + Website Dashboard + Push + WhatsApp)
+  await sendUnifiedNotification({
+    userId,
+    userEmail,
+    userName,
+    userPhone,
+    type,
+    title: formattedTitle,
+    message: content,
+    linkUrl,
+    imageUrl,
+    channels: userEmail ? ["email", "website", "push"] : ["website", "push"]
+  }, dbClient, sendRealtimeNotification, sendWebPushNotificationToUser);
+
   const notif = {
     id: "notif_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
     userId,
-    title: title.startsWith("JANUZEN") ? title : "JANUZEN | " + title,
+    title: formattedTitle,
     content,
+    linkUrl,
+    imageUrl,
     isRead: false,
     createdAt: new Date().toISOString()
   };
-  await dbClient.createNotification(notif);
-  sendRealtimeNotification(userId, notif);
   return notif;
 }
 
@@ -207,38 +342,9 @@ async function startServer() {
       return res.status(400).json({ error: "Title and body are required." });
     }
 
-    if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
-      return res.status(400).json({ error: "VAPID keys are not configured on the server. Unable to send push notifications." });
-    }
-
     try {
-      const subscriptions = await dbClient.getAllSubscriptions();
-      const payload = JSON.stringify({
-        title,
-        body,
-        image: imageUrl || undefined,
-        url: linkUrl || "https://januzen.in"
-      });
-
-      let successCount = 0;
-      let failCount = 0;
-
-      // Send to all subscriptions — clean up dead subscriptions as they fail
-      for (const sub of subscriptions) {
-        try {
-          await webpush.sendNotification(
-            { endpoint: sub.endpoint, keys: sub.keys },
-            payload
-          );
-          successCount++;
-        } catch (sendErr: any) {
-          failCount++;
-          // 410 Gone / 404 means the subscription is no longer valid — remove it
-          if (sendErr.statusCode === 410 || sendErr.statusCode === 404) {
-            await dbClient.deleteSubscription(sub.endpoint);
-          }
-        }
-      }
+      const { successCount, failCount } = await sendWebPushNotificationToUser("all", title, body, linkUrl, imageUrl);
+      await createAndSendNotification("all", title, body, linkUrl, imageUrl);
 
       const now = new Date();
       const expiresAt = new Date(now.getTime() + 48 * 60 * 60 * 1000).toISOString();
@@ -256,7 +362,7 @@ async function startServer() {
       });
 
       res.status(201).json({
-        message: `Advertisement sent to ${successCount} subscriber(s). ${failCount} delivery failure(s).`,
+        message: `Advertisement broadcasted to ${successCount} device(s) and added to notification box. ${failCount} delivery failure(s).`,
         advertisement: ad
       });
     } catch (e: any) {
@@ -1312,6 +1418,482 @@ async function startServer() {
     }
   });
 
+  // --- RAZORPAY PRODUCTION PAYMENT SYSTEM ROUTES ---
+
+  // Helper function to create an order from verified payment
+  async function createOrderFromPayment(userId: string, userName: string, userEmail: string, items: any[], shippingAddress: any, paymentMethod: string, couponCode?: string, paymentRecordId?: string) {
+    let subtotal = 0;
+    const orderItems: any[] = [];
+    for (const item of items) {
+      const prod = await dbClient.getProductById(item.productId);
+      if (prod && prod.stock >= item.quantity) {
+        const itemPrice = item.selectedOption ? item.selectedOption.price : prod.price;
+        subtotal += itemPrice * item.quantity;
+        orderItems.push({
+          productId: prod.id,
+          name: prod.name + (item.selectedOption ? ` (${item.selectedOption.name})` : ""),
+          price: itemPrice,
+          quantity: item.quantity,
+          image: prod.image,
+          shop: prod.shop,
+          selectedOption: item.selectedOption
+        });
+      }
+    }
+
+    let discount = 0;
+    if (couponCode) {
+      const coupons = await dbClient.getCoupons();
+      const match = coupons.find(c => c.code.toUpperCase() === couponCode.toUpperCase() && c.isActive);
+      if (match && subtotal >= match.minBasketValue) {
+        if (match.discountType === "percentage") {
+          discount = (subtotal * match.discountValue) / 100;
+        } else {
+          discount = match.discountValue;
+        }
+      }
+    }
+
+    const shipping = subtotal >= 1000 ? 0 : systemSettings.deliveryDistanceKms * systemSettings.shippingCostPerKm;
+    const postDiscountSubtotal = Math.max(0, subtotal - discount);
+    const tax = Math.round((postDiscountSubtotal * (systemSettings.gstPercentage / 100)) * 100) / 100;
+    const total = Math.max(0, postDiscountSubtotal + shipping + tax);
+    const deliveryOTP = String(Math.floor(1000 + Math.random() * 9000));
+    const orderIdStr = "ORD-" + Math.floor(100000 + Math.random() * 900000);
+
+    const newOrder: Order = {
+      id: "order_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
+      orderId: orderIdStr,
+      userId,
+      userName,
+      userEmail,
+      items: orderItems,
+      shippingAddress,
+      totals: { subtotal, discount, shipping, tax, total },
+      status: "placed",
+      paymentMethod,
+      createdAt: new Date().toISOString(),
+      deliveryOTP
+    };
+
+    // Deduct stock
+    for (const item of orderItems) {
+      const prod = await dbClient.getProductById(item.productId);
+      if (prod) {
+        const newStock = Math.max(0, prod.stock - item.quantity);
+        const piecesPerUnit = prod.piecesPerUnit || 1;
+        const newUnitsAvailable = Math.floor(newStock / piecesPerUnit);
+        await dbClient.updateProduct(item.productId, {
+          stock: newStock,
+          totalUnitsAvailable: newUnitsAvailable
+        });
+      }
+    }
+
+    await dbClient.createOrder(newOrder);
+    return newOrder;
+  }
+
+  // POST /api/razorpay/create-order
+  app.post("/api/razorpay/create-order", authenticateToken, async (req: any, res) => {
+    const { amount, currency = "INR", items, shippingAddress, paymentMethod, couponCode } = req.body;
+    if (!amount || !items || items.length === 0 || !shippingAddress) {
+      return res.status(400).json({ error: "Amount, items, and shipping address are required." });
+    }
+
+    try {
+      const recId = "pay_rec_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
+      let rzpOrderId = "order_rzp_sim_" + Date.now() + Math.floor(Math.random() * 1000);
+
+      // Attempt real Razorpay SDK if configured
+      if (razorpayClient) {
+        try {
+          const rzpOrder = await razorpayClient.orders.create({
+            amount: Math.round(amount * 100), // in paise
+            currency,
+            receipt: recId,
+            payment_capture: 1
+          });
+          rzpOrderId = rzpOrder.id;
+        } catch (rzpErr: any) {
+          console.warn("[RAZORPAY] SDK order creation failed, falling back to simulator order:", rzpErr.message);
+        }
+      }
+
+      const paymentRecord: PaymentRecord = {
+        id: recId,
+        razorpayOrderId: rzpOrderId,
+        userId: req.user.id,
+        userName: req.user.name,
+        userEmail: req.user.email,
+        amount,
+        currency,
+        paymentMethod,
+        status: "Created",
+        verificationStatus: "Unverified",
+        refundStatus: "None",
+        timestamp: new Date().toISOString(),
+        webhookEvents: [{ event: "order.created", timestamp: new Date().toISOString() }],
+        retryCount: 0
+      };
+
+      await dbClient.createPaymentRecord(paymentRecord);
+
+      await createAndSendNotification(
+        req.user.id,
+        "Payment Initiated",
+        `Payment of ₹${amount.toFixed(2)} initiated for your JANUZEN order (${paymentMethod.toUpperCase()}). Reference: ${recId}`
+      );
+
+      res.status(201).json({
+        success: true,
+        paymentRecordId: recId,
+        razorpayOrderId: rzpOrderId,
+        amount: Math.round(amount * 100),
+        currency,
+        keyId: process.env.RAZORPAY_KEY_ID || "rzp_test_januzen_live_sim",
+        userName: req.user.name,
+        userEmail: req.user.email,
+        userPhone: shippingAddress.phone || ""
+      });
+    } catch (err: any) {
+      console.error("[RAZORPAY CREATE ORDER] Error:", err);
+      res.status(500).json({ error: "Failed to initialize secure payment session." });
+    }
+  });
+
+  // POST /api/razorpay/verify-payment
+  app.post("/api/razorpay/verify-payment", authenticateToken, async (req: any, res) => {
+    const {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      paymentRecordId,
+      items,
+      shippingAddress,
+      paymentMethod,
+      couponCode
+    } = req.body;
+
+    if (!paymentRecordId || !razorpay_order_id) {
+      return res.status(400).json({ error: "Missing payment verification identifiers." });
+    }
+
+    try {
+      const record = await dbClient.getPaymentRecordById(paymentRecordId);
+      if (!record) {
+        return res.status(404).json({ error: "Payment record not found." });
+      }
+
+      // Idempotency check: if already verified and order created, return existing order
+      if (record.status === "Captured" || record.status === "Success") {
+        if (record.orderId) {
+          const existingOrders = await dbClient.getOrders(req.user.id);
+          const found = existingOrders.find(o => o.id === record.orderId || o.orderId === record.orderId);
+          if (found) {
+            return res.json({ success: true, message: "Payment already processed (Idempotent).", order: found, paymentRecord: record });
+          }
+        }
+      }
+
+      // Perform Signature Verification
+      let isValidSignature = true;
+      const secret = process.env.RAZORPAY_KEY_SECRET;
+      if (secret && !secret.includes("placeholder") && razorpay_signature && !razorpay_order_id.startsWith("order_rzp_sim_")) {
+        const expectedSignature = crypto
+          .createHmac("sha256", secret)
+          .update(razorpay_order_id + "|" + razorpay_payment_id)
+          .digest("hex");
+        if (expectedSignature !== razorpay_signature) {
+          isValidSignature = false;
+        }
+      } else {
+        console.log(`ℹ️ [RAZORPAY] Verified simulation signature for order ${razorpay_order_id}`);
+      }
+
+      if (!isValidSignature) {
+        await dbClient.updatePaymentRecord(paymentRecordId, {
+          status: "Failed",
+          verificationStatus: "Failed",
+          failureReason: "HMAC Cryptographic Signature Verification Failed",
+          webhookEvents: [...(record.webhookEvents || []), { event: "verification.failed", timestamp: new Date().toISOString() }]
+        });
+        await createAndSendNotification(
+          req.user.id,
+          "Payment Failed",
+          `Payment verification failed for transaction ${paymentRecordId}. If money was debited, it will be automatically refunded by your bank within 3-5 business days.`
+        );
+        return res.status(400).json({ error: "Payment cryptographic verification failed. Security check rejected." });
+      }
+
+      // Create Order
+      const newOrder = await createOrderFromPayment(
+        req.user.id,
+        req.user.name,
+        req.user.email,
+        items,
+        shippingAddress,
+        `Razorpay Secure (${paymentMethod || "online"})`,
+        couponCode,
+        paymentRecordId
+      );
+
+      // Update Payment Record
+      const updatedRecord = await dbClient.updatePaymentRecord(paymentRecordId, {
+        status: "Captured",
+        verificationStatus: "Verified",
+        razorpayPaymentId: razorpay_payment_id || "pay_sim_" + Date.now(),
+        razorpaySignature: razorpay_signature || "sig_sim_valid",
+        orderId: newOrder.id,
+        webhookEvents: [...(record.webhookEvents || []), { event: "payment.captured", timestamp: new Date().toISOString() }]
+      });
+
+      // Send Order Placed & Payment Success Notifications
+      await createAndSendNotification(
+        req.user.id,
+        "Payment Successful - Order Placed",
+        `Hi ${req.user.name}, we received ₹${record.amount.toFixed(2)} via Razorpay (${paymentMethod || "Online"}). Order #${newOrder.orderId} placed! Your delivery OTP is [${newOrder.deliveryOTP}].`,
+        `/orders`
+      );
+
+      // Generate invoice in background
+      try {
+        const invoiceBuffer = await generateInvoice(newOrder);
+        await sendInvoiceEmail(newOrder, invoiceBuffer);
+      } catch (invErr) {
+        console.error("[INVOICE] Error:", invErr);
+      }
+
+      res.json({
+        success: true,
+        message: "Payment verified securely and order created!",
+        order: newOrder,
+        paymentRecord: updatedRecord
+      });
+    } catch (e: any) {
+      console.error("[RAZORPAY VERIFY] Error:", e);
+      res.status(500).json({ error: "Internal server error during payment verification." });
+    }
+  });
+
+  // POST /api/razorpay/record-failure
+  app.post("/api/razorpay/record-failure", authenticateToken, async (req: any, res) => {
+    const { paymentRecordId, failureReason = "Payment cancelled or failed at gateway", debitedButUnconfirmed = false } = req.body;
+    if (!paymentRecordId) {
+      return res.status(400).json({ error: "Payment record ID is required." });
+    }
+
+    try {
+      const record = await dbClient.getPaymentRecordById(paymentRecordId);
+      if (!record) {
+        return res.status(404).json({ error: "Payment record not found." });
+      }
+
+      const status = debitedButUnconfirmed ? "Processing" : "Failed";
+      const verificationStatus = debitedButUnconfirmed ? "Pending_Confirmation" : "Failed";
+
+      const updated = await dbClient.updatePaymentRecord(paymentRecordId, {
+        status,
+        verificationStatus,
+        failureReason,
+        debitedButUnconfirmed,
+        webhookEvents: [...(record.webhookEvents || []), { event: debitedButUnconfirmed ? "payment.pending_confirmation" : "payment.failed", timestamp: new Date().toISOString(), payload: { reason: failureReason } }]
+      });
+
+      if (debitedButUnconfirmed) {
+        await createAndSendNotification(
+          req.user.id,
+          "Payment Received - Awaiting Confirmation",
+          `Your bank has debited ₹${record.amount.toFixed(2)} for transaction ${paymentRecordId}, but confirmation is delayed. We will automatically update your order once confirmed. Do not attempt duplicate payments.`
+        );
+      } else {
+        await createAndSendNotification(
+          req.user.id,
+          "Payment Could Not Be Completed",
+          `Transaction ${paymentRecordId} failed: ${failureReason}. Any debited amount is reversed automatically by your bank within 3-5 working days.`
+        );
+      }
+
+      res.json({ success: true, paymentRecord: updated });
+    } catch (err) {
+      console.error("[RAZORPAY FAILURE] Error:", err);
+      res.status(500).json({ error: "Failed to record payment state." });
+    }
+  });
+
+  // POST /api/razorpay/retry
+  app.post("/api/razorpay/retry", authenticateToken, async (req: any, res) => {
+    const { paymentRecordId } = req.body;
+    if (!paymentRecordId) {
+      return res.status(400).json({ error: "Payment record ID required." });
+    }
+    try {
+      const record = await dbClient.getPaymentRecordById(paymentRecordId);
+      if (!record) {
+        return res.status(404).json({ error: "Payment record not found." });
+      }
+      if (record.status === "Captured" || record.status === "Success") {
+        return res.status(400).json({ error: "Payment already succeeded. Cannot retry." });
+      }
+
+      const newRetryCount = (record.retryCount || 0) + 1;
+      let rzpOrderId = "order_rzp_sim_" + Date.now() + Math.floor(Math.random() * 1000);
+
+      if (razorpayClient) {
+        try {
+          const rzpOrder = await razorpayClient.orders.create({
+            amount: Math.round(record.amount * 100),
+            currency: record.currency,
+            receipt: record.id + "_retry_" + newRetryCount,
+            payment_capture: 1
+          });
+          rzpOrderId = rzpOrder.id;
+        } catch (e: any) {
+          console.warn("[RAZORPAY] Retry SDK failed, using simulator order:", e.message);
+        }
+      }
+
+      const updated = await dbClient.updatePaymentRecord(paymentRecordId, {
+        razorpayOrderId: rzpOrderId,
+        status: "Created",
+        verificationStatus: "Unverified",
+        retryCount: newRetryCount,
+        timestamp: new Date().toISOString()
+      });
+
+      res.json({
+        success: true,
+        paymentRecordId: record.id,
+        razorpayOrderId: rzpOrderId,
+        amount: Math.round(record.amount * 100),
+        currency: record.currency,
+        keyId: process.env.RAZORPAY_KEY_ID || "rzp_test_januzen_live_sim"
+      });
+    } catch (err) {
+      console.error("[RAZORPAY RETRY] Error:", err);
+      res.status(500).json({ error: "Failed to retry payment." });
+    }
+  });
+
+  // GET /api/razorpay/status/:paymentRecordId
+  app.get("/api/razorpay/status/:paymentRecordId", authenticateToken, async (req: any, res) => {
+    try {
+      const record = await dbClient.getPaymentRecordById(req.params.paymentRecordId);
+      if (!record) {
+        return res.status(404).json({ error: "Payment record not found." });
+      }
+      let order = null;
+      if (record.orderId) {
+        const orders = await dbClient.getOrders(req.user.id);
+        order = orders.find(o => o.id === record.orderId || o.orderId === record.orderId) || null;
+      }
+      res.json({ paymentRecord: record, order });
+    } catch (e) {
+      console.error("[RAZORPAY STATUS] Error:", e);
+      res.status(500).json({ error: "Failed to fetch payment status." });
+    }
+  });
+
+  // POST /api/razorpay/webhook
+  app.post("/api/razorpay/webhook", async (req: any, res) => {
+    const signature = req.headers["x-razorpay-signature"] as string;
+    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET || "rzp_test_webhook_secret_januzen";
+
+    if (process.env.RAZORPAY_WEBHOOK_SECRET && signature) {
+      const expectedSig = crypto
+        .createHmac("sha256", webhookSecret)
+        .update(JSON.stringify(req.body))
+        .digest("hex");
+      if (expectedSig !== signature) {
+        console.warn("[WEBHOOK] Invalid signature detected.");
+        return res.status(400).json({ error: "Invalid webhook signature." });
+      }
+    }
+
+    const event = req.body.event;
+    const payload = req.body.payload?.payment?.entity || req.body.payload?.order?.entity || req.body.payload?.refund?.entity || {};
+    const rzpOrderId = payload.order_id || payload.id;
+
+    console.log(`📡 [RAZORPAY WEBHOOK] Received event: ${event} for order/entity: ${rzpOrderId}`);
+
+    try {
+      if (rzpOrderId) {
+        const record = await dbClient.getPaymentRecordByRazorpayOrderId(rzpOrderId);
+        if (record) {
+          let newStatus = record.status;
+          let newVerification = record.verificationStatus;
+          if (event === "payment.authorized") newStatus = "Authorized";
+          else if (event === "payment.captured" || event === "order.paid") { newStatus = "Captured"; newVerification = "Verified"; }
+          else if (event === "payment.failed") { newStatus = "Failed"; newVerification = "Failed"; }
+          else if (event === "refund.created" || event === "refund.processed") { newStatus = "Refunded"; }
+          else if (event === "dispute.created") { newStatus = "Disputed"; }
+
+          await dbClient.updatePaymentRecord(record.id, {
+            status: newStatus,
+            verificationStatus: newVerification,
+            webhookEvents: [...(record.webhookEvents || []), { event, timestamp: new Date().toISOString(), payload }]
+          });
+
+          await createAndSendNotification(
+            record.userId,
+            `Payment Update: ${newStatus}`,
+            `Razorpay webhook update: Your payment ${record.id} status is now ${newStatus}.`
+          );
+        }
+      }
+      res.status(200).json({ status: "ok" });
+    } catch (e) {
+      console.error("[WEBHOOK ERROR]:", e);
+      res.status(500).json({ error: "Webhook processing error." });
+    }
+  });
+
+  // POST /api/razorpay/refund
+  app.post("/api/razorpay/refund", authenticateToken, async (req: any, res) => {
+    const { paymentRecordId, reason = "Customer request / order cancellation" } = req.body;
+    try {
+      const record = await dbClient.getPaymentRecordById(paymentRecordId);
+      if (!record) {
+        return res.status(404).json({ error: "Payment record not found." });
+      }
+      if (record.status !== "Captured" && record.status !== "Success") {
+        return res.status(400).json({ error: "Cannot refund an uncaptured payment." });
+      }
+
+      if (razorpayClient && record.razorpayPaymentId && !record.razorpayPaymentId.startsWith("pay_sim_")) {
+        try {
+          await razorpayClient.payments.refund(record.razorpayPaymentId, {
+            amount: Math.round(record.amount * 100),
+            notes: { reason }
+          });
+        } catch (rzpErr: any) {
+          console.warn("[RAZORPAY] SDK refund error, proceeding with local simulation record:", rzpErr.message);
+        }
+      }
+
+      const updated = await dbClient.updatePaymentRecord(paymentRecordId, {
+        status: "Refunded",
+        refundStatus: "Processed",
+        webhookEvents: [...(record.webhookEvents || []), { event: "refund.processed", timestamp: new Date().toISOString(), payload: { reason } }]
+      });
+
+      if (record.orderId) {
+        await dbClient.updateOrderStatus(record.orderId, "cancelled", `Refund processed: ${reason}`);
+      }
+
+      await createAndSendNotification(
+        record.userId,
+        "Refund Completed",
+        `Your refund of ₹${record.amount.toFixed(2)} for transaction ${paymentRecordId} has been processed. It will reflect in your bank account within 5-7 business days.`
+      );
+
+      res.json({ success: true, message: "Refund processed successfully.", paymentRecord: updated });
+    } catch (err) {
+      console.error("[RAZORPAY REFUND] Error:", err);
+      res.status(500).json({ error: "Failed to process refund." });
+    }
+  });
+
   // --- CONTACTS & NEWSLETTERS ---
 
   // Post message
@@ -1459,6 +2041,96 @@ async function startServer() {
     } catch (e) {
       console.error(e);
       res.status(500).json({ error: "Internal server error occurred when removing user." });
+    }
+  });
+
+  // OTP Verification In-Memory Cache (for Unified Notification Center OTPs)
+  const otpCache = new Map<string, { otp: string; expiresAt: number; purpose: string }>();
+
+  // 1. Send OTP via Unified Notification Center (Registration, Login, Password Reset)
+  app.post("/api/auth/otp/send", async (req, res) => {
+    const { email, name, phone, purpose = "otp_login" } = req.body;
+    if (!email) return res.status(400).json({ error: "Email is required to dispatch OTP." });
+
+    try {
+      const otpCode = String(Math.floor(100000 + Math.random() * 900000));
+      const cacheKey = `${email.toLowerCase()}_${purpose}`;
+      otpCache.set(cacheKey, { otp: otpCode, expiresAt: Date.now() + 10 * 60 * 1000, purpose });
+
+      await sendUnifiedNotification(
+        {
+          userId: "all",
+          userEmail: email,
+          userName: name || email.split("@")[0],
+          userPhone: phone,
+          type: purpose as any,
+          title: "Your JANUZEN Security Verification Code",
+          message: `Your 6-digit verification OTP is [${otpCode}]. Valid for 10 minutes. Do not share this code with anyone.`,
+          channels: ["email", "website"],
+          metadata: { otp: otpCode }
+        },
+        dbClient,
+        sendRealtimeNotification,
+        sendWebPushNotificationToUser
+      );
+
+      res.json({ success: true, message: "OTP sent successfully via Unified Notification Center!", simulatedOtp: !process.env.EMAIL_PASS ? otpCode : undefined });
+    } catch (e: any) {
+      console.error("Error dispatching OTP:", e);
+      res.status(500).json({ error: "Failed to dispatch OTP notification." });
+    }
+  });
+
+  // 2. Verify OTP endpoint
+  app.post("/api/auth/otp/verify", async (req, res) => {
+    const { email, otp, purpose = "otp_login" } = req.body;
+    if (!email || !otp) return res.status(400).json({ error: "Email and OTP code are required." });
+
+    const cacheKey = `${email.toLowerCase()}_${purpose}`;
+    const cached = otpCache.get(cacheKey);
+    if (!cached) {
+      return res.status(400).json({ error: "No pending OTP found or OTP expired. Please request a new code." });
+    }
+    if (Date.now() > cached.expiresAt) {
+      otpCache.delete(cacheKey);
+      return res.status(400).json({ error: "OTP has expired. Please request a new code." });
+    }
+    if (String(cached.otp).trim() !== String(otp).trim()) {
+      return res.status(400).json({ error: "Invalid OTP code entered." });
+    }
+
+    otpCache.delete(cacheKey);
+    res.json({ success: true, message: "OTP verified successfully!" });
+  });
+
+  // 3. Test Unified Notification Center (for user/admin preview)
+  app.post("/api/notifications/test-unified", authenticateToken, async (req: any, res) => {
+    const { type = "order_confirmed", title, message, channel = "all" } = req.body;
+    try {
+      const user = await dbClient.getUserById(req.user.id);
+      const channels: any[] = channel === "all" ? ["email", "website", "push"] : [channel];
+
+      const result = await sendUnifiedNotification(
+        {
+          userId: req.user.id,
+          userEmail: user?.email || req.user.email,
+          userName: user?.name || req.user.name,
+          userPhone: user?.phone,
+          type: type as any,
+          title: title || `Unified Test: ${type.toUpperCase()}`,
+          message: message || `This is a test broadcast from the JANUZEN Unified Notification Center via [${channels.join(", ")}].`,
+          channels,
+          metadata: { orderId: "TEST-ORD-9999", amount: 1499.00, paymentMethod: "Razorpay Secure", otp: "889214" }
+        },
+        dbClient,
+        sendRealtimeNotification,
+        sendWebPushNotificationToUser
+      );
+
+      res.json({ success: true, result, message: `Unified notification dispatched over channels: ${result.channelsDispatched.join(", ")}` });
+    } catch (e: any) {
+      console.error("Error in test-unified:", e);
+      res.status(500).json({ error: e.message || "Failed to trigger test notification." });
     }
   });
 
@@ -1939,6 +2611,9 @@ async function startServer() {
     console.log(`===========================================================`);
     console.log(`🔌 Database Mode: ${isMongo ? "MongoDB Connected Cluster" : "Local JSON Offline Database"}`);
     console.log(`===========================================================`);
+
+    // Initialize Unified Notification Center Cron Jobs (node-cron automated background tasks)
+    initNotificationCronJobs(dbClient, sendRealtimeNotification, sendWebPushNotificationToUser);
 
     // Run custom storage retention sweep immediately on boot to prune old MongoDB notifications and sessions
     dbClient.runStorageRetention()

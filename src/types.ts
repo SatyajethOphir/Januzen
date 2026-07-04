@@ -187,3 +187,26 @@ export interface Advertisement {
   expiresAt: string;       // sentAt/scheduledFor + 48 hours — for auto-cleanup
 }
 
+export interface PaymentRecord {
+  id: string; // internal payment record ID, e.g. "pay_rec_" + Date.now()
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
+  razorpaySignature?: string;
+  orderId?: string; // internal JANUZEN order ID
+  userId: string;
+  userName?: string;
+  userEmail?: string;
+  amount: number;
+  currency: string;
+  paymentMethod?: string; // "card" | "upi" | "netbanking" | "wallet" | "emi" | "paylater" | "cod" | string
+  status: "Created" | "Pending" | "Authorized" | "Captured" | "Processing" | "Success" | "Failed" | "Cancelled" | "Expired" | "Refunded" | "Partially Refunded" | "Disputed" | string;
+  verificationStatus: "Verified" | "Unverified" | "Failed" | "Pending_Confirmation" | "COD_Confirmed" | string;
+  refundStatus?: "None" | "Initiated" | "Processed" | "Failed" | string;
+  timestamp: string;
+  failureReason?: string;
+  webhookEvents?: Array<{ event: string; timestamp: string; payload?: any }>;
+  retryCount?: number;
+  debitedButUnconfirmed?: boolean;
+}
+
+

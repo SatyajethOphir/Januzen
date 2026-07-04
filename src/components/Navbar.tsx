@@ -5,6 +5,7 @@ import { ShoppingBag, User, LogOut, ShieldAlert, Activity, BookOpen, Menu, X, Se
 import { User as UserType } from "../types";
 import { JanuzenLogo, NuthanMedicalsLogo, JaStationeryLogo } from "./Logos";
 import { subscribeToPush } from "../lib/push";
+import { NotificationDrawer } from "./NotificationDrawer";
 
 interface NavbarProps {
   currentView: string;
@@ -20,8 +21,7 @@ interface NavbarProps {
 export default function Navbar({ currentView, onNavigate, currentUser, onLogout, cartCount, theme = "light", onThemeChange, onCartClick }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const [notifications, setNotifications] = React.useState<any[]>([]);
-  const [notifOpen, setNotifOpen] = React.useState(false);
-  const [mobileNotifOpen, setMobileNotifOpen] = React.useState(false);
+  const [isNotifDrawerOpen, setIsNotifDrawerOpen] = React.useState(false);
 
   // Notification Permission states for native push alerts
   const [notifPermission, setNotifPermission] = React.useState(() => {
@@ -224,6 +224,27 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
+  const handleMarkAllAsRead = async () => {
+    const unread = notifications.filter((n) => !n.isRead);
+    if (unread.length === 0) return;
+    const jwtToken = localStorage.getItem("januzen_token") || sessionStorage.getItem("januzen_token");
+    if (!jwtToken) return;
+    try {
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      await Promise.all(
+        unread.map((n) =>
+          fetch(`/api/notifications/${n.id}/read`, {
+            method: "PUT",
+            headers: { "Authorization": `Bearer ${jwtToken}` }
+          })
+        )
+      );
+      (window as any).showToast?.("All notifications marked as read! ✔️", "success");
+    } catch (e) {
+      console.error("Error marking all read:", e);
+    }
+  };
+
   const handleMarkAsRead = async (notifId: string) => {
     const jwtToken = localStorage.getItem("januzen_token") || sessionStorage.getItem("januzen_token");
     if (!jwtToken) return;
@@ -356,9 +377,11 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
             {currentUser && (
               <div className="relative">
                 <button
-                  onClick={() => setNotifOpen(!notifOpen)}
+                  type="button"
+                  onClick={() => setIsNotifDrawerOpen(true)}
                   className="relative p-1.5 xl:p-2 text-gray-300 hover:text-white transition-colors cursor-pointer"
                   title="Notifications Alert Panel"
+                  aria-label="Open notifications drawer"
                 >
                   <Bell className="h-5 w-5" />
                   {unreadCount > 0 && (
@@ -367,59 +390,6 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
                     </span>
                   )}
                 </button>
-
-                {notifOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-80 bg-white text-slate-800 border border-gray-200 rounded-xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-                    <div className="p-3 bg-[#0D1B2A] text-white flex justify-between items-center">
-                      <span className="font-serif font-bold text-xs tracking-wide">Notifications Box</span>
-                      {unreadCount > 0 && (
-                        <span className="bg-rose-500 text-[9px] font-bold px-1.5 py-0.5 rounded-full">
-                          {unreadCount} New
-                        </span>
-                      )}
-                    </div>
-                    {notifPermission === "default" && (
-                      <div className="p-3 bg-emerald-50/70 border-b border-emerald-100/50 flex flex-col gap-1.5">
-                        <p className="text-[10px] text-slate-700 leading-normal font-sans">
-                          Stay updated in real-time! Enable native push notifications for order statuses, secure OTPs, and announcements.
-                        </p>
-                        <button
-                          onClick={handleRequestPermission}
-                          className="w-full py-1 text-center bg-[#0F9B8E] hover:bg-[#0C7C72] text-white text-[10px] font-bold tracking-wider rounded uppercase font-sans cursor-pointer transition-colors"
-                        >
-                          Enable Device Alerts
-                        </button>
-                      </div>
-                    )}
-                    <div className="max-h-64 overflow-y-auto divide-y divide-gray-100">
-                      {notifications.length === 0 ? (
-                        <div className="p-4 text-center text-xs text-gray-400 font-sans">
-                          No pending notifications in your inbox.
-                        </div>
-                      ) : (
-                        notifications.map((notif) => (
-                           <div key={notif.id} className={`p-3 text-xs leading-relaxed transition-colors ${notif.isRead ? "bg-slate-50/50" : "bg-emerald-50/30"}`}>
-                            <div className="flex justify-between items-start gap-1">
-                              <span className="font-serif font-bold text-slate-900 block">{notif.title}</span>
-                              <span className="text-[9px] text-gray-400 shrink-0 font-mono">
-                                {new Date(notif.createdAt).toLocaleDateString([], { month: "short", day: "numeric" })}
-                              </span>
-                            </div>
-                            <p className="text-slate-600 font-sans mt-1 whitespace-pre-wrap">{notif.content}</p>
-                            {!notif.isRead && (
-                              <button
-                                onClick={() => handleMarkAsRead(notif.id)}
-                                className="mt-1.5 text-[10px] text-[#0F9B8E] hover:text-[#0C7C72] font-bold font-mono tracking-wide flex items-center gap-0.5 cursor-pointer"
-                              >
-                                Mark as Read
-                              </button>
-                            )}
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 
@@ -561,9 +531,11 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
             {currentUser && (
               <div className="relative">
                 <button
-                  onClick={() => setMobileNotifOpen(!mobileNotifOpen)}
+                  type="button"
+                  onClick={() => setIsNotifDrawerOpen(true)}
                   className="relative p-2 text-gray-300 hover:text-white transition-colors cursor-pointer"
                   title="Notifications Alert Panel"
+                  aria-label="Open notifications drawer"
                 >
                   <Bell className="h-5 w-5" />
                   {unreadCount > 0 && (
@@ -572,67 +544,6 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
                     </span>
                   )}
                 </button>
-
-                {mobileNotifOpen && (
-                  <div className="fixed right-4 top-16 mt-2 w-[calc(100vw-2rem)] bg-white text-slate-800 border border-gray-200 rounded-xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-                    <div className="p-3 bg-[#0D1B2A] text-white flex justify-between items-center">
-                      <span className="font-serif font-bold text-xs tracking-wide">Notifications Box</span>
-                      {unreadCount > 0 && (
-                        <span className="bg-rose-500 text-[9px] font-bold px-1.5 py-0.5 rounded-full">
-                          {unreadCount} New
-                        </span>
-                      )}
-                    </div>
-                    {notifPermission !== "granted" && (
-                      <div className="p-3 bg-emerald-50/70 border-b border-emerald-100/50 flex flex-col gap-1.5">
-                        <p className="text-[10px] text-slate-700 leading-normal font-sans">
-                          Stay updated in real-time! To receive native lock-screen alerts, add JANUZEN to your Home Screen (PWA) or enable browser notifications.
-                        </p>
-                        {!("Notification" in window) ? (
-                          <div className="text-[9px] text-[#0F6E56] font-bold font-sans">
-                            📱 Tap Share ➜ "Add to Home Screen" to enable native push!
-                          </div>
-                        ) : (
-                          <button
-                            onClick={handleRequestPermission}
-                            className="w-full py-1 text-center bg-[#0F9B8E] hover:bg-[#0C7C72] text-white text-[10px] font-bold tracking-wider rounded uppercase font-sans cursor-pointer transition-colors"
-                          >
-                            Enable Device Alerts
-                          </button>
-                        )}
-                      </div>
-                    )}
-                    <div className="max-h-64 overflow-y-auto divide-y divide-gray-100">
-                      {notifications.length === 0 ? (
-                        <div className="p-4 text-center text-xs text-gray-400 font-sans">
-                          No pending notifications in your inbox.
-                        </div>
-                      ) : (
-                        notifications.map((notif) => (
-                          <div key={notif.id} className={`p-3 text-xs leading-relaxed transition-colors ${notif.isRead ? "bg-slate-50/50" : "bg-emerald-50/30"}`}>
-                            <div className="flex justify-between items-start gap-1">
-                              <span className="font-serif font-bold text-slate-900 block">{notif.title}</span>
-                              <span className="text-[9px] text-gray-400 shrink-0 font-mono">
-                                {new Date(notif.createdAt).toLocaleDateString([], { month: "short", day: "numeric" })}
-                              </span>
-                            </div>
-                            <p className="text-slate-600 font-sans mt-1 whitespace-pre-wrap">{notif.content}</p>
-                            {!notif.isRead && (
-                              <button
-                                onClick={() => {
-                                  handleMarkAsRead(notif.id);
-                                }}
-                                className="mt-1.5 text-[10px] text-[#0F9B8E] hover:text-[#0C7C72] font-bold font-mono tracking-wide flex items-center gap-0.5 cursor-pointer"
-                              >
-                                Mark as Read
-                              </button>
-                            )}
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 
@@ -698,33 +609,26 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
 
             {currentUser && (
               <div className="border-t border-gray-800 pt-3 mt-2 space-y-2">
-                <span className="px-3 text-[10px] font-mono tracking-widest text-[#0F9B8E] block uppercase font-bold">
-                  Alert Notifications ({unreadCount} unread)
-                </span>
-                <div className="max-h-48 overflow-y-auto px-1 divide-y divide-gray-800/50">
-                  {notifications.length === 0 ? (
-                    <p className="px-3 py-2 text-xs text-gray-500 italic">No alerts.</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setIsNotifDrawerOpen(true);
+                  }}
+                  className="w-full text-left flex items-center justify-between px-3 py-2.5 rounded-lg text-base font-medium cursor-pointer text-gray-300 hover:text-white hover:bg-slate-800/40"
+                >
+                  <span className="flex items-center gap-2">
+                    <Bell className="h-4 w-4 text-[#0F9B8E]" />
+                    <span>Notifications</span>
+                  </span>
+                  {unreadCount > 0 ? (
+                    <span className="bg-rose-500 text-white text-[10px] font-mono font-bold px-2 py-0.5 rounded-full">
+                      {unreadCount} unread
+                    </span>
                   ) : (
-                    notifications.map((notif) => (
-                      <div key={notif.id} className="p-3 text-xs bg-slate-900/40 my-1 rounded-lg">
-                        <div className="flex justify-between items-center">
-                          <span className={`${notif.isRead ? "text-gray-400" : "text-amber-400 font-bold"} block`}>
-                            {notif.title}
-                          </span>
-                          {!notif.isRead && (
-                            <button
-                              onClick={() => handleMarkAsRead(notif.id)}
-                              className="text-[9px] bg-teal-900 border border-teal-700 hover:bg-teal-800 text-teal-300 px-1 rounded uppercase tracking-wider font-bold"
-                            >
-                              read
-                            </button>
-                          )}
-                        </div>
-                        <p className="text-gray-400 font-sans mt-1 text-[11px] leading-relaxed whitespace-pre-wrap">{notif.content}</p>
-                      </div>
-                    ))
+                    <span className="text-xs text-gray-500 font-mono">All read</span>
                   )}
-                </div>
+                </button>
               </div>
             )}
 
@@ -804,6 +708,17 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
         </div>
       )}
     </nav>
+
+    {/* Slide-over Notification Drawer */}
+    <NotificationDrawer
+      isOpen={isNotifDrawerOpen}
+      onClose={() => setIsNotifDrawerOpen(false)}
+      notifications={notifications}
+      onMarkAsRead={handleMarkAsRead}
+      onMarkAllAsRead={handleMarkAllAsRead}
+      notifPermission={notifPermission}
+      onRequestPermission={handleRequestPermission}
+    />
     </>
   );
 }

@@ -19,6 +19,7 @@ export default function OrdersHistoryView({ onNavigate, currentUser }: OrdersHis
   const [cancellingId, setCancellingId] = React.useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = React.useState<string | null>(null);
   const [actionError, setActionError] = React.useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = React.useState<string | null>(null);
 
   const fetchUserOrders = React.useCallback(async (skipSpinner = false) => {
     if (!skipSpinner) {
@@ -92,6 +93,31 @@ export default function OrdersHistoryView({ onNavigate, currentUser }: OrdersHis
       console.error(err);
     } finally {
       setCancellingId(null);
+    }
+  };
+
+  const handleDownloadPDF = async (order: Order) => {
+    setDownloadingId(order.id);
+    try {
+      const token = localStorage.getItem("januzen_token") || sessionStorage.getItem("januzen_token");
+      const response = await fetch(`/api/orders/${order.id}/invoice/download?token=${token}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error("Failed to generate PDF");
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `JANUZEN-Invoice-${order.orderId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("PDF Download Error:", err);
+      alert("Error downloading PDF invoice. Please check your network or try again.");
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -456,14 +482,33 @@ export default function OrdersHistoryView({ onNavigate, currentUser }: OrdersHis
                           </span>
                         </div>
 
-                        <div className="pt-2">
+                        <div className="grid grid-cols-2 gap-2 pt-2">
                           <button
                             onClick={() => onNavigate("invoice", { orderId: order.id })}
                             style={{ cursor: "pointer" }}
-                            className="w-full py-2 px-3 border border-emerald-200 hover:border-[#0F6E56]/30 bg-emerald-50 hover:bg-[#0F6E56]/10 text-[#0F6E56] text-xs font-mono font-bold uppercase rounded-lg transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                            className="w-full py-2 px-2 border border-emerald-200 hover:border-[#0F6E56]/30 bg-emerald-50 hover:bg-[#0F6E56]/10 text-[#0F6E56] text-xs font-mono font-bold uppercase rounded-lg transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer"
                           >
-                            📄 View Digital Invoice
+                            📄 View Invoice
                           </button>
+                          <button
+                            onClick={() => handleDownloadPDF(order)}
+                            disabled={downloadingId === order.id}
+                            style={{ cursor: "pointer" }}
+                            className="w-full py-2 px-2 border border-blue-200 hover:border-blue-300 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-mono font-bold uppercase rounded-lg transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
+                          >
+                            {downloadingId === order.id ? "⌛ Downloading..." : "📥 Download PDF"}
+                          </button>
+                        </div>
+
+                        <div className="pt-1.5">
+                          <a
+                            href={`https://wa.me/919666588553?text=Hello%20JANUZEN%20Support,%20I%20need%20assistance%20with%20my%20order%20%23${order.orderId}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full py-1.5 px-3 border border-emerald-300 bg-[#E6F4EA] hover:bg-[#CEEAD6] text-[#0F6E56] text-[11px] font-sans font-bold rounded-lg transition-all flex items-center justify-center gap-1.5"
+                          >
+                            💬 WhatsApp Support & Manual Order Help
+                          </a>
                         </div>
 
                         {/* Customer Cancel action button */}

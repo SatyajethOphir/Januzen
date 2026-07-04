@@ -1,50 +1,12 @@
 {
-  "users": [
-    {
-      "id": "u1_admin",
-      "name": "Enterprise Admin",
-      "email": "admin@januzen.com",
-      "phone": "+91 9988776655",
-      "role": "admin",
-      "address": "JANUZEN HQ Tower, Suite 402, Bengaluru, IN"
-    },
-    {
-      "id": "u2_customer",
-      "name": "Satyajeeth Ophir",
-      "email": "satyajeeth.ophir@gmail.com",
-      "phone": "+91 9443322110",
-      "role": "customer",
-      "address": "Flat 12, Royal Meadows, Chennai, TN"
-    },
-    {
-      "id": "u_1780232727993",
-      "name": "Satyajeeth Ophir Peruka",
-      "email": "deveoper.sop111@gmail.com",
-      "phone": "1234567891",
-      "address": "Maryland, Chicago, USA",
-      "role": "customer"
-    },
-    {
-      "id": "u_1780234704935",
-      "name": "Satyajeeth osmania Account",
-      "email": "satyajeethophirp.be28@uceou.edu",
-      "phone": "9441435410",
-      "address": "Maryland, Chicago, USA",
-      "role": "customer"
-    }
-  ],
-  "passwords": {
-    "u1_admin": "$2b$12$UO9nSAhgKLbY60uPkw39GeqSOiRY3Yh8kGYZZuY.EykYLXXNgGa0K",
-    "u2_customer": "$2b$12$UO9nSAhgKLbY60uPkw39GeWiSDjWxFw1bxi8p7uP0HtMKNqfJSU7m",
-    "u_1780232727993": "$2b$12$xBwUsLQ5UJ1rdUSLECYKIua170bq4KJ4SOYX0HT/VbIR7v9n7GKB6",
-    "u_1780234704935": "$2b$12$E.jLR.EIikU.1ZFGTpa3h.LIuGEVsJN.ezv5F4NrSmTqvl3lxzajK"
-  },
+  "users": [],
+  "passwords": {},
   "products": [
     {
       "id": "m1",
       "name": "Amoxicillin 500mg Capsules",
       "description": "Broad-spectrum antibiotic used to treat bacterial infections. Prescription required. Store below 25°C in a dry place.",
-      "price": 18.5,
+      "price": 450,
       "category": "Prescriptions",
       "shop": "medicals",
       "stock": 45,
@@ -55,20 +17,20 @@
         "Essential Handhelds"
       ],
       "featured": true,
-      "isActive": false,
+      "isActive": true,
       "stockQuantity": 45,
       "lowStockThreshold": 5,
       "stockStatus": "in_stock",
       "brand": "JANUZEN",
       "piecesPerUnit": 1,
       "totalUnitsAvailable": 45,
-      "pricePerPiece": 18.5
+      "pricePerPiece": 450
     },
     {
       "id": "m2",
       "name": "Metformin 850mg Tablets",
       "description": "Oral anti-diabetic drug indicated for type-2 diabetes mellitus management. Aids in blood sugar regulation.",
-      "price": 12.9,
+      "price": 240,
       "category": "Prescriptions",
       "shop": "medicals",
       "stock": 60,
@@ -79,20 +41,20 @@
         "Maintenance"
       ],
       "featured": false,
-      "isActive": false,
+      "isActive": true,
       "stockQuantity": 60,
       "lowStockThreshold": 5,
       "stockStatus": "in_stock",
       "brand": "JANUZEN",
       "piecesPerUnit": 1,
       "totalUnitsAvailable": 60,
-      "pricePerPiece": 12.9
+      "pricePerPiece": 240
     },
     {
       "id": "m3",
       "name": "Ibuprofen 400mg Rapid Relief",
       "description": "Anti-inflammatory and pain reliever. Effective against headaches, muscle pain, fever, and dental discomfort.",
-      "price": 6.25,
+      "price": 95,
       "category": "Over-the-Counter",
       "shop": "medicals",
       "stock": 120,
@@ -103,23 +65,23 @@
         "Anti-inflammatory"
       ],
       "featured": true,
-      "isActive": false,
+      "isActive": true,
       "stockQuantity": 120,
       "lowStockThreshold": 5,
       "stockStatus": "in_stock",
       "brand": "JANUZEN",
       "piecesPerUnit": 1,
       "totalUnitsAvailable": 120,
-      "pricePerPiece": 6.25
+      "pricePerPiece": 95
     },
     {
       "id": "m4",
       "name": "Cetirizine 10mg Allergy Shield",
       "description": "24-hour non-drowsy antihistamine for quick relief from running nose, sneezing, itchy eyes, and seasonal pollen allergies.",
-      "price": 8.99,
+      "price": 120,
       "category": "Over-the-Counter",
       "shop": "medicals",
-      "stock": 79,
+      "stock": 80,
       "image": "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=600&auto=format&fit=crop",
       "tags": [
         "Histamine Blocker",
@@ -128,19 +90,19 @@
       ],
       "featured": false,
       "isActive": true,
-      "stockQuantity": 79,
+      "stockQuantity": 80,
       "lowStockThreshold": 5,
       "stockStatus": "in_stock",
       "brand": "JANUZEN",
       "piecesPerUnit": 1,
-      "totalUnitsAvailable": 79,
-      "pricePerPiece": 8.99
+      "totalUnitsAvailable": 80,
+      "pricePerPiece": 120
     },
     {
       "id": "m5",
       "name": "Digital Upper Arm Blood Pressure Monitor",
       "description": "Fully automatic, clinical accuracy blood pressure monitor with dynamic cuff size 22-42cm, heart rate tracker, and 90 records memory.",
-      "price": 49.5,
+      "price": 2999,
       "category": "Medical Devices",
       "shop": "medicals",
       "stock": 15,
@@ -158,16 +120,16 @@
       "brand": "JANUZEN",
       "piecesPerUnit": 1,
       "totalUnitsAvailable": 15,
-      "pricePerPiece": 49.5
+      "pricePerPiece": 2999
     },
     {
       "id": "m6",
       "name": "Fingertip Pulse Oximeter",
       "description": "Dual-color OLED reader checking oxygen saturation level (SpO2) and pulse rate quickly and accurately. Perfect for home wellness care.",
-      "price": 24.95,
+      "price": 1499,
       "category": "Medical Devices",
       "shop": "medicals",
-      "stock": 99,
+      "stock": 3,
       "image": "https://images.unsplash.com/photo-1628151015664-7a7442749ec3?w=600&auto=format&fit=crop",
       "tags": [
         "Oxygen Tracker",
@@ -176,19 +138,19 @@
       ],
       "featured": false,
       "isActive": true,
-      "stockQuantity": 99,
+      "stockQuantity": 3,
       "lowStockThreshold": 5,
-      "stockStatus": "in_stock",
+      "stockStatus": "low_stock",
       "brand": "JANUZEN",
       "piecesPerUnit": 1,
-      "totalUnitsAvailable": 99,
-      "pricePerPiece": 24.95
+      "totalUnitsAvailable": 3,
+      "pricePerPiece": 1499
     },
     {
       "id": "m7",
       "name": "Premium Multi-size Adhesive Bandages Pack",
       "description": "Assorted flexible, waterproof fabric bandages with sterile non-stick wound pads to protect cuts and minor abrasions.",
-      "price": 5.5,
+      "price": 60,
       "category": "First Aid",
       "shop": "medicals",
       "stock": 140,
@@ -206,13 +168,13 @@
       "brand": "JANUZEN",
       "piecesPerUnit": 1,
       "totalUnitsAvailable": 140,
-      "pricePerPiece": 5.5
+      "pricePerPiece": 60
     },
     {
       "id": "m8",
       "name": "Complete Emergency First Aid Kit",
       "description": "Compact nylon zip container featuring 120 pieces premium sterile and antiseptic components for minor household and driving emergency management.",
-      "price": 34.99,
+      "price": 1650,
       "category": "First Aid",
       "shop": "medicals",
       "stock": 22,
@@ -230,13 +192,13 @@
       "brand": "JANUZEN",
       "piecesPerUnit": 1,
       "totalUnitsAvailable": 22,
-      "pricePerPiece": 34.99
+      "pricePerPiece": 1650
     },
     {
       "id": "m9",
       "name": "Multivitamin A-Z Daily Immune Boost",
       "description": "Premium micronutrient support formulated with Vitamin C, D3, Zinc, Ginseng, and iron to improve persistent cell energy and robust daily immunity.",
-      "price": 19.99,
+      "price": 720,
       "category": "Wellness & Vitamins",
       "shop": "medicals",
       "stock": 95,
@@ -254,13 +216,13 @@
       "brand": "JANUZEN",
       "piecesPerUnit": 1,
       "totalUnitsAvailable": 95,
-      "pricePerPiece": 19.99
+      "pricePerPiece": 720
     },
     {
       "id": "m10",
       "name": "High Pure Omega-3 Fish Oil 1000mg",
       "description": "Triple-strength softgels packed with EPA and DHA values supporting natural cardiovascular rhythms, mental clarity, and visual precision.",
-      "price": 22.5,
+      "price": 890,
       "category": "Wellness & Vitamins",
       "shop": "medicals",
       "stock": 65,
@@ -278,13 +240,13 @@
       "brand": "JANUZEN",
       "piecesPerUnit": 1,
       "totalUnitsAvailable": 65,
-      "pricePerPiece": 22.5
+      "pricePerPiece": 890
     },
     {
       "id": "s1",
       "name": "Double A A4 Copy Paper 80gsm",
       "description": "Premium smooth copy sheets engineered for high-speed printer execution. Smear-resistant, high brightness level, superb opacity.",
-      "price": 7.95,
+      "price": 320,
       "category": "Office Paper",
       "shop": "stationery",
       "stock": 250,
@@ -302,13 +264,13 @@
       "brand": "JANUZEN",
       "piecesPerUnit": 1,
       "totalUnitsAvailable": 250,
-      "pricePerPiece": 7.95
+      "pricePerPiece": 320
     },
     {
       "id": "s2",
       "name": "Luxurious Matte Black Fountain Pen",
       "description": "Full metal chassis, classic nib, and ink converter kit. Elegantly weighted barrel ensuring fatigue-free journaling cycles.",
-      "price": 38,
+      "price": 1850,
       "category": "Writing Instruments",
       "shop": "stationery",
       "stock": 18,
@@ -326,13 +288,13 @@
       "brand": "JANUZEN",
       "piecesPerUnit": 1,
       "totalUnitsAvailable": 18,
-      "pricePerPiece": 38
+      "pricePerPiece": 1850
     },
     {
       "id": "s3",
       "name": "Retractable Gel Ink Pens (12 Color Set)",
       "description": "Vibrant gel dye colors, 0.5mm extra fine tips, smearless fast drying fluid ink. Soft cushioned visual grip sections.",
-      "price": 14.5,
+      "price": 450,
       "category": "Writing Instruments",
       "shop": "stationery",
       "stock": 90,
@@ -350,13 +312,13 @@
       "brand": "JANUZEN",
       "piecesPerUnit": 1,
       "totalUnitsAvailable": 90,
-      "pricePerPiece": 14.5
+      "pricePerPiece": 450
     },
     {
       "id": "s4",
       "name": "Classic Hardcover Dot Grid Journal",
       "description": "Thick 120gsm inkproof paper, expandible back folder, flat ribbon marker, elastic binding strap. Sturdy elegant leatherette.",
-      "price": 16.9,
+      "price": 699,
       "category": "Notebooks & Diaries",
       "shop": "stationery",
       "stock": 75,
@@ -374,13 +336,13 @@
       "brand": "JANUZEN",
       "piecesPerUnit": 1,
       "totalUnitsAvailable": 75,
-      "pricePerPiece": 16.9
+      "pricePerPiece": 699
     },
     {
       "id": "s5",
       "name": "Leatherbound Executive Weekly Planner",
       "description": "Premium diary detailing weekly slots, monthly goal spreads, project logs, and reference tracking, with luxury gold-edged sheets.",
-      "price": 29.99,
+      "price": 1249,
       "category": "Notebooks & Diaries",
       "shop": "stationery",
       "stock": 40,
@@ -398,13 +360,13 @@
       "brand": "JANUZEN",
       "piecesPerUnit": 1,
       "totalUnitsAvailable": 40,
-      "pricePerPiece": 29.99
+      "pricePerPiece": 1249
     },
     {
       "id": "s6",
       "name": "Expanding Document Accordion Wallet",
       "description": "13 tab separate internal pockets, colored divider bookmarks, elastic file clasp. Safe heavy-duty poly construction.",
-      "price": 11.2,
+      "price": 349,
       "category": "Organizers & Files",
       "shop": "stationery",
       "stock": 80,
@@ -422,16 +384,16 @@
       "brand": "JANUZEN",
       "piecesPerUnit": 1,
       "totalUnitsAvailable": 80,
-      "pricePerPiece": 11.2
+      "pricePerPiece": 349
     },
     {
       "id": "s7",
       "name": "All-in-one Wire Mesh Desk Organizer Suite",
       "description": "Includes letter sorting slots, pencil cups, paper clip bowls, dynamic memo box, and utility drawers in durable black finish.",
-      "price": 21.5,
+      "price": 850,
       "category": "Organizers & Files",
       "shop": "stationery",
-      "stock": 100,
+      "stock": 2,
       "image": "https://images.unsplash.com/photo-1517842645767-c639042777db?w=600&auto=format&fit=crop",
       "tags": [
         "Tidy Desk",
@@ -440,19 +402,19 @@
       ],
       "featured": true,
       "isActive": true,
-      "stockQuantity": 100,
+      "stockQuantity": 2,
       "lowStockThreshold": 5,
-      "stockStatus": "in_stock",
+      "stockStatus": "low_stock",
       "brand": "JANUZEN",
       "piecesPerUnit": 1,
-      "totalUnitsAvailable": 100,
-      "pricePerPiece": 21.5
+      "totalUnitsAvailable": 2,
+      "pricePerPiece": 850
     },
     {
       "id": "s8",
       "name": "Premium Professional Watercolor Paint Set",
       "description": "36 deeply saturated half pans, metal palette case, blending brush, luxury canvas mixing zones. Pure intense organic pigments.",
-      "price": 45,
+      "price": 2200,
       "category": "Art Supplies",
       "shop": "stationery",
       "stock": 15,
@@ -470,191 +432,12 @@
       "brand": "JANUZEN",
       "piecesPerUnit": 1,
       "totalUnitsAvailable": 15,
-      "pricePerPiece": 45
-    },
-    {
-      "id": "p_1780233365433",
-      "name": "Paracetamol",
-      "description": "Fever Tablet",
-      "price": 10,
-      "category": "Prescription",
-      "shop": "medicals",
-      "stock": 97,
-      "image": "https://plus.unsplash.com/premium_photo-1668487826871-2f2cac23ad56?q=80&w=1112&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-      "tags": [
-        "Fever Removal"
-      ],
-      "featured": true,
-      "isActive": true,
-      "stockQuantity": 97,
-      "lowStockThreshold": 5,
-      "stockStatus": "in_stock",
-      "brand": "JANUZEN",
-      "piecesPerUnit": 1,
-      "totalUnitsAvailable": 97,
-      "pricePerPiece": 10
-    },
-    {
-      "id": "p_1780234114347",
-      "name": "XO pens",
-      "description": "Hauser (Made in Germany)",
-      "price": 10,
-      "category": "Pens",
-      "shop": "medicals",
-      "stock": 100,
-      "image": "https://m.media-amazon.com/images/I/61q7gG2ytgL.jpg",
-      "tags": [
-        "Best Selling"
-      ],
-      "featured": true,
-      "isActive": true,
-      "stockQuantity": 100,
-      "lowStockThreshold": 5,
-      "stockStatus": "in_stock",
-      "brand": "JANUZEN",
-      "piecesPerUnit": 1,
-      "totalUnitsAvailable": 100,
-      "pricePerPiece": 10
-    },
-    {
-      "id": "p_1780234562148",
-      "name": "XO Pens",
-      "description": "Made in Germany",
-      "price": 10,
-      "category": "Pens",
-      "shop": "stationery",
-      "stock": 100,
-      "image": "https://m.media-amazon.com/images/I/61q7gG2ytgL.jpg",
-      "tags": [
-        "Waterproof"
-      ],
-      "featured": true,
-      "isActive": true,
-      "stockQuantity": 100,
-      "lowStockThreshold": 5,
-      "stockStatus": "in_stock",
-      "brand": "JANUZEN",
-      "piecesPerUnit": 1,
-      "totalUnitsAvailable": 100,
-      "pricePerPiece": 10
+      "pricePerPiece": 2200
     }
   ],
-  "orders": [
-    {
-      "id": "o_1780234783744",
-      "orderId": "JAN-20260531-5005",
-      "userId": "u_1780234704935",
-      "userName": "Satyajeeth osmania Account",
-      "userEmail": "satyajeethophirp.be28@uceou.edu",
-      "items": [
-        {
-          "productId": "p_1780233365433",
-          "name": "Paracetamol",
-          "price": 10,
-          "quantity": 3,
-          "image": "https://plus.unsplash.com/premium_photo-1668487826871-2f2cac23ad56?q=80&w=1112&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-          "shop": "medicals"
-        }
-      ],
-      "shippingAddress": {
-        "fullName": "Satyajeeth osmania Account",
-        "addressLine": "Maryland, Chicago, USA",
-        "city": "Chennai ",
-        "postalCode": "402003",
-        "phone": "9441435410"
-      },
-      "totals": {
-        "subtotal": 30,
-        "shipping": 4.99,
-        "tax": 1.5,
-        "total": 36.49
-      },
-      "status": "Dispatched",
-      "paymentMethod": "Cash on Delivery",
-      "createdAt": "2026-05-31T13:39:43.744Z"
-    },
-    {
-      "id": "o_1780233080279",
-      "orderId": "JAN-20260531-2588",
-      "userId": "u_1780232727993",
-      "userName": "Satyajeeth Ophir Peruka",
-      "userEmail": "deveoper.sop111@gmail.com",
-      "items": [
-        {
-          "productId": "m4",
-          "name": "Cetirizine 10mg Allergy Shield",
-          "price": 8.99,
-          "quantity": 1,
-          "image": "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=600&auto=format&fit=crop",
-          "shop": "medicals"
-        }
-      ],
-      "shippingAddress": {
-        "fullName": "Satyajeeth Ophir Peruka",
-        "addressLine": "Maryland, Chicago, USA",
-        "city": "OLD BOWENPALLY, SECUNDERABAD",
-        "postalCode": "500011",
-        "phone": "1234567891"
-      },
-      "totals": {
-        "subtotal": 8.99,
-        "shipping": 4.99,
-        "tax": 0.45,
-        "total": 14.43
-      },
-      "status": "Delivered",
-      "paymentMethod": "Cash on Delivery",
-      "createdAt": "2026-05-31T13:11:20.279Z"
-    },
-    {
-      "id": "o1",
-      "orderId": "JAN-20260531-1002",
-      "userId": "u2_customer",
-      "userName": "Satyajeeth Ophir",
-      "userEmail": "satyajeeth.ophir@gmail.com",
-      "items": [
-        {
-          "productId": "m3",
-          "name": "Ibuprofen 400mg Rapid Relief",
-          "price": 6.25,
-          "quantity": 2,
-          "image": "https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=600&auto=format&fit=crop",
-          "shop": "medicals"
-        },
-        {
-          "productId": "s4",
-          "name": "Classic Hardcover Dot Grid Journal",
-          "price": 16.9,
-          "quantity": 1,
-          "image": "https://images.unsplash.com/photo-1517842645767-c639042777db?w=600&auto=format&fit=crop",
-          "shop": "stationery"
-        }
-      ],
-      "shippingAddress": {
-        "fullName": "Satyajeeth Ophir",
-        "addressLine": "Flat 12, Royal Meadows",
-        "city": "Chennai",
-        "postalCode": "600001",
-        "phone": "+91 9443322110"
-      },
-      "totals": {
-        "subtotal": 29.4,
-        "shipping": 4.99,
-        "tax": 1.47,
-        "total": 35.86
-      },
-      "status": "Delivered",
-      "paymentMethod": "Credit Card",
-      "createdAt": "2026-05-28T14:22:00Z"
-    }
-  ],
+  "orders": [],
   "messages": [],
-  "newsletter": [
-    "satyajeeth.ophir@gmail.com",
-    "hello@januzen.com"
-  ],
-  "reviews": [],
-  "notifications": [],
+  "newsletter": [],
   "coupons": [
     {
       "id": "c1",
@@ -682,9 +465,22 @@
     }
   ],
   "marquee": "🇮🇳 Authorized Corporate Logistics & Pharmacy Dispatches. High-opacity copypaper and certified standard healthcare kits available. Enjoy Free Secure Freight Delivery on all basket orders above ₹1000!",
+  "reviews": [],
+  "notifications": [
+    {
+      "id": "notif_1783071804727_pdr37",
+      "userId": "all",
+      "title": "Your JANUZEN Security Verification Code",
+      "content": "Your 6-digit verification OTP is [515563]. Valid for 10 minutes. Do not share this code with anyone.",
+      "isRead": false,
+      "createdAt": "2026-07-03T09:43:24.727Z",
+      "expiresAt": "2026-07-17T09:43:24.727Z"
+    }
+  ],
   "wishlist": [],
   "sessions": [],
   "couponUsages": [],
   "auditLogs": [],
-  "marqueeSpeed": 30
+  "marqueeSpeed": 30,
+  "advertisements": []
 }
