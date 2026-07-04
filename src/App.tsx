@@ -243,6 +243,51 @@ export default function App() {
     }
   }, []);
 
+  // Listen for Service Worker navigation requests and background/foreground push notifications
+  React.useEffect(() => {
+    const handleSwMessage = (event: MessageEvent) => {
+      if (!event.data) return;
+      if (event.data.type === "NAVIGATE_TO" && event.data.url) {
+        let path = event.data.url;
+        try {
+          const u = new URL(event.data.url, window.location.origin);
+          path = u.pathname + u.search;
+        } catch (e) {}
+        if (path.startsWith("/orders") || path.includes("orders")) {
+          setNav({ page: "orders" });
+        } else if (path.includes("tab=security") || path.includes("otp") || path.includes("security")) {
+          setNav({ page: "profile", params: { tab: "security" } });
+        } else if (path.includes("tab=support") || path.includes("chat") || path.includes("support")) {
+          setNav({ page: "profile", params: { tab: "support" } });
+        } else if (path.startsWith("/profile")) {
+          setNav({ page: "profile" });
+        } else if (path.startsWith("/admin") || path.includes("admin")) {
+          setNav({ page: "admin" });
+        } else if (path.startsWith("/delivery")) {
+          setNav({ page: "delivery-hub" });
+        } else if (path.includes("shop") || path.includes("medicals")) {
+          setNav({ page: "medicals" });
+        } else if (path.includes("stationery")) {
+          setNav({ page: "stationery" });
+        }
+      } else if (event.data.type === "PUSH_RECEIVED" && event.data.data) {
+        const d = event.data.data;
+        const title = d.title ? (d.title.startsWith("JANUZEN") ? d.title : `JANUZEN | ${d.title}`) : "JANUZEN Alert";
+        showToastMsg(`🔔 ${title}: ${d.body || ""}`);
+      }
+    };
+
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.addEventListener("message", handleSwMessage);
+    }
+
+    return () => {
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.removeEventListener("message", handleSwMessage);
+      }
+    };
+  }, []);
+
   // Lightweight background sync when switching pages of the portal (completely non-blocking)
   React.useEffect(() => {
     if (sessionLoading) return;
@@ -387,21 +432,13 @@ export default function App() {
   React.useEffect(() => {
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
 
-    const handleSWMessage = (event: MessageEvent) => {
-      if (event.data?.type === "PUSH_RECEIVED") {
-        showToastMsg(`${event.data.data?.title || "JANUZEN"}: ${event.data.data?.body || ""}`, "info");
-      }
-    };
-
     const handleControllerChange = () => {
       checkAndRefreshSubscription(currentUser);
     };
 
-    navigator.serviceWorker.addEventListener("message", handleSWMessage);
     navigator.serviceWorker.addEventListener("controllerchange", handleControllerChange);
 
     return () => {
-      navigator.serviceWorker.removeEventListener("message", handleSWMessage);
       navigator.serviceWorker.removeEventListener("controllerchange", handleControllerChange);
     };
   }, [currentUser]);

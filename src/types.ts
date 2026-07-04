@@ -166,12 +166,16 @@ export interface AuditLog {
 export interface PushSubscription {
   id: string;
   userId?: string;        // optional — works for both logged-in and anonymous visitors
-  endpoint: string;
-  keys: {
+  endpoint: string;       // Push URL or FCM Registration Token
+  fcmToken?: string;      // Explicit FCM Token string
+  type?: "vapid" | "fcm"; // Discriminator between Web Push and FCM
+  deviceInfo?: string;    // Client user agent / device info
+  keys?: {
     p256dh: string;
     auth: string;
   };
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface Advertisement {

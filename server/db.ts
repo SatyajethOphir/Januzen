@@ -433,11 +433,15 @@ const PushSubscriptionSchema = new Schema({
   id: { type: String, required: true, unique: true },
   userId: { type: String, index: true },
   endpoint: { type: String, required: true, unique: true, index: true },
+  fcmToken: { type: String, index: true },
+  type: { type: String, default: "vapid" },
+  deviceInfo: { type: String },
   keys: {
-    p256dh: { type: String, required: true },
-    auth: { type: String, required: true }
+    p256dh: { type: String },
+    auth: { type: String }
   },
-  createdAt: { type: String, required: true }
+  createdAt: { type: String, required: true },
+  updatedAt: { type: String }
 });
 
 const AdvertisementSchema = new Schema({
@@ -1980,6 +1984,70 @@ export const dbClient = {
       db.pushSubscriptions = db.pushSubscriptions.filter(s => s.endpoint !== endpoint);
       saveLocalDB(db);
       return initialLen > db.pushSubscriptions.length;
+    }
+  },
+
+  deleteSubscriptionByToken: async (token: string): Promise<boolean> => {
+    if (isMongo) {
+      const res = await MongoPushSubscription.deleteMany({ $or: [{ endpoint: token }, { fcmToken: token }] });
+      return (res.deletedCount || 0) > 0;
+    } else {
+      const db = loadLocalDB();
+      if (!db.pushSubscriptions) db.pushSubscriptions = [];
+      const initialLen = db.pushSubscriptions.length;
+      db.pushSubscriptions = db.pushSubscriptions.filter(s => s.endpoint !== token && s.fcmToken !== token);
+      saveLocalDB(db);
+      return initialLen > db.pushSubscriptions.length;
+    }
+  },
+
+  updateSubscriptionToken: async (oldToken: string, newToken: string, userId?: string, deviceInfo?: string): Promise<boolean> => {
+    const updatedAt = new Date().toISOString();
+    if (isMongo) {
+      const res = await MongoPushSubscription.findOneAndUpdate(
+        { $or: [{ endpoint: oldToken }, { fcmToken: oldToken }] },
+        { endpoint: newToken, fcmToken: newToken, type: "fcm", updatedAt, ...(userId ? { userId } : {}), ...(deviceInfo ? { deviceInfo } : {}) },
+        { new: true }
+      );
+      if (!res) {
+        // If not found, insert a new record
+        await MongoPushSubscription.create({
+          id: Math.random().toString(36).substring(2, 11),
+          userId: userId || "anonymous",
+          endpoint: newToken,
+          fcmToken: newToken,
+          type: "fcm",
+          deviceInfo: deviceInfo || "Web Client",
+          createdAt: updatedAt,
+          updatedAt
+        });
+      }
+      return true;
+    } else {
+      const db = loadLocalDB();
+      if (!db.pushSubscriptions) db.pushSubscriptions = [];
+      const idx = db.pushSubscriptions.findIndex(s => s.endpoint === oldToken || s.fcmToken === oldToken);
+      if (idx > -1) {
+        db.pushSubscriptions[idx].endpoint = newToken;
+        db.pushSubscriptions[idx].fcmToken = newToken;
+        db.pushSubscriptions[idx].type = "fcm";
+        db.pushSubscriptions[idx].updatedAt = updatedAt;
+        if (userId) db.pushSubscriptions[idx].userId = userId;
+        if (deviceInfo) db.pushSubscriptions[idx].deviceInfo = deviceInfo;
+      } else {
+        db.pushSubscriptions.push({
+          id: Math.random().toString(36).substring(2, 11),
+          userId: userId || "anonymous",
+          endpoint: newToken,
+          fcmToken: newToken,
+          type: "fcm",
+          deviceInfo: deviceInfo || "Web Client",
+          createdAt: updatedAt,
+          updatedAt
+        });
+      }
+      saveLocalDB(db);
+      return true;
     }
   },
 

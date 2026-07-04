@@ -16,6 +16,8 @@ import { generateInvoice, generateOfflineBill } from "./server/invoice";
 import { sendInvoiceEmail, sendOfflineBillEmail, testSmtpConnection } from "./server/mailer";
 import webpush from "web-push";
 import { sendUnifiedNotification, initNotificationCronJobs, NotificationType } from "./server/notificationCenter";
+import { NotificationService } from "./server/services/notificationService";
+import { createNotificationRoutes } from "./server/routes/notificationRoutes";
 
 const PORT = 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "JANUZEN_JWT_SECRET_KEY";
@@ -97,52 +99,34 @@ function sendRealtimeNotification(userId: string, notification: any) {
 }
 
 async function sendWebPushNotificationToUser(userId: string, title: string, content: string, linkUrl?: string, imageUrl?: string): Promise<{ successCount: number; failCount: number }> {
-  let successCount = 0;
-  let failCount = 0;
-  if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) return { successCount, failCount };
+  let type = "general";
+  if (title.toLowerCase().includes("order") || title.toLowerCase().includes("delivery") || title.toLowerCase().includes("dispatch") || linkUrl?.includes("orders")) {
+    type = "order";
+  } else if (title.toLowerCase().includes("advertisement") || title.toLowerCase().includes("broadcast") || title.toLowerCase().includes("promo")) {
+    type = "advertisement";
+  } else if (title.toLowerCase().includes("otp") || title.toLowerCase().includes("security") || title.toLowerCase().includes("verification")) {
+    type = "otp";
+  }
+
+  const payload = {
+    title,
+    body: content,
+    url: linkUrl || "/",
+    image: imageUrl,
+    type,
+    category: type as any
+  };
+
   try {
-    const subscriptions = await dbClient.getAllSubscriptions();
-    const targetSubs = (userId === "all" || userId === "broadcast")
-      ? subscriptions
-      : subscriptions.filter(s => String(s.userId) === String(userId));
-
-    if (targetSubs.length === 0) return { successCount, failCount };
-
-    const formattedTitle = title.startsWith("JANUZEN") ? title : "JANUZEN | " + title;
-    let type = "general";
-    if (title.toLowerCase().includes("order") || title.toLowerCase().includes("delivery") || title.toLowerCase().includes("dispatch") || linkUrl?.includes("orders")) {
-      type = "order";
-    } else if (title.toLowerCase().includes("advertisement") || title.toLowerCase().includes("broadcast") || title.toLowerCase().includes("promo")) {
-      type = "advertisement";
-    }
-
-    const payload = JSON.stringify({
-      title: formattedTitle,
-      body: content,
-      icon: "/appicon.png",
-      image: imageUrl || undefined,
-      url: linkUrl || "/",
-      type
-    });
-
-    for (const sub of targetSubs) {
-      try {
-        await webpush.sendNotification(
-          { endpoint: sub.endpoint, keys: sub.keys },
-          payload
-        );
-        successCount++;
-      } catch (sendErr: any) {
-        failCount++;
-        if (sendErr.statusCode === 410 || sendErr.statusCode === 404) {
-          await dbClient.deleteSubscription(sub.endpoint);
-        }
-      }
+    if (userId === "all" || userId === "broadcast") {
+      return await NotificationService.sendToAllUsers(payload);
+    } else {
+      return await NotificationService.sendToUser(userId, payload);
     }
   } catch (err) {
-    console.error("[WEBPUSH] Error sending web push to user:", userId, err);
+    console.error("[WEBPUSH] Error sending web push via NotificationService to user:", userId, err);
+    return { successCount: 0, failCount: 0 };
   }
-  return { successCount, failCount };
 }
 
 async function createAndSendNotification(userId: string, title: string, content: string, linkUrl?: string, imageUrl?: string) {
@@ -315,33 +299,9 @@ async function startServer() {
 
   // --- API ROUTES ---
 
-  // --- WEBPUSH & ADVERTISEMENT SYSTEM ROUTES ---
-
-  // Public: subscribe to push notifications
-  app.post("/api/push/subscribe", async (req, res) => {
-    const { subscription, userId } = req.body;
-    if (!subscription || !subscription.endpoint) {
-      return res.status(400).json({ error: "Invalid subscription object." });
-    }
-    try {
-      const saved = await dbClient.saveSubscription({
-        id: "sub_" + Date.now(),
-        userId: userId || undefined,
-        endpoint: subscription.endpoint,
-        keys: subscription.keys,
-        createdAt: new Date().toISOString()
-      });
-      res.status(201).json({ message: "Subscribed to push notifications.", subscription: saved });
-    } catch (e: any) {
-      console.error("[PUSH SUBSCRIBE] Error:", e);
-      res.status(500).json({ error: "Failed to save push subscription." });
-    }
-  });
-
-  // Public: Get VAPID Public Key for subscription on frontend
-  app.get("/api/push/vapid-public-key", (req, res) => {
-    res.json({ publicKey: process.env.VAPID_PUBLIC_KEY || "" });
-  });
+  // --- MODULAR WEBPUSH & NOTIFICATION ROUTES ---
+  app.use("/api/push", createNotificationRoutes(authenticateAdmin));
+  app.use("/api", createNotificationRoutes(authenticateAdmin)); // Also mount at root /api so /api/admin/send-user works directly via admin panel
 
   // Admin: Send push advertisement to all active subscribers
   app.post("/api/admin/advertisement/send", authenticateAdmin, async (req, res) => {

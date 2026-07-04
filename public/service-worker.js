@@ -1,4 +1,4 @@
-// JANUZEN PWA Service Worker
+// JANUZEN PWA Service Worker (Standard Open-Standards Web Push API)
 const CACHE_NAME = "januzen-v1";
 const ASSETS_TO_CACHE = [
   "/",
@@ -33,6 +33,101 @@ self.addEventListener("activate", (event) => {
         );
       })
     ])
+  );
+});
+
+// --- STANDARD WEB PUSH EVENT HANDLER (VAPID) ---
+self.addEventListener("push", (event) => {
+  console.log("📨 [SW PUSH] Push event received in background Service Worker!");
+
+  let payload = {};
+  if (event.data) {
+    try {
+      payload = event.data.json();
+    } catch (e) {
+      payload = { title: "JANUZEN Alert", body: event.data.text() };
+    }
+  }
+
+  const rawTitle = payload.title || "JANUZEN Notification";
+  const title = rawTitle.startsWith("JANUZEN") ? rawTitle : `JANUZEN | ${rawTitle}`;
+  const body = payload.body || "You have a new update from Januzen.";
+  const icon = payload.icon || "/appicon.png";
+  const badge = payload.badge || "/logo.png";
+  const image = payload.image || undefined;
+  const url = payload.url || "/";
+  const type = payload.type || payload.category || "general";
+  const tag = payload.tag || `januzen-${type}-${Date.now()}`;
+  const requireInteraction = payload.requireInteraction || type === "otp" || type === "order" || type === "security";
+
+  let actions = payload.actions;
+  if (!actions || actions.length === 0) {
+    if (type === "order" || type.startsWith("order_")) {
+      actions = [
+        { action: "view", title: "📦 View Order" },
+        { action: "dismiss", title: "✖ Dismiss" }
+      ];
+    } else if (type === "otp" || type === "security") {
+      actions = [
+        { action: "verify", title: "🔑 Verify Now" },
+        { action: "dismiss", title: "✖ Dismiss" }
+      ];
+    } else if (type === "chat" || type === "chat_message") {
+      actions = [
+        { action: "reply", title: "💬 Open Chat" },
+        { action: "dismiss", title: "✖ Dismiss" }
+      ];
+    } else if (type === "promotional_offer" || type === "offer") {
+      actions = [
+        { action: "shop", title: "🛍️ Shop Offer" },
+        { action: "dismiss", title: "✖ Dismiss" }
+      ];
+    } else {
+      actions = [
+        { action: "view", title: "👀 View" },
+        { action: "dismiss", title: "✖ Dismiss" }
+      ];
+    }
+  }
+
+  const options = {
+    body,
+    icon,
+    badge,
+    image,
+    vibrate: [200, 100, 200, 100, 200],
+    tag,
+    renotify: true,
+    requireInteraction,
+    data: {
+      url,
+      type,
+      category: payload.category || type,
+      timestamp: Date.now()
+    },
+    actions
+  };
+
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      // Check if any open PWA tab is actively visible and focused
+      const activeVisibleClient = clientList.find((client) => client.visibilityState === "visible");
+      if (activeVisibleClient) {
+        console.log("[SW PUSH] PWA is active and focused in foreground. Dispatching directly to window client.");
+        activeVisibleClient.postMessage({
+          type: "PUSH_RECEIVED",
+          data: { title, body, url, type, image, actions }
+        });
+        // Still show a silent or subtle notification if high urgency (OTP / Order out for delivery)
+        if (requireInteraction) {
+          return self.registration.showNotification(title, options);
+        }
+        return Promise.resolve();
+      } else {
+        console.log("[SW PUSH] PWA is minimized/closed/locked. Displaying OS-level system push notification.");
+        return self.registration.showNotification(title, options);
+      }
+    })
   );
 });
 
@@ -211,27 +306,44 @@ async function checkNewNotifications() {
   }
 }
 
-// Handle notification click to open or focus the app
+// Handle notification click to open or focus the app (supports action buttons and deep linking)
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const targetUrl = event.notification.data?.url || "/";
+
+  const action = event.action;
+  if (action === "dismiss" || action === "Dismiss" || action === "✖ Dismiss") {
+    return;
+  }
+
+  const data = event.notification.data || {};
+  let targetUrl = data.url || "/";
+
+  if (action === "verify" || action === "🔑 Verify Now" || data.type === "otp" || data.type === "security") {
+    targetUrl = "/profile?tab=security";
+  } else if (action === "reply" || action === "💬 Open Chat" || data.type === "chat") {
+    targetUrl = "/profile?tab=support";
+  } else if (action === "view" || action === "📦 View Order" || data.type === "order") {
+    targetUrl = "/orders";
+  }
+
+  const fullUrl = new URL(targetUrl, self.location.origin).href;
+
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
-        if (client.url === targetUrl && "focus" in client) {
-          return client.focus();
-        }
-      }
-      for (const client of clientList) {
-        if ("focus" in client) {
-          if ("navigate" in client && client.url !== targetUrl) {
-            client.navigate(targetUrl);
+        if (client.url.startsWith(self.location.origin) && "focus" in client) {
+          client.focus();
+          client.postMessage({ type: "NAVIGATE_TO", url: targetUrl });
+          if ("navigate" in client && client.url !== fullUrl) {
+            try {
+              client.navigate(fullUrl);
+            } catch (e) {}
           }
-          return client.focus();
+          return;
         }
       }
       if (self.clients.openWindow) {
-        return self.clients.openWindow(targetUrl);
+        return self.clients.openWindow(fullUrl);
       }
     })
   );
