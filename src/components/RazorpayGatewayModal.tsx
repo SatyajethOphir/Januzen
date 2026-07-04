@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { useClickOutside } from "../hooks/useClickOutside";
 import {
   CreditCard,
   ShoppingBag,
@@ -39,6 +40,24 @@ export const RazorpayGatewayModal: React.FC<RazorpayGatewayModalProps> = ({
   appliedCoupon,
   onSuccess
 }) => {
+  const modalRef = useRef<HTMLDivElement>(null);
+  useClickOutside(modalRef, onClose, isOpen);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    modalRef.current?.focus();
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isOpen]);
+
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
   const [paymentRecord, setPaymentRecord] = useState<any>(null);
@@ -289,8 +308,15 @@ export const RazorpayGatewayModal: React.FC<RazorpayGatewayModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in font-sans">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-200 flex flex-col shrink-0 max-h-[92vh]">
+    <>
+      <div
+        className="fixed inset-0 z-40 bg-slate-950/80 backdrop-blur-md"
+        onClick={onClose}
+        onTouchStart={onClose}
+        aria-hidden="true"
+      />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none animate-fade-in font-sans">
+        <div ref={modalRef} tabIndex={-1} className="pointer-events-auto outline-none bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-200 flex flex-col shrink-0 max-h-[92vh]">
         
         {/* Gateway Header */}
         <div className="bg-[#0b1b36] text-white p-5 flex justify-between items-center border-b border-slate-800">
@@ -728,5 +754,6 @@ export const RazorpayGatewayModal: React.FC<RazorpayGatewayModalProps> = ({
 
       </div>
     </div>
+    </>
   );
 };

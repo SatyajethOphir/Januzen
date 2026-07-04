@@ -42,6 +42,11 @@ export default function ProfileView({ currentUser, onNavigate, onUpdateCurrentUs
   const [confirmPassword, setConfirmPassword] = React.useState("");
   const [showPassword, setShowPassword] = React.useState(false);
 
+  const [notifPerm, setNotifPerm] = React.useState(() => {
+    if (typeof window === "undefined" || !("Notification" in window)) return "unsupported";
+    return Notification.permission;
+  });
+
   // Wishlist specific state
   const [wishlistItems, setWishlistItems] = React.useState<WishlistItem[]>([]);
   const [catalogProducts, setCatalogProducts] = React.useState<Product[]>([]);
@@ -525,6 +530,51 @@ export default function ProfileView({ currentUser, onNavigate, onUpdateCurrentUs
                   </div>
 
                 </div>
+              </div>
+
+              {/* Push Notification Status */}
+              <div className="bg-slate-50 border border-gray-200 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-mono">
+                <div>
+                  <div className="font-bold text-gray-900 uppercase tracking-wider mb-0.5">Device Push Alert Status</div>
+                  {notifPerm === "denied" && (
+                    <span className="text-rose-600 font-semibold flex items-center gap-1">
+                      ⚠️ Alerts blocked in browser settings. Please enable them in your site settings.
+                    </span>
+                  )}
+                  {notifPerm === "granted" && (
+                    <span className="text-emerald-600 font-semibold flex items-center gap-1">
+                      ✓ Push alerts enabled & active on this device.
+                    </span>
+                  )}
+                  {notifPerm === "default" && (
+                    <span className="text-amber-600 font-semibold flex items-center gap-1">
+                      🔔 Push notifications are not yet enabled on this device.
+                    </span>
+                  )}
+                  {notifPerm === "unsupported" && (
+                    <span className="text-slate-500">Push notifications are not supported by this browser.</span>
+                  )}
+                </div>
+                {notifPerm === "default" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (typeof window !== "undefined" && "Notification" in window) {
+                        Notification.requestPermission().then((p) => {
+                          setNotifPerm(p);
+                          if (p === "granted") {
+                            import("../lib/push").then(({ subscribeToPush }) => {
+                              subscribeToPush(currentUser?.id || undefined);
+                            });
+                          }
+                        });
+                      }
+                    }}
+                    className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-lg cursor-pointer shrink-0 transition-colors"
+                  >
+                    Enable Push Alerts
+                  </button>
+                )}
               </div>
 
               {/* Submission triggers */}

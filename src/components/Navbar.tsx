@@ -1,4 +1,5 @@
 import React from "react";
+import { useClickOutside } from "../hooks/useClickOutside";
 import { gsap } from "gsap";
 import { safeLocalStorage as localStorage, safeSessionStorage as sessionStorage } from "../utils/storage";
 import { ShoppingBag, User, LogOut, ShieldAlert, Activity, BookOpen, Menu, X, Settings, Palette, Bell } from "lucide-react";
@@ -58,6 +59,18 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
 
   const cartIconRef = React.useRef<HTMLButtonElement>(null);
   const cartIconRefMobile = React.useRef<HTMLButtonElement>(null);
+  const mobileMenuRef = React.useRef<HTMLElement>(null);
+
+  useClickOutside(mobileMenuRef, () => setMobileMenuOpen(false), mobileMenuOpen);
+
+  React.useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileMenuOpen(false);
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [mobileMenuOpen]);
 
   // Cart Icon GSAP hover effects (elite-themed)
   const handleCartMouseEnter = (isMobile: boolean) => {
@@ -296,7 +309,7 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
           </div>
         </div>
       )}
-      <nav className="sticky top-0 z-50 bg-[#0D1B2A] text-white border-b border-[#1E293B] shadow-md">
+      <nav ref={mobileMenuRef} className="sticky top-0 z-50 bg-[#0D1B2A] text-white border-b border-[#1E293B] shadow-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-4 xl:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo Brand */}

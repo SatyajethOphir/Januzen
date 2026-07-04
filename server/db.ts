@@ -816,6 +816,15 @@ export const dbClient = {
     }
   },
 
+  getUserById: async (id: string): Promise<User | null> => {
+    if (isMongo) {
+      return MongoUser.findOne({ id }).lean() as any;
+    } else {
+      const uArr = loadLocalDB().users;
+      return uArr.find(u => u.id === id) || null;
+    }
+  },
+
   getUserPasswordHash: async (userId: string): Promise<string | null> => {
     if (isMongo) {
       const uDoc = await MongoUser.findOne({ id: userId }).select("passwordHash").lean() as any;

@@ -104,17 +104,25 @@ async function sendWebPushNotificationToUser(userId: string, title: string, cont
     const subscriptions = await dbClient.getAllSubscriptions();
     const targetSubs = (userId === "all" || userId === "broadcast")
       ? subscriptions
-      : subscriptions.filter(s => String(s.userId) === String(userId) || !s.userId);
+      : subscriptions.filter(s => String(s.userId) === String(userId));
 
     if (targetSubs.length === 0) return { successCount, failCount };
 
     const formattedTitle = title.startsWith("JANUZEN") ? title : "JANUZEN | " + title;
+    let type = "general";
+    if (title.toLowerCase().includes("order") || title.toLowerCase().includes("delivery") || title.toLowerCase().includes("dispatch") || linkUrl?.includes("orders")) {
+      type = "order";
+    } else if (title.toLowerCase().includes("advertisement") || title.toLowerCase().includes("broadcast") || title.toLowerCase().includes("promo")) {
+      type = "advertisement";
+    }
+
     const payload = JSON.stringify({
       title: formattedTitle,
       body: content,
       icon: "/appicon.png",
       image: imageUrl || undefined,
-      url: linkUrl || "/"
+      url: linkUrl || "/",
+      type
     });
 
     for (const sub of targetSubs) {
@@ -1286,7 +1294,8 @@ async function startServer() {
       await createAndSendNotification(
         updatedOrder.userId,
         `Order Status Update: ${status}`,
-        note || `Hi ${updatedOrder.userName}, your corporate purchase status has been updated to "${status}" for order ${updatedOrder.orderId}.`
+        note || `Hi ${updatedOrder.userName}, your corporate purchase status has been updated to "${status}" for order ${updatedOrder.orderId}.`,
+        "/orders"
       );
 
       // Nodemailer Simulator Console Logging
@@ -1374,7 +1383,8 @@ async function startServer() {
       await createAndSendNotification(
         updatedOrder.userId,
         `Delivery Dispatch: ${status}`,
-        `Your order ${updatedOrder.orderId} is now updated to: ${status}. Note: ${note || ""}`
+        `Your order ${updatedOrder.orderId} is now updated to: ${status}. Note: ${note || ""}`,
+        "/orders"
       );
       res.json({ message: "Delivery stage updated", order: updatedOrder });
     } catch (e) {

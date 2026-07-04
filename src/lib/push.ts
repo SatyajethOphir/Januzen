@@ -61,3 +61,20 @@ export async function subscribeToPush(userId?: string): Promise<boolean> {
     return false;
   }
 }
+
+export async function checkAndRefreshSubscription(currentUser?: any) {
+  if (typeof window === "undefined" || !("serviceWorker" in navigator) || !("PushManager" in window)) return;
+  if (Notification.permission !== "granted") return;
+
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const existingSubscription = await registration.pushManager.getSubscription();
+
+    if (!existingSubscription) {
+      console.log("[PUSH] Subscription lost, re-subscribing...");
+      await subscribeToPush(currentUser?.id || currentUser);
+    }
+  } catch (err) {
+    console.error("[PUSH] Error checking or refreshing subscription:", err);
+  }
+}

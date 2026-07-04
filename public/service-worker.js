@@ -11,24 +11,28 @@ const ASSETS_TO_CACHE = [
 // Install Service Worker
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
-    }).then(() => self.skipWaiting())
+    Promise.all([
+      caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE).catch(() => {})),
+      self.skipWaiting()
+    ])
   );
 });
 
 // Activate Service Worker
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cache) => {
-          if (cache !== CACHE_NAME) {
-            return caches.delete(cache);
-          }
-        })
-      );
-    }).then(() => self.clients.claim())
+    Promise.all([
+      self.clients.claim(),
+      caches.keys().then((cacheNames) => {
+        return Promise.all(
+          cacheNames.map((cache) => {
+            if (cache !== CACHE_NAME) {
+              return caches.delete(cache);
+            }
+          })
+        );
+      })
+    ])
   );
 });
 
@@ -69,33 +73,46 @@ self.addEventListener("fetch", (event) => {
 
 // Support standard push events from browser notifications framework
 self.addEventListener("push", (event) => {
-  let payload = { title: "JANUZEN Alert", body: "New update on your JANUZEN account." };
-  if (event.data) {
-    try {
-      payload = event.data.json();
-    } catch (e) {
-      payload.body = event.data.text();
-    }
+  if (!event.data) return;
+
+  let data = {};
+  try {
+    data = event.data.json();
+  } catch (e) {
+    data = { body: event.data.text() };
   }
 
-  // Ensure title has "JANUZEN" prefix for mobile drawer
-  const title = payload.title.startsWith("JANUZEN") ? payload.title : `JANUZEN | ${payload.title}`;
-
+  // Always show the OS notification regardless of focus state
   const options = {
-    body: payload.body,
-    icon: payload.icon || "/appicon.png",
+    body: data.body || "",
+    icon: data.icon || "/appicon.png",
     badge: "/logo.png",
-    image: payload.image || payload.imageUrl || undefined,
-    vibrate: [200, 100, 200],
+    image: data.image || data.imageUrl || undefined,
     data: {
-      dateOfArrival: Date.now(),
-      primaryKey: "2",
-      url: payload.url || payload.linkUrl || "/"
-    }
+      url: data.url || data.linkUrl || "https://januzen.in",
+      type: data.type || "general"
+    },
+    vibrate: [200, 100, 200],
+    requireInteraction: false,
+    tag: data.tag || "januzen-notification",
+    renotify: true
   };
 
+  const title = data.title ? (data.title.startsWith("JANUZEN") ? data.title : `JANUZEN | ${data.title}`) : "JANUZEN";
+
   event.waitUntil(
-    self.registration.showNotification(title, options)
+    Promise.all([
+      self.registration.showNotification(title, options),
+      // Notify any open JANUZEN tabs so they can show an in-app toast too
+      self.clients.matchAll({ type: "window" }).then((clientList) => {
+        clientList.forEach((client) => {
+          client.postMessage({
+            type: "PUSH_RECEIVED",
+            data: { title: data.title || "JANUZEN", body: data.body || "", url: data.url || "https://januzen.in" }
+          });
+        });
+      })
+    ])
   );
 });
 

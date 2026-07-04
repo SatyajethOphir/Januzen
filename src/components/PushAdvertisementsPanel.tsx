@@ -1,4 +1,5 @@
 import React from "react";
+import { useClickOutside } from "../hooks/useClickOutside";
 import { 
   Send, History, Smartphone, Bell, Eye, Users, 
   Loader2, ExternalLink, Calendar, ShieldAlert
@@ -6,6 +7,7 @@ import {
 import { Advertisement } from "../types";
 
 export default function PushAdvertisementsPanel({ token }: { token: string | null }) {
+  const confirmModalRef = React.useRef<HTMLDivElement>(null);
   const [title, setTitle] = React.useState("");
   const [body, setBody] = React.useState("");
   const [imageUrl, setImageUrl] = React.useState("");
@@ -17,6 +19,23 @@ export default function PushAdvertisementsPanel({ token }: { token: string | nul
   const [loadingHistory, setLoadingHistory] = React.useState(false);
   const [sending, setSending] = React.useState(false);
   const [showConfirmModal, setShowConfirmModal] = React.useState(false);
+
+  useClickOutside(confirmModalRef, () => setShowConfirmModal(false), showConfirmModal);
+
+  React.useEffect(() => {
+    if (!showConfirmModal) return;
+    confirmModalRef.current?.focus();
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowConfirmModal(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [showConfirmModal]);
   
   const [errorMsg, setErrorMsg] = React.useState("");
   const [successMsg, setSuccessMsg] = React.useState("");
@@ -429,8 +448,15 @@ export default function PushAdvertisementsPanel({ token }: { token: string | nul
 
       {/* Confirmation Modal */}
       {showConfirmModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-2xl max-w-md w-full space-y-4 font-sans text-slate-900">
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-xs"
+            onClick={() => setShowConfirmModal(false)}
+            onTouchStart={() => setShowConfirmModal(false)}
+            aria-hidden="true"
+          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none animate-fade-in">
+            <div ref={confirmModalRef} tabIndex={-1} className="pointer-events-auto outline-none bg-white rounded-2xl border border-gray-200 p-6 shadow-2xl max-w-md w-full space-y-4 font-sans text-slate-900">
             <div className="flex items-center gap-3 text-amber-600 border-b border-gray-100 pb-3">
               <ShieldAlert className="h-6 w-6 shrink-0" />
               <h3 className="font-serif text-lg font-bold">Confirm Broadcast Campaign</h3>
@@ -465,6 +491,7 @@ export default function PushAdvertisementsPanel({ token }: { token: string | nul
             </div>
           </div>
         </div>
+        </>
       )}
     </div>
   );

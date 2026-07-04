@@ -1,4 +1,5 @@
 import React from "react";
+import { useClickOutside } from "../hooks/useClickOutside";
 import { safeLocalStorage as localStorage, safeSessionStorage as sessionStorage } from "../utils/storage";
 import { 
   TrendingUp, Activity, BookOpen, AlertCircle, Eye, Trash2, Check, CreditCard, 
@@ -441,7 +442,26 @@ export default function AdminDashboardView({ onNavigate }: { onNavigate?: (page:
   const [prodShopFilter, setProdShopFilter] = React.useState("");
 
   // Product CRUD Form Modal State
+  const formModalRef = React.useRef<HTMLDivElement>(null);
   const [showFormModal, setShowFormModal] = React.useState(false);
+
+  useClickOutside(formModalRef, () => setShowFormModal(false), showFormModal);
+
+  React.useEffect(() => {
+    if (!showFormModal) return;
+    formModalRef.current?.focus();
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowFormModal(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [showFormModal]);
+
   const [editingProduct, setEditingProduct] = React.useState<Product | null>(null);
   const [formName, setFormName] = React.useState("");
   const [formDesc, setFormDesc] = React.useState("");
@@ -2558,8 +2578,15 @@ export default function AdminDashboardView({ onNavigate }: { onNavigate?: (page:
 
       {/* --- ADD / EDIT PRODUCT FORM MODAL --- */}
       {showFormModal && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm select-none">
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-150 max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6 sm:p-8 space-y-6">
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowFormModal(false)}
+            onTouchStart={() => setShowFormModal(false)}
+            aria-hidden="true"
+          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none select-none">
+            <div ref={formModalRef} tabIndex={-1} className="pointer-events-auto outline-none bg-white rounded-2xl shadow-xl border border-gray-150 max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6 sm:p-8 space-y-6">
             
             <div className="flex justify-between items-start border-b border-gray-100 pb-3">
               <div>
@@ -2814,6 +2841,7 @@ export default function AdminDashboardView({ onNavigate }: { onNavigate?: (page:
             </form>
           </div>
         </div>
+        </>
       )}
 
     </div>

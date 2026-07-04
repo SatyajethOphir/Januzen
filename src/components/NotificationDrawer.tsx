@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
+import { useClickOutside } from "../hooks/useClickOutside";
 import {
   Bell,
   X,
@@ -34,6 +35,8 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
 }) => {
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [testing, setTesting] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useClickOutside(panelRef, onClose, isOpen);
 
   const handleTestUnifiedNotification = async () => {
     setTesting(true);
@@ -125,11 +128,12 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
       <div
         className="absolute inset-0 bg-slate-950/50 backdrop-blur-[2px] transition-opacity animate-fade-in cursor-pointer"
         onClick={onClose}
+        onTouchStart={onClose}
         aria-hidden="true"
       />
 
       {/* Slide-over Drawer Panel - Clicking inside does NOT close */}
-      <div className="fixed inset-y-0 right-0 max-w-md w-full bg-white shadow-2xl border-l border-slate-200 flex flex-col z-50 transform transition-transform duration-300 ease-in-out animate-in slide-in-from-right">
+      <div ref={panelRef} className="fixed inset-y-0 right-0 max-w-md w-full bg-white shadow-2xl border-l border-slate-200 flex flex-col z-50 transform transition-transform duration-300 ease-in-out animate-in slide-in-from-right">
         
         {/* Drawer Header (GitHub / Slack UX Style) */}
         <div className="p-4 sm:p-5 bg-[#0D1B2A] text-white flex items-center justify-between border-b border-slate-800 shrink-0">

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from "react";
+import { useClickOutside } from "../hooks/useClickOutside";
 import { gsap } from "gsap";
 import { X, Trash2, Plus, Minus, ArrowRight, ShoppingBag, ShoppingCart } from "lucide-react";
 import { CartItem } from "./CartView";
@@ -47,6 +48,22 @@ export default function SideCartDrawer({
       ease: "power1.in"
     }, "-=0.25");
   };
+
+  useClickOutside(containerRef, handleClose, isOpen);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") handleClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen) {
@@ -101,6 +118,7 @@ export default function SideCartDrawer({
       <div 
         ref={backdropRef}
         onClick={handleClose}
+        onTouchStart={handleClose}
         className="absolute inset-0 bg-[#050C16]/60 backdrop-blur-sm cursor-pointer"
       />
 

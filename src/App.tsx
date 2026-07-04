@@ -5,7 +5,7 @@ import Navbar from "./components/Navbar";
 import { Product, User, ProductOption } from "./types";
 import type { CartItem } from "./components/CartView";
 import OfficialLoader from "./components/OfficialLoader";
-import { subscribeToPush } from "./lib/push";
+import { subscribeToPush, checkAndRefreshSubscription } from "./lib/push";
 
 import HomeView from "./components/HomeView";
 import ShopView from "./components/ShopView";
@@ -201,6 +201,7 @@ export default function App() {
           const data = await res.json();
           if (res.ok) {
             setCurrentUser(data.user);
+            checkAndRefreshSubscription(data.user);
           } else {
             localStorage.removeItem("januzen_token");
             localStorage.removeItem("januzen_user");
@@ -382,6 +383,28 @@ export default function App() {
     }
     addToast(msg, finalType);
   };
+
+  React.useEffect(() => {
+    if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+
+    const handleSWMessage = (event: MessageEvent) => {
+      if (event.data?.type === "PUSH_RECEIVED") {
+        showToastMsg(`${event.data.data?.title || "JANUZEN"}: ${event.data.data?.body || ""}`, "info");
+      }
+    };
+
+    const handleControllerChange = () => {
+      checkAndRefreshSubscription(currentUser);
+    };
+
+    navigator.serviceWorker.addEventListener("message", handleSWMessage);
+    navigator.serviceWorker.addEventListener("controllerchange", handleControllerChange);
+
+    return () => {
+      navigator.serviceWorker.removeEventListener("message", handleSWMessage);
+      navigator.serviceWorker.removeEventListener("controllerchange", handleControllerChange);
+    };
+  }, [currentUser]);
 
   // --- CART MANAGEMENT ---
   const handleAddToBag = (product: Product, qty: number = 1, selectedOption?: ProductOption) => {
