@@ -298,10 +298,10 @@ export const RazorpayGatewayModal: React.FC<RazorpayGatewayModalProps> = ({
           return;
         }
       }
-      alert(`Current Status: ${data.paymentRecord?.status || "Processing"}\nVerification: ${data.paymentRecord?.verificationStatus || "Pending"}\n\nOur system continues polling your bank exchange every 60 seconds.`);
+      (window as any).showToast?.(`Current Status: ${data.paymentRecord?.status || "Processing"} | Verification: ${data.paymentRecord?.verificationStatus || "Pending"}`, "info");
     } catch (err) {
       setStatusCheckLoading(false);
-      alert("Unable to reach server right now. Please check again in a few moments.");
+      (window as any).showToast?.("Unable to reach server right now. Please check again in a few moments.", "error");
     }
   };
 

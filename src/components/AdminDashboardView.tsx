@@ -33,6 +33,7 @@ export default function AdminDashboardView({ onNavigate }: { onNavigate?: (page:
   const [offlineGenerating, setOfflineGenerating] = React.useState(false);
   const [testingSmtp, setTestingSmtp] = React.useState(false);
   const [smtpTestResult, setSmtpTestResult] = React.useState<{ success: boolean; details: string } | null>(null);
+  const [confirmDialog, setConfirmDialog] = React.useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void; isDestructive?: boolean }>({ isOpen: false, title: "", message: "", onConfirm: () => {} });
 
   // Debounced Catalogue Search logic
   React.useEffect(() => {
@@ -335,9 +336,18 @@ export default function AdminDashboardView({ onNavigate }: { onNavigate?: (page:
   };
 
   const handleDiscardAllDrafts = () => {
-    if (!confirm("Are you sure you want to discard all your unsaved local draft changes? This will reload the dashboard state from the master server.")) return;
-    setDraftChanges([]);
-    fetchAllData(token || "");
+    setConfirmDialog({
+      isOpen: true,
+      title: "Discard Draft Changes",
+      message: "Are you sure you want to discard all your unsaved local draft changes? This will reload the dashboard state from the master server.",
+      isDestructive: true,
+      onConfirm: () => {
+        setDraftChanges([]);
+        fetchAllData(token || "");
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+        (window as any).showToast?.("Draft changes discarded.", "info");
+      }
+    });
   };
 
   const handleSubmitDraftChanges = async () => {
@@ -614,12 +624,21 @@ export default function AdminDashboardView({ onNavigate }: { onNavigate?: (page:
   };
 
   const handleDeleteMessage = (msgId: string) => {
-    if (!confirm("Are you sure you want to queue this message enquiry for deletion?")) return;
-    setMessages(prev => prev.filter(m => m.id !== msgId));
-    addDraftChange({
-      type: "delete_message",
-      description: `🗑️ Delete message enquiry (Ref: #${msgId.substring(0, 8)})`,
-      payload: { id: msgId }
+    setConfirmDialog({
+      isOpen: true,
+      title: "Delete Message Enquiry",
+      message: "Are you sure you want to queue this message enquiry for deletion?",
+      isDestructive: true,
+      onConfirm: () => {
+        setMessages(prev => prev.filter(m => m.id !== msgId));
+        addDraftChange({
+          type: "delete_message",
+          description: `🗑️ Delete message enquiry (Ref: #${msgId.substring(0, 8)})`,
+          payload: { id: msgId }
+        });
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+        (window as any).showToast?.("Message queued for deletion.", "info");
+      }
     });
   };
 
@@ -749,14 +768,23 @@ export default function AdminDashboardView({ onNavigate }: { onNavigate?: (page:
   };
 
   const handleSoftDeleteProduct = (pid: string) => {
-    if (!confirm("Are you sure you want to soft delete this item? It will be marked inactive and hidden from shop displays.")) return;
     const prod = products.find(p => p.id === pid);
     const prodName = prod ? prod.name : pid;
-    setProducts(prev => prev.map(p => p.id === pid ? { ...p, isActive: false } : p));
-    addDraftChange({
-      type: "delete_product",
-      description: `🗑️ Soft delete product: "${prodName}"`,
-      payload: { id: pid }
+    setConfirmDialog({
+      isOpen: true,
+      title: "Soft Delete Product",
+      message: `Are you sure you want to soft delete "${prodName}"? It will be marked inactive and hidden from shop displays.`,
+      isDestructive: true,
+      onConfirm: () => {
+        setProducts(prev => prev.map(p => p.id === pid ? { ...p, isActive: false } : p));
+        addDraftChange({
+          type: "delete_product",
+          description: `🗑️ Soft delete product: "${prodName}"`,
+          payload: { id: pid }
+        });
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+        (window as any).showToast?.(`"${prodName}" marked inactive.`, "info");
+      }
     });
   };
 
@@ -798,14 +826,23 @@ export default function AdminDashboardView({ onNavigate }: { onNavigate?: (page:
   };
 
   const handleDeleteCoupon = (cid: string) => {
-    if (!confirm("Are you sure you want to delete this coupon code register entry?")) return;
     const couponObj = coupons.find(c => c.id === cid);
     const couponCode = couponObj ? couponObj.code : cid;
-    setCoupons(prev => prev.filter(c => c.id !== cid));
-    addDraftChange({
-      type: "delete_coupon",
-      description: `🗑️ Delete coupon: "${couponCode}"`,
-      payload: { id: cid }
+    setConfirmDialog({
+      isOpen: true,
+      title: "Delete Coupon Code",
+      message: `Are you sure you want to delete coupon "${couponCode}"?`,
+      isDestructive: true,
+      onConfirm: () => {
+        setCoupons(prev => prev.filter(c => c.id !== cid));
+        addDraftChange({
+          type: "delete_coupon",
+          description: `🗑️ Delete coupon: "${couponCode}"`,
+          payload: { id: cid }
+        });
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+        (window as any).showToast?.(`Coupon "${couponCode}" deleted.`, "info");
+      }
     });
   };
 
@@ -858,12 +895,21 @@ export default function AdminDashboardView({ onNavigate }: { onNavigate?: (page:
   };
 
   const handleDeleteUser = (userId: string, userName: string) => {
-    if (!confirm(`Are you sure you want to delete user "${userName}"? This will queue a complete cascade purge in your pending draft changes.`)) return;
-    setUsers(prev => prev.filter(u => u.id !== userId));
-    addDraftChange({
-      type: "delete_user",
-      description: `👤 Cascade purge customer user: "${userName}"`,
-      payload: { id: userId, name: userName }
+    setConfirmDialog({
+      isOpen: true,
+      title: "Delete User Record",
+      message: `Are you sure you want to delete user "${userName}"? This will queue a complete cascade purge in your pending draft changes.`,
+      isDestructive: true,
+      onConfirm: () => {
+        setUsers(prev => prev.filter(u => u.id !== userId));
+        addDraftChange({
+          type: "delete_user",
+          description: `👤 Cascade purge customer user: "${userName}"`,
+          payload: { id: userId, name: userName }
+        });
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+        (window as any).showToast?.(`User "${userName}" queued for deletion.`, "info");
+      }
     });
   };
 
@@ -2844,6 +2890,41 @@ export default function AdminDashboardView({ onNavigate }: { onNavigate?: (page:
         </>
       )}
 
+      {confirmDialog.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4 animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className={`p-2.5 rounded-xl ${confirmDialog.isDestructive ? 'bg-red-50 dark:bg-red-950/50 text-red-600' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200'}`}>
+                {confirmDialog.isDestructive ? '⚠️' : 'ℹ️'}
+              </div>
+              <h3 className="font-sans font-bold text-lg text-slate-900 dark:text-white">
+                {confirmDialog.title}
+              </h3>
+            </div>
+            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-sans">
+              {confirmDialog.message}
+            </p>
+            <div className="flex justify-end gap-3 pt-2 font-sans">
+              <button
+                type="button"
+                onClick={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-bold cursor-pointer transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDialog.onConfirm}
+                className={`px-4 py-2 rounded-xl text-white text-xs font-bold cursor-pointer transition-colors shadow-sm ${
+                  confirmDialog.isDestructive ? 'bg-red-600 hover:bg-red-700' : 'bg-[#0D1B2A] hover:bg-slate-800'
+                }`}
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

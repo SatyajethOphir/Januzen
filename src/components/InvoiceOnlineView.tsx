@@ -73,7 +73,7 @@ export default function InvoiceOnlineView({ orderId, onNavigate, currentUser }: 
       a.remove();
     } catch (err) {
       console.error(err);
-      alert("Error generating dynamic PDF invoice.");
+      (window as any).showToast?.("Error generating dynamic PDF invoice.", "error");
     }
   };
 

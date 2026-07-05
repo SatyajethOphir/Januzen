@@ -38,6 +38,7 @@ export default function CheckoutView({ cartItems, currentUser, onNavigate, onCle
 
   // Razorpay Overlay States
   const [showRazorpay, setShowRazorpay] = React.useState(false);
+  const [dismissedOnlineNotice, setDismissedOnlineNotice] = React.useState(false);
 
   // Dynamics configuration settings fetched from server
   const [shippingCostPerKm, setShippingCostPerKm] = React.useState(15);
@@ -180,7 +181,8 @@ export default function CheckoutView({ cartItems, currentUser, onNavigate, onCle
 
   const handlePlaceOrder = async () => {
     if (paymentMethod !== "Cash on Delivery") {
-      setShowRazorpay(true);
+      setDismissedOnlineNotice(false);
+      (window as any).showToast?.("Online Payments are coming soon! Please use Cash on Delivery (COD) for now.", "info");
       return;
     }
     await executeSubmission("Cash on Delivery");
@@ -340,13 +342,54 @@ export default function CheckoutView({ cartItems, currentUser, onNavigate, onCle
               <label className="text-gray-500 uppercase tracking-wider font-bold">Payment Protocol</label>
               <select
                 value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setPaymentMethod(val);
+                  if (val !== "Cash on Delivery") setDismissedOnlineNotice(false);
+                }}
                 className="w-full bg-slate-50 border border-gray-200 p-2.5 rounded-lg text-sm font-bold text-gray-800 focus:outline-none focus:border-slate-800 cursor-pointer"
               >
                 <option value="Cash on Delivery">Cash on Delivery (COD)</option>
-                <option value="Credit Card / Netbanking">Credit Card / Gateway (Simulated)</option>
+                <option value="Online Payment">Online Payment (Credit Card / UPI / Netbanking)</option>
               </select>
             </div>
+
+            {paymentMethod !== "Cash on Delivery" && !dismissedOnlineNotice && (
+              <div className="mt-4 sm:col-span-2 p-5 rounded-xl border border-amber-200 bg-amber-50/95 dark:bg-amber-950/30 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 shadow-sm transition-all duration-300 animate-fadeIn font-sans">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2 font-bold text-sm">
+                    <span className="text-base">🚧</span>
+                    <span className="tracking-wide">Online Payments Coming Soon</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setDismissedOnlineNotice(true)}
+                    className="text-amber-700 dark:text-amber-400 hover:text-amber-950 dark:hover:text-amber-100 p-1 text-xs font-bold cursor-pointer transition-colors"
+                    title="Dismiss notice"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div className="mt-2.5 text-xs text-amber-800 dark:text-amber-300 leading-relaxed space-y-1">
+                  <p>We are currently integrating our secure payment gateway.</p>
+                  <p>For now, please use <strong className="font-semibold text-amber-950 dark:text-amber-100">Cash on Delivery (COD)</strong>.</p>
+                  <p className="text-[11px] text-amber-700/80 dark:text-amber-400/80 pt-0.5">Thank you for your patience.</p>
+                </div>
+                <div className="mt-4 flex items-center justify-start">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPaymentMethod("Cash on Delivery");
+                      setDismissedOnlineNotice(false);
+                      (window as any).showToast?.("Switched to Cash on Delivery (COD).", "success");
+                    }}
+                    className="bg-amber-900 hover:bg-amber-950 dark:bg-amber-700 dark:hover:bg-amber-600 text-white font-bold text-xs px-4 py-2 rounded-lg transition-colors cursor-pointer shadow-sm flex items-center gap-1.5 font-sans"
+                  >
+                    <span>Switch to Cash on Delivery (COD)</span>
+                  </button>
+                </div>
+              </div>
+            )}
 
           </div>
 
@@ -524,6 +567,43 @@ export default function CheckoutView({ cartItems, currentUser, onNavigate, onCle
               </div>
             </div>
 
+            {paymentMethod !== "Cash on Delivery" && !dismissedOnlineNotice && (
+              <div className="p-5 rounded-xl border border-amber-200 bg-amber-50/95 dark:bg-amber-950/30 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 shadow-sm transition-all duration-300 animate-fadeIn font-sans">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2 font-bold text-sm">
+                    <span className="text-base">🚧</span>
+                    <span className="tracking-wide">Online Payments Coming Soon</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setDismissedOnlineNotice(true)}
+                    className="text-amber-700 dark:text-amber-400 hover:text-amber-950 dark:hover:text-amber-100 p-1 text-xs font-bold cursor-pointer transition-colors"
+                    title="Dismiss notice"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div className="mt-2.5 text-xs text-amber-800 dark:text-amber-300 leading-relaxed space-y-1">
+                  <p>We are currently integrating our secure payment gateway.</p>
+                  <p>For now, please use <strong className="font-semibold text-amber-950 dark:text-amber-100">Cash on Delivery (COD)</strong>.</p>
+                  <p className="text-[11px] text-amber-700/80 dark:text-amber-400/80 pt-0.5">Thank you for your patience.</p>
+                </div>
+                <div className="mt-4 flex items-center justify-start">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPaymentMethod("Cash on Delivery");
+                      setDismissedOnlineNotice(false);
+                      (window as any).showToast?.("Switched to Cash on Delivery (COD).", "success");
+                    }}
+                    className="bg-amber-900 hover:bg-amber-950 dark:bg-amber-700 dark:hover:bg-amber-600 text-white font-bold text-xs px-4 py-2 rounded-lg transition-colors cursor-pointer shadow-sm flex items-center gap-1.5 font-sans"
+                  >
+                    <span>Switch to Cash on Delivery (COD)</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="border-t border-gray-100 pt-6 flex justify-between items-center">
               <button
                 onClick={() => setStep(1)}
@@ -546,7 +626,7 @@ export default function CheckoutView({ cartItems, currentUser, onNavigate, onCle
                   </>
                 ) : (
                   <>
-                    {paymentMethod === "Cash on Delivery" ? "Complete Order (COD)" : "Pay with Razorpay Secure"}
+                    {paymentMethod === "Cash on Delivery" ? "Complete Order (COD)" : "Complete Order (Online Payment)"}
                     <ArrowRight className="h-4 w-4" />
                   </>
                 )}

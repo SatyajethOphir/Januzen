@@ -43,7 +43,7 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
     try {
       const token = localStorage.getItem("januzen_token") || sessionStorage.getItem("januzen_token");
       if (!token) {
-        alert("Please log in to trigger a test notification.");
+        (window as any).showToast?.("Please log in to trigger a test notification.", "error");
         return;
       }
       const res = await fetch("/api/notifications/test-unified", {
@@ -61,7 +61,9 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
       });
       if (!res.ok) {
         const err = await res.json();
-        alert(err.error || "Failed to trigger test notification");
+        (window as any).showToast?.(err.error || "Failed to trigger test notification", "error");
+      } else {
+        (window as any).showToast?.("Test notification dispatched successfully!", "success");
       }
     } catch (e) {
       console.error("Test notification error:", e);

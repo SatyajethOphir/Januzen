@@ -115,7 +115,7 @@ export default function OrdersHistoryView({ onNavigate, currentUser }: OrdersHis
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error("PDF Download Error:", err);
-      alert("Error downloading PDF invoice. Please check your network or try again.");
+      (window as any).showToast?.("Error downloading PDF invoice. Please check your network or try again.", "error");
     } finally {
       setDownloadingId(null);
     }
