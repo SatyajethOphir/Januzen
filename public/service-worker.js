@@ -1,5 +1,5 @@
 // JANUZEN PWA Service Worker (Standard Open-Standards Web Push API)
-const CACHE_VERSION = "v2.1.0";
+const CACHE_VERSION = "v3.0.0-prod";
 const CACHE_NAME = `januzen-cache-${CACHE_VERSION}`;
 const ASSETS_TO_CACHE = [
   "/",
@@ -11,7 +11,6 @@ const ASSETS_TO_CACHE = [
 
 // Install Service Worker
 self.addEventListener("install", (event) => {
-  console.log(`⬇️ [SW] Installing Service Worker version ${CACHE_VERSION}...`);
   event.waitUntil(
     Promise.all([
       caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE).catch(() => {})),
@@ -22,7 +21,6 @@ self.addEventListener("install", (event) => {
 
 // Activate Service Worker
 self.addEventListener("activate", (event) => {
-  console.log(`⚡ [SW] Activating Service Worker version ${CACHE_VERSION} and claiming clients...`);
   event.waitUntil(
     Promise.all([
       self.clients.claim(),
@@ -30,7 +28,6 @@ self.addEventListener("activate", (event) => {
         return Promise.all(
           cacheNames.map((cache) => {
             if (cache !== CACHE_NAME) {
-              console.log(`🧹 [SW CLEANUP] Deleting outdated cache storage: ${cache}`);
               return caches.delete(cache);
             }
           })
@@ -49,8 +46,6 @@ self.addEventListener("message", (event) => {
 
 // --- STANDARD WEB PUSH EVENT HANDLER (VAPID) ---
 self.addEventListener("push", (event) => {
-  console.log("📨 [SW PUSH] Push event received in background Service Worker!");
-
   let payload = {};
   if (event.data) {
     try {
@@ -128,7 +123,6 @@ self.addEventListener("push", (event) => {
 
   const displayNotification = (targetTitle, targetOptions) => {
     return self.registration.showNotification(targetTitle, targetOptions).catch((err) => {
-      console.warn("⚠️ [SW PUSH] Advanced notification display failed (likely iOS/OEM constraint). Falling back to basic OS alert:", err);
       return self.registration.showNotification(targetTitle, {
         body: targetOptions.body,
         icon: resolveUrl("/appicon.png"),
@@ -143,14 +137,12 @@ self.addEventListener("push", (event) => {
       // Check if any open PWA tab is actively visible and focused
       const activeVisibleClient = clientList.find((client) => client.visibilityState === "visible");
       if (activeVisibleClient) {
-        console.log("[SW PUSH] PWA is active and visible in foreground. Dispatching directly to in-app toast without duplicate OS banner.");
         activeVisibleClient.postMessage({
           type: "PUSH_RECEIVED",
           data: { title, body, url, type, image, actions }
         });
         return Promise.resolve();
       } else {
-        console.log("[SW PUSH] PWA is minimized/closed/locked. Displaying OS-level system push notification.");
         return displayNotification(title, options);
       }
     }).catch((err) => {
@@ -162,7 +154,6 @@ self.addEventListener("push", (event) => {
 
 // --- SELF-HEALING WEB PUSH: HANDLE OS / BROWSER TOKEN ROTATION ---
 self.addEventListener("pushsubscriptionchange", (event) => {
-  console.log("🔄 [SW PUSH] Push subscription change detected by OS/Browser. Automatically re-subscribing...");
   event.waitUntil(
     fetch("/api/push/vapid-public-key")
       .then((res) => res.json())
@@ -191,9 +182,7 @@ self.addEventListener("pushsubscriptionchange", (event) => {
         });
       })
       .then((res) => {
-        if (res.ok) {
-          console.log("✅ [SW PUSH] Rotated push subscription automatically synced to backend database!");
-        } else {
+        if (!res.ok) {
           console.error("❌ [SW PUSH] Failed to sync rotated subscription with backend database.");
         }
       })
@@ -234,7 +223,6 @@ self.addEventListener("fetch", (event) => {
           return networkResponse;
         })
         .catch(() => {
-          console.log("📴 [SW] Offline navigation fallback serving /index.html from cache");
           return caches.match("/index.html") || caches.match("/");
         })
     );

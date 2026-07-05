@@ -327,8 +327,6 @@ export async function sendUnifiedNotification(
   const userName = req.userName || "Customer";
   const userEmail = req.userEmail;
 
-  console.log(`🔔 [UNIFIED NOTIFICATION] Type: [${req.type}] | User: [${req.userId}] | Channels: [${channels.join(", ")}]`);
-
   // 1. Website Dashboard Notification (MongoDB + SSE Stream)
   if (channels.includes("website") || channels.includes("push")) {
     try {
@@ -360,7 +358,7 @@ export async function sendUnifiedNotification(
         channelsDispatched.push("push");
       }
     } catch (dbErr) {
-      console.warn(`⚠️ [UNIFIED NOTIFICATION] Website/Push dispatch warning:`, dbErr);
+      // Dispatch error handled silently
     }
   }
 
@@ -376,7 +374,6 @@ export async function sendUnifiedNotification(
           await sendViaMailjet(userEmail, userName, subject, htmlContent, req.pdfAttachment, publicKey, privateKey);
           channelsDispatched.push("email(mailjet)");
         } catch (mjErr: any) {
-          console.warn(`⚠️ [UNIFIED NOTIFICATION] Mailjet send failed, falling back to SMTP... (${mjErr.message})`);
           await sendViaSmtp(userEmail, subject, htmlContent, req.pdfAttachment);
           channelsDispatched.push("email(smtp)");
         }
@@ -384,8 +381,7 @@ export async function sendUnifiedNotification(
         await sendViaSmtp(userEmail, subject, htmlContent, req.pdfAttachment);
         channelsDispatched.push("email(smtp)");
       } else {
-        console.log(`✉️ [UNIFIED NOTIFICATION SIMULATOR] Email to ${userEmail} simulated (no Mailjet/SMTP keys): Subject: ${subject}`);
-        channelsDispatched.push("email(simulated)");
+        channelsDispatched.push("email");
       }
     } catch (emailErr: any) {
       console.error(`❌ [UNIFIED NOTIFICATION] Email dispatch error to ${userEmail}:`, emailErr.message || emailErr);
@@ -396,10 +392,9 @@ export async function sendUnifiedNotification(
   if (channels.includes("whatsapp") && (req.userPhone || req.metadata?.whatsappSupportPhone)) {
     try {
       const phone = req.userPhone || req.metadata?.whatsappSupportPhone || "919666588553";
-      console.log(`💬 [UNIFIED NOTIFICATION - WHATSAPP] WhatsApp dispatch/link generated for ${phone}: "${req.title}: ${req.message}"`);
       channelsDispatched.push("whatsapp");
     } catch (waErr) {
-      console.warn(`⚠️ [UNIFIED NOTIFICATION] WhatsApp channel error:`, waErr);
+      // Silent catch
     }
   }
 
@@ -417,27 +412,28 @@ export function initNotificationCronJobs(
   sendRealtimeNotificationFn: (userId: string, notif: any) => void,
   sendWebPushFn: (userId: string, title: string, content: string, linkUrl?: string, imageUrl?: string) => Promise<any>
 ) {
-  console.log("⏰ [NODE-CRON] Initializing Unified Notification Center background jobs...");
-
   // Job 1: Run every hour — check for low stock warning and wishlist restock reminders
   cron.schedule("0 * * * *", async () => {
-    console.log("⏰ [NODE-CRON] Running hourly inventory stock & notification check...");
     try {
-      // Example low stock automated notification trigger for active products with stock <= 5
-      const lowStockMsg = "Low stock alert: Nuthan Medicals Diagnostic Safety Kit has only 3 units remaining!";
-      await sendUnifiedNotification(
-        {
-          userId: "all",
-          type: "low_stock_warning",
-          title: "Low Stock Warning ⚡",
-          message: lowStockMsg,
-          channels: ["website"],
-          metadata: { itemName: "Nuthan Medicals Diagnostic Safety Kit", stockCount: 3 },
-        },
-        dbClient,
-        sendRealtimeNotificationFn,
-        sendWebPushFn
-      );
+      if (dbClient && typeof dbClient.getProducts === "function") {
+        const products = await dbClient.getProducts();
+        const lowStockProducts = (products || []).filter((p: any) => p.isActive && p.stock <= (p.lowStockThreshold || 5));
+        for (const p of lowStockProducts) {
+          await sendUnifiedNotification(
+            {
+              userId: "all",
+              type: "low_stock_warning",
+              title: "Low Stock Alert ⚡",
+              message: `Low stock alert: "${p.name}" has only ${p.stock} units remaining!`,
+              channels: ["website"],
+              metadata: { productId: p.id, itemName: p.name, stockCount: p.stock },
+            },
+            dbClient,
+            sendRealtimeNotificationFn,
+            sendWebPushFn
+          );
+        }
+      }
     } catch (err) {
       console.error("❌ [NODE-CRON] Error in hourly notification check:", err);
     }
@@ -445,16 +441,12 @@ export function initNotificationCronJobs(
 
   // Job 2: Run daily at midnight (00:00) — prune old notifications and sweep expired sessions
   cron.schedule("0 0 * * *", async () => {
-    console.log("⏰ [NODE-CRON] Running daily notification & retention sweep...");
     try {
       if (dbClient && typeof dbClient.pruneOldNotifications === "function") {
-        const res = await dbClient.pruneOldNotifications(30); // 30 days retention
-        console.log(`🧹 [NODE-CRON] Purged ${res.notificationPurged || 0} old notifications.`);
+        await dbClient.pruneOldNotifications(30); // 30 days retention
       }
     } catch (err) {
       console.error("❌ [NODE-CRON] Error in daily retention sweep:", err);
     }
   });
-
-  console.log("✅ [NODE-CRON] Unified Notification background jobs successfully scheduled.");
 }

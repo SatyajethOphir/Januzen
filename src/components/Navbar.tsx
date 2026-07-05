@@ -156,18 +156,16 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
 
     // Use absolute or relative URL for real-time alert stream
     const streamUrl = `/api/updates/stream?token=${encodeURIComponent(jwtToken)}`;
-    console.log("🔌 Connecting to JANUZEN Real-Time Notification Stream...");
 
     const eventSource = new EventSource(streamUrl);
 
     eventSource.addEventListener("connected", (event) => {
-      console.log("✅ SSE Connection established:", JSON.parse(event.data).message);
+      // Connected to SSE stream
     });
 
     eventSource.addEventListener("notification", (event) => {
       try {
         const notif = JSON.parse(event.data);
-        console.log("🔔 Real-time notification received:", notif);
 
         // Prepend new notification in real-time
         setNotifications((prev) => {
@@ -225,12 +223,11 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
     });
 
     eventSource.addEventListener("error", (event) => {
-      console.warn("⚠️ Real-time stream reconnecting...");
+      // Stream reconnecting
     });
 
     // Clean up EventSource on unmount/re-login
     return () => {
-      console.log("🔌 Closing JANUZEN Real-Time Notification Stream.");
       eventSource.close();
     };
   }, [currentUser, fetchNotifications]);

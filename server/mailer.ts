@@ -16,11 +16,11 @@ function getMailjetCredentials(): { publicKey: string | undefined; privateKey: s
 // Log mailing mode on boot
 const { publicKey, privateKey } = getMailjetCredentials();
 if (publicKey && privateKey) {
-  console.log("🚀 [MAILER] Mailjet API credentials detected. All outgoing mail will be routed securely via Mailjet HTTP REST API (port 443) to bypass SMTP blocks.");
+  // Mailjet API mode active
 } else if (!process.env.EMAIL_PASS) {
-  console.warn("⚠️ [MAILER] EMAIL_PASS and Mailjet keys are missing. Invoice emails will be skipped gracefully.");
+  // Missing mail credentials
 } else {
-  console.log(`🚀 [MAILER] Running in SMTP mode using host: ${process.env.EMAIL_HOST || "smtp.hostinger.com"}.`);
+  // SMTP mode active
 }
 
 /**
@@ -81,7 +81,6 @@ async function sendMailjetApi(
   }
 
   const result = await response.json();
-  console.log(`✅ [MAILER] Mailjet API Send success for recipient ${toEmail}:`, JSON.stringify(result));
 }
 
 export async function sendInvoiceEmail(order: any, pdfBuffer: Buffer): Promise<void> {
@@ -91,7 +90,6 @@ export async function sendInvoiceEmail(order: any, pdfBuffer: Buffer): Promise<v
   const { publicKey, privateKey } = getMailjetCredentials();
   if (publicKey && privateKey) {
     try {
-      console.log(`✉️ [MAILER] Routing online order invoice #${order.orderId} via Mailjet Send API...`);
       const subject = `Your JANUZEN Invoice — ${order.orderId}`;
       const htmlContent = getInvoiceHtml(order);
       const filename = `JANUZEN-Invoice-${order.orderId}.pdf`;
@@ -115,7 +113,6 @@ export async function sendInvoiceEmail(order: any, pdfBuffer: Buffer): Promise<v
   // Fallback to Nodemailer SMTP
   const emailPass = process.env.EMAIL_PASS;
   if (!emailPass) {
-    console.warn(`⚠️ [MAILER] Skipping sending email for order ${order.orderId} because EMAIL_PASS is not configured.`);
     return;
   }
 
@@ -169,15 +166,13 @@ export async function sendInvoiceEmail(order: any, pdfBuffer: Buffer): Promise<v
 
     await transporter.sendMail(mailOptions);
     primarySuccess = true;
-    console.log(`✅ [MAILER] Invoice email successfully sent via primary SMTP (${emailHost}:${port}) to ${order.userEmail}`);
   } catch (err: any) {
-    console.warn(`⚠️ [MAILER] Primary SMTP attempt (${emailHost}:${port}) failed/timed out: ${err.message || err.code || err}`);
+    // Primary SMTP attempt failed
   }
 
   if (!primarySuccess) {
     const fallbackPort = port === 465 ? 587 : 465;
     const fallbackSecure = fallbackPort === 465;
-    console.log(`🔄 [MAILER] Retrying with fallback configuration: ${emailHost}:${fallbackPort} (secure: ${fallbackSecure})...`);
 
     try {
       const fallbackTransporter = nodemailer.createTransport({
@@ -197,10 +192,8 @@ export async function sendInvoiceEmail(order: any, pdfBuffer: Buffer): Promise<v
       });
 
       await fallbackTransporter.sendMail(mailOptions);
-      console.log(`✅ [MAILER] Invoice email successfully sent via fallback SMTP (${emailHost}:${fallbackPort}) to ${order.userEmail}`);
     } catch (fallbackErr: any) {
       console.error(`❌ [MAILER] Fallback SMTP attempt to ${emailHost}:${fallbackPort} also failed:`, fallbackErr.message || fallbackErr.code || fallbackErr);
-      console.warn(`⚠️ [MAILER] All SMTP attempts failed. This is typical in container environments with outbound SMTP port restrictions. The order confirmation has succeeded, and a backup log dispatch has been executed.`);
     }
   }
 }
@@ -220,7 +213,6 @@ export async function sendOfflineBillEmail(
   const { publicKey, privateKey } = getMailjetCredentials();
   if (publicKey && privateKey) {
     try {
-      console.log(`✉️ [MAILER] Routing offline bill #${data.billNumber} via Mailjet Send API...`);
       const subject = `Your JANUZEN Bill — ${data.billNumber}`;
       const htmlContent = getOfflineBillHtml(data);
       const filename = `JANUZEN-Bill-${data.billNumber}.pdf`;
@@ -298,16 +290,13 @@ export async function sendOfflineBillEmail(
 
     await transporter.sendMail(mailOptions);
     primarySuccess = true;
-    console.log(`✅ [MAILER] Offline bill email successfully sent via primary SMTP to ${data.customerEmail}`);
   } catch (err: any) {
     primaryError = err;
-    console.warn(`⚠️ [MAILER] Primary SMTP failed/timed out for offline bill: ${err.message || err}`);
   }
 
   if (!primarySuccess) {
     const fallbackPort = port === 465 ? 587 : 465;
     const fallbackSecure = fallbackPort === 465;
-    console.log(`🔄 [MAILER] Retrying offline bill email with fallback SMTP: ${emailHost}:${fallbackPort}...`);
 
     try {
       const fallbackTransporter = nodemailer.createTransport({
@@ -327,7 +316,6 @@ export async function sendOfflineBillEmail(
       });
 
       await fallbackTransporter.sendMail(mailOptions);
-      console.log(`✅ [MAILER] Offline bill email successfully sent via fallback SMTP to ${data.customerEmail}`);
     } catch (fallbackErr: any) {
       console.error(`❌ [MAILER] Fallback SMTP attempt also failed for offline bill:`, fallbackErr);
       throw new Error(
@@ -342,7 +330,6 @@ export async function testSmtpConnection(): Promise<{ success: boolean; details:
   const { publicKey, privateKey } = getMailjetCredentials();
   if (publicKey && privateKey) {
     try {
-      console.log("🔍 [MAILER] Testing Mailjet API Credentials...");
       const authHeader = "Basic " + Buffer.from(`${publicKey}:${privateKey}`).toString("base64");
       const response = await fetch("https://api.mailjet.com/v3/REST/apikey", {
         method: "GET",

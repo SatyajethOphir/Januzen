@@ -1,7 +1,7 @@
 // JANUZEN PWA Automatic Cache & Client Data Versioning System
 // Guarantees zero-manual-intervention updates across deployments while preserving essential user data.
 
-export const CURRENT_APP_VERSION = "v2.1.0";
+export const CURRENT_APP_VERSION = "v3.0.0-prod";
 export const CURRENT_CACHE_NAME = `januzen-cache-${CURRENT_APP_VERSION}`;
 
 // Allowlist of essential storage keys to preserve during version migrations
@@ -28,7 +28,6 @@ export async function checkAppVersionAndMigrate(): Promise<boolean> {
 
   // 1. Check local storage version stamp
   if (storedVersion !== CURRENT_APP_VERSION) {
-    console.log(`🔄 [PWA VERSIONING] App version change detected: "${storedVersion || 'initial'}" -> "${CURRENT_APP_VERSION}"`);
     versionChanged = true;
   }
 
@@ -38,7 +37,6 @@ export async function checkAppVersionAndMigrate(): Promise<boolean> {
     if (res.ok) {
       const data = await res.json();
       if (data.version && data.version !== storedVersion && data.version !== CURRENT_APP_VERSION) {
-        console.log(`🔄 [PWA VERSIONING] Backend server reports new deployment version: "${data.version}"`);
         versionChanged = true;
       }
     }
@@ -60,8 +58,6 @@ export async function checkAppVersionAndMigrate(): Promise<boolean> {
  * Executes full client data and Cache Storage migration.
  */
 async function performDataAndCacheMigration(): Promise<void> {
-  console.log(`🚀 [PWA VERSIONING] Executing client data & Cache Storage migration for ${CURRENT_APP_VERSION}...`);
-
   // 1. Remove outdated/disposable localStorage & sessionStorage keys
   cleanupStorage(localStorage, "localStorage");
   cleanupStorage(sessionStorage, "sessionStorage");
@@ -88,7 +84,6 @@ async function performDataAndCacheMigration(): Promise<void> {
       const cacheNames = await window.caches.keys();
       for (const name of cacheNames) {
         if (name !== CURRENT_CACHE_NAME) {
-          console.log(`🗑️ [PWA CACHE] Deleting outdated cache entry: "${name}"`);
           await window.caches.delete(name);
         }
       }
@@ -104,7 +99,6 @@ async function performDataAndCacheMigration(): Promise<void> {
       for (const reg of registrations) {
         reg.update().catch(() => {});
         if (reg.waiting) {
-          console.log("⚡ [PWA SW] Instructing waiting Service Worker to skipWaiting immediately...");
           reg.waiting.postMessage({ type: "SKIP_WAITING" });
         }
       }
@@ -112,8 +106,6 @@ async function performDataAndCacheMigration(): Promise<void> {
       console.error("⚠️ [PWA SW] Error updating Service Worker registrations:", e);
     }
   }
-
-  console.log(`✅ [PWA VERSIONING] Migration to ${CURRENT_APP_VERSION} completed successfully!`);
 }
 
 /**
@@ -131,11 +123,10 @@ function cleanupStorage(storage: Storage, storageName: string): void {
       }
     }
     for (const key of keysToRemove) {
-      console.log(`🧹 [PWA ${storageName}] Removing outdated/disposable key: "${key}"`);
       storage.removeItem(key);
     }
   } catch (e) {
-    console.warn(`⚠️ [PWA ${storageName}] Storage cleanup encountered a minor issue:`, e);
+    // Storage cleanup minor issue
   }
 }
 
@@ -149,7 +140,6 @@ function validateAndPreserveSession(): void {
 
     const parts = token.split(".");
     if (parts.length !== 3) {
-      console.warn("🧹 [PWA SESSION] Malformed JWT token structure detected. Purging session.");
       clearAuthTokens();
       return;
     }
@@ -165,13 +155,9 @@ function validateAndPreserveSession(): void {
     const payload = JSON.parse(jsonPayload);
 
     if (payload.exp && payload.exp * 1000 <= Date.now()) {
-      console.warn("⏰ [PWA SESSION] Active user JWT has expired. Requiring re-authentication.");
       clearAuthTokens();
-    } else {
-      console.log("🔐 [PWA SESSION] Active user session JWT validated and preserved.");
     }
   } catch (e) {
-    console.warn("⚠️ [PWA SESSION] Failed to validate JWT token, clearing session:", e);
     clearAuthTokens();
   }
 }
@@ -211,12 +197,9 @@ export function setupServiceWorkerVersionControl(onUpdateDetected?: () => void):
   }
 
   const handleControllerChange = () => {
-    console.log("🔄 [PWA SW] New Service Worker controller took over!");
-
     const reloadKey = `januzen_sw_reloaded_${CURRENT_APP_VERSION}`;
     if (!sessionStorage.getItem(reloadKey)) {
       sessionStorage.setItem(reloadKey, "true");
-      console.log("♻️ [PWA SW] Refreshing application once to serve newest deployed version assets...");
       if (onUpdateDetected) onUpdateDetected();
       setTimeout(() => {
         window.location.reload();
@@ -231,7 +214,6 @@ export function setupServiceWorkerVersionControl(onUpdateDetected?: () => void):
     navigator.serviceWorker.getRegistrations().then((registrations) => {
       for (const reg of registrations) {
         if (reg.waiting) {
-          console.log("⚡ [PWA SW] Found waiting Service Worker during routine check. Commanding skipWaiting...");
           reg.waiting.postMessage({ type: "SKIP_WAITING" });
         }
         reg.update().catch(() => {});

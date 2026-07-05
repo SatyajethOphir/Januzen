@@ -31,12 +31,9 @@ try {
       key_id: process.env.RAZORPAY_KEY_ID,
       key_secret: process.env.RAZORPAY_KEY_SECRET,
     });
-    console.log("🚀 [RAZORPAY] Live Razorpay SDK initialized successfully.");
-  } else {
-    console.log("ℹ️ [RAZORPAY] Running in Production Simulator Mode (No live API keys configured).");
   }
 } catch (e: any) {
-  console.warn("⚠️ [RAZORPAY] Could not initialize live client, falling back to Simulator Mode:", e?.message || e);
+  // Simulator mode fallback
 }
 
 // Initialize Web Push VAPID Details (with auto-generating local fallback for zero-config reliability)
@@ -58,7 +55,6 @@ if (!vapidPublicKey || !vapidPrivateKey) {
         fs.mkdirSync(path.dirname(vapidFile), { recursive: true });
       }
       fs.writeFileSync(vapidFile, JSON.stringify(generated, null, 2), "utf-8");
-      console.log("🔑 [WEBPUSH] Auto-generated and persisted fallback VAPID keypair in data/vapid.json");
     }
     process.env.VAPID_PUBLIC_KEY = vapidPublicKey;
     process.env.VAPID_PRIVATE_KEY = vapidPrivateKey;
@@ -73,9 +69,6 @@ if (vapidPublicKey && vapidPrivateKey) {
     vapidPublicKey,
     vapidPrivateKey
   );
-  console.log("🚀 [WEBPUSH] VAPID details configured successfully.");
-} else {
-  console.warn("⚠️ [WEBPUSH] Push notifications disabled - missing keys.");
 }
 
 interface SseConnection {
@@ -215,7 +208,6 @@ function loadSystemSettings() {
     if (fs.existsSync(SETTINGS_FILE)) {
       const data = fs.readFileSync(SETTINGS_FILE, "utf-8");
       systemSettings = { ...systemSettings, ...JSON.parse(data) };
-      console.log("💾 Hydrated dynamic settings from settings.json:", systemSettings);
     } else {
       fs.writeFileSync(SETTINGS_FILE, JSON.stringify(systemSettings, null, 2), "utf-8");
     }
@@ -420,9 +412,6 @@ async function startServer() {
       // Track the session write
       await dbClient.createSession(newUser.id, newUser.name, newUser.email, token);
 
-      // Dynamic Nodemailer Simulator Alert log
-      console.log(`[EMAIL DISPATCH] TO: ${email} | SUBJECT: Welcome to JANUZEN Enterprise | CONTENT: Thank you for registering, ${name}! Your account is active. Welcome to Nuthan Medicals & JA Stationery.`);
-
       res.status(201).json({
         message: "Registration successful. Welcome to JANUZEN!",
         token,
@@ -555,8 +544,6 @@ async function startServer() {
       const hash = bcrypt.hashSync(newPassword, salt);
       await dbClient.resetUserPassword(email, hash);
       
-      console.log(`[EMAIL DISPATCH] TO: ${email} | SUBJECT: JANUZEN Account Password Reset | CONTENT: Your account password has been successfully reset. If this was not you, please contact client support.`);
-
       res.json({ message: "Password has been successfully recovered and updated." });
     } catch (e) {
       console.error(e);
@@ -616,13 +603,7 @@ async function startServer() {
         });
       } catch (cloudinaryErr: any) {
         // Cloudinary failed — log and fall through to GitHub
-        console.warn(
-          "[UPLOAD] Cloudinary failed, attempting GitHub fallback:",
-          cloudinaryErr.message
-        );
       }
-    } else {
-      console.warn("[UPLOAD] Cloudinary credentials not configured, trying GitHub fallback.");
     }
 
     // ── LAYER 2: GitHub (fallback) ─────────────────────────────────────────
@@ -1093,9 +1074,6 @@ async function startServer() {
         // Do NOT re-throw — order is already placed, don't fail the response
       }
 
-      // Nodemailer Simulator Console Logging
-      console.log(`[EMAIL DISPATCH] TO: ${req.user.email} | SUBJECT: JANUZEN Order Confirmed | CONTENT: Rest easy, your purchase ${orderIdCode} has been placed. Deep thank you for supporting Nuthan Medicals & JA Stationery! Grand Total: ₹${total}`);
-
       res.status(201).json({
         message: "Order placed successfully!",
         order: newOrder,
@@ -1109,61 +1087,6 @@ async function startServer() {
     } catch (e) {
       console.error(e);
       res.status(500).json({ error: "Internal server error during order checkout." });
-    }
-  });
-
-  // Temporary Dev/Admin testing route for invoice PDF & mail dispatch
-  app.get("/api/dev/test-invoice-email", async (req, res) => {
-    try {
-      const dummyOrder: any = {
-        id: "o_test_" + Date.now(),
-        orderId: `JAN-TEST-${Math.floor(1000 + Math.random() * 9000)}`,
-        userId: "u_test",
-        userName: "JANUZEN QA Team",
-        userEmail: "team@januzen.in",
-        items: [
-          {
-            productId: "m1",
-            name: "Amoxicillin 500mg Capsules",
-            price: 450.00,
-            quantity: 2,
-            image: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=600&auto=format&fit=crop",
-            shop: "medicals"
-          },
-          {
-            productId: "s1",
-            name: "Premium Gel Pen Set",
-            price: 150.00,
-            quantity: 3,
-            image: "https://images.unsplash.com/photo-1583485088034-697b5bc54ccd?w=600&auto=format&fit=crop",
-            shop: "stationery"
-          }
-        ],
-        shippingAddress: "JANUZEN Corporate Testing Lab, Gajularamaram, Hyderabad - 500055",
-        deliveryOTP: "1234",
-        totals: {
-          subtotal: 1350.00,
-          discount: 100.00,
-          shipping: 0,
-          tax: 62.50,
-          total: 1312.50
-        },
-        status: "placed",
-        paymentMethod: "Prepaid Test Gateway",
-        createdAt: new Date().toISOString()
-      };
-
-      const buffer = await generateInvoice(dummyOrder);
-      await sendInvoiceEmail(dummyOrder, buffer);
-
-      res.json({
-        success: true,
-        message: "Invoice generated and mock email successfully dispatched to team@januzen.in!",
-        orderId: dummyOrder.orderId
-      });
-    } catch (err: any) {
-      console.error("Test email failure:", err);
-      res.status(500).json({ error: err.message || "Failed to generate/dispatch test invoice email" });
     }
   });
 
@@ -1267,9 +1190,6 @@ async function startServer() {
         note || `Hi ${updatedOrder.userName}, your corporate purchase status has been updated to "${status}" for order ${updatedOrder.orderId}.`,
         "/orders"
       );
-
-      // Nodemailer Simulator Console Logging
-      console.log(`[EMAIL DISPATCH] TO: ${updatedOrder.userEmail} | SUBJECT: JANUZEN Order Status Update | CONTENT: Your purchase status has updated to: [${status}] for order ID ${updatedOrder.orderId}. Description: ${note || 'None'}`);
 
       res.json({
         message: `Status updated successfully to ${status}`,
@@ -1496,7 +1416,7 @@ async function startServer() {
           });
           rzpOrderId = rzpOrder.id;
         } catch (rzpErr: any) {
-          console.warn("[RAZORPAY] SDK order creation failed, falling back to simulator order:", rzpErr.message);
+          // Fallback to simulator order
         }
       }
 
@@ -1587,8 +1507,6 @@ async function startServer() {
         if (expectedSignature !== razorpay_signature) {
           isValidSignature = false;
         }
-      } else {
-        console.log(`ℹ️ [RAZORPAY] Verified simulation signature for order ${razorpay_order_id}`);
       }
 
       if (!isValidSignature) {
@@ -1729,7 +1647,7 @@ async function startServer() {
           });
           rzpOrderId = rzpOrder.id;
         } catch (e: any) {
-          console.warn("[RAZORPAY] Retry SDK failed, using simulator order:", e.message);
+          // Retry SDK failed, using simulator order
         }
       }
 
@@ -1785,7 +1703,6 @@ async function startServer() {
         .update(JSON.stringify(req.body))
         .digest("hex");
       if (expectedSig !== signature) {
-        console.warn("[WEBHOOK] Invalid signature detected.");
         return res.status(400).json({ error: "Invalid webhook signature." });
       }
     }
@@ -1793,8 +1710,6 @@ async function startServer() {
     const event = req.body.event;
     const payload = req.body.payload?.payment?.entity || req.body.payload?.order?.entity || req.body.payload?.refund?.entity || {};
     const rzpOrderId = payload.order_id || payload.id;
-
-    console.log(`📡 [RAZORPAY WEBHOOK] Received event: ${event} for order/entity: ${rzpOrderId}`);
 
     try {
       if (rzpOrderId) {
@@ -1847,7 +1762,7 @@ async function startServer() {
             notes: { reason }
           });
         } catch (rzpErr: any) {
-          console.warn("[RAZORPAY] SDK refund error, proceeding with local simulation record:", rzpErr.message);
+          // Proceed with local simulation record
         }
       }
 
@@ -1897,9 +1812,6 @@ async function startServer() {
       };
 
       await dbClient.createMessage(newMsg);
-
-      // Nodemailer Administrator Alert log simulation
-      console.log(`[ADMIN NOTIFICATION ALERTS] TO: admin@januzen.com | SUBJECT: New Inquiry on JANUZEN Portal | CONTENT: Recieved message from ${name} (<${email}>) relating to division ${shop || "General"}: Subject: ${subject}. Content: ${message}`);
 
       res.status(201).json({
         message: "Message dispatched and logged successfully! JANUZEN representatives are reviewing your dispatch.",
@@ -2083,37 +1995,6 @@ async function startServer() {
     res.json({ success: true, message: "OTP verified successfully!" });
   });
 
-  // 3. Test Unified Notification Center (for user/admin preview)
-  app.post("/api/notifications/test-unified", authenticateToken, async (req: any, res) => {
-    const { type = "order_confirmed", title, message, channel = "all" } = req.body;
-    try {
-      const user = await dbClient.getUserById(req.user.id);
-      const channels: any[] = channel === "all" ? ["email", "website", "push"] : [channel];
-
-      const result = await sendUnifiedNotification(
-        {
-          userId: req.user.id,
-          userEmail: user?.email || req.user.email,
-          userName: user?.name || req.user.name,
-          userPhone: user?.phone,
-          type: type as any,
-          title: title || `Unified Test: ${type.toUpperCase()}`,
-          message: message || `This is a test broadcast from the JANUZEN Unified Notification Center via [${channels.join(", ")}].`,
-          channels,
-          metadata: { orderId: "TEST-ORD-9999", amount: 1499.00, paymentMethod: "Razorpay Secure", otp: "889214" }
-        },
-        dbClient,
-        sendRealtimeNotification,
-        sendWebPushNotificationToUser
-      );
-
-      res.json({ success: true, result, message: `Unified notification dispatched over channels: ${result.channelsDispatched.join(", ")}` });
-    } catch (e: any) {
-      console.error("Error in test-unified:", e);
-      res.status(500).json({ error: e.message || "Failed to trigger test notification." });
-    }
-  });
-
   // Fetch notifications for the authenticated user
   app.get("/api/notifications", authenticateToken, async (req: any, res) => {
     try {
@@ -2162,7 +2043,6 @@ async function startServer() {
       };
 
       sseConnections.add(conn);
-      console.log(`📡 [SSE] Client connected: user ${decodedUser.name} (${decodedUser.id}), role: ${decodedUser.role || "customer"}. Total active: ${sseConnections.size}`);
 
       // Send initial connection success event
       res.write(`event: connected\ndata: ${JSON.stringify({ message: "Successfully connected to JANUZEN real-time alert stream" })}\n\n`);
@@ -2175,7 +2055,6 @@ async function startServer() {
       req.on("close", () => {
         clearInterval(pingInterval);
         sseConnections.delete(conn);
-        console.log(`🔌 [SSE] Client disconnected: user ${decodedUser.name} (${decodedUser.id}). Total active: ${sseConnections.size}`);
       });
     } catch (err) {
       res.write(`event: error\ndata: ${JSON.stringify({ error: "Unauthorized: Invalid token" })}\n\n`);
@@ -2559,16 +2438,6 @@ async function startServer() {
     }
   });
 
-  // Seed / Reset Database Trigger specifically for Dev panel
-  app.post("/api/dev/reset-seed", async (req, res) => {
-    try {
-      await dbClient.resetDB();
-      res.json({ message: "Database reset to pristine initial seeded values." });
-    } catch (e) {
-      res.status(500).json({ error: "Failed to reset seed database." });
-    }
-  });
-
   // --- VITE DEV AND PROD MIDDLEWARE ---
 
   if (process.env.NODE_ENV !== "production") {
@@ -2586,34 +2455,19 @@ async function startServer() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`===========================================================`);
-    console.log(`🚀 JANUZEN Full-Stack Server running on container port ${PORT}`);
-    console.log(`===========================================================`);
-    console.log(`🔌 Database Mode: ${isMongo ? "MongoDB Connected Cluster" : "Local JSON Offline Database"}`);
-    console.log(`===========================================================`);
-
     // Initialize Unified Notification Center Cron Jobs (node-cron automated background tasks)
     initNotificationCronJobs(dbClient, sendRealtimeNotification, sendWebPushNotificationToUser);
 
     // Run custom storage retention sweep immediately on boot to prune old MongoDB notifications and sessions
-    dbClient.runStorageRetention()
-      .then(purged => {
-        console.log(`⏱️ Initial Storage Retention Sweep Completed: Purged ${purged.notificationPurged} Notifications, ${purged.sessionPurged} Sessions`);
-      })
-      .catch(err => {
-        console.error("⚠️ Failed to execute initial database storage sweep:", err);
-      });
+    dbClient.runStorageRetention().catch(err => {
+      console.error("⚠️ Failed to execute initial database storage sweep:", err);
+    });
 
     // Set a recurring interval to clean old database entries every 6 hours
     setInterval(() => {
-      console.log("⏱️ Executing scheduled database storage retention sweep...");
-      dbClient.runStorageRetention()
-        .then(purged => {
-          console.log(`⏱️ Purged ${purged.notificationPurged} Notifications, ${purged.sessionPurged} Sessions`);
-        })
-        .catch(err => {
-          console.error("⚠️ Failure during scheduled database retention sweep:", err);
-        });
+      dbClient.runStorageRetention().catch(err => {
+        console.error("⚠️ Failure during scheduled database retention sweep:", err);
+      });
     }, 6 * 60 * 60 * 1000);
   });
 }

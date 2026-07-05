@@ -38,7 +38,7 @@ function createSafeStorage(type: "localStorage" | "sessionStorage"): Storage {
       return storage;
     }
   } catch (e) {
-    console.warn(`[SafeStorage] ${type} is blocked by browser security policies. Using in-memory fallback.`, e);
+    // In-memory storage fallback
   }
   return new MemoryStorage();
 }

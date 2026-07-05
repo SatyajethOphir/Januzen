@@ -21,7 +21,7 @@ function fetchLogo(): Promise<Buffer | null> {
         return;
       }
     } catch (e) {
-      console.warn("⚠️ [INVOICE] Failed to read local logo image:", e);
+      // Local image read failed
     }
 
     // 3. Fallback to HTTPS fetch
@@ -62,7 +62,6 @@ export async function generateInvoice(order: Order, outputPath?: string): Promis
           doc.image(logoBuffer, 50, 45, { width: 50 });
           doc.fontSize(18).fillColor("#0F6E56").font("Helvetica-Bold").text("JANUZEN Global LLP", 115, 45);
         } catch (err) {
-          console.warn("⚠️ [INVOICE] PDFKit failed to load fetched logo image, falling back to text:", err);
           doc.fontSize(18).fillColor("#0F6E56").font("Helvetica-Bold").text("JANUZEN Global LLP", 50, 45);
         }
       } else {

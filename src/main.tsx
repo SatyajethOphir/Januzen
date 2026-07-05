@@ -11,7 +11,6 @@ if (typeof window !== "undefined") {
     window.addEventListener("load", () => {
       navigator.serviceWorker.register("/service-worker.js")
         .then((reg) => {
-          console.log("✅ [PWA] Service Worker registered with scope:", reg.scope);
           reg.update().catch(() => {});
         })
         .catch((err) => {

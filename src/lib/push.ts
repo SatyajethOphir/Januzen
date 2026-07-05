@@ -28,14 +28,12 @@ export function isPushSupported(): boolean {
  */
 export async function subscribeToPush(userId?: string): Promise<boolean> {
   if (!isPushSupported()) {
-    console.warn("[WEB PUSH] Push notifications are not supported in this browser environment.");
     return false;
   }
 
   try {
     const permission = await Notification.requestPermission();
     if (permission !== "granted") {
-      console.warn("[WEB PUSH] Notification permission was denied by user.");
       return false;
     }
 
@@ -49,7 +47,6 @@ export async function subscribeToPush(userId?: string): Promise<boolean> {
     }
     const { publicKey } = await res.json();
     if (!publicKey) {
-      console.warn("[WEB PUSH] VAPID public key is empty. Ensure backend is configured.");
       return false;
     }
 
@@ -68,7 +65,6 @@ export async function subscribeToPush(userId?: string): Promise<boolean> {
         }
       }
       if (!isKeyMatch) {
-        console.warn("🧹 [WEB PUSH] VAPID public key mismatch detected. Purging stale browser subscription and creating a fresh one...");
         try {
           const oldEndpoint = subscription.endpoint;
           await subscription.unsubscribe();
@@ -103,7 +99,6 @@ export async function subscribeToPush(userId?: string): Promise<boolean> {
     });
 
     if (subscribeRes.ok) {
-      console.log("✅ [WEB PUSH] Successfully subscribed device to JANUZEN push notifications!");
       return true;
     } else {
       const errText = await subscribeRes.text();
@@ -136,7 +131,6 @@ export async function unsubscribeFromPush(): Promise<boolean> {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ endpoint })
       });
-      console.log("🛑 [WEB PUSH] Unsubscribed from push notifications.");
       return true;
     }
     return false;

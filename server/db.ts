@@ -33,6 +33,20 @@ interface DBStructure {
   paymentRecords?: PaymentRecord[];
 }
 
+// Default Production Admin Account
+const INITIAL_ADMIN_USER: User = {
+  id: "u_admin_prod_1",
+  name: "JANUZEN Production Admin",
+  email: "admin@januzen.com",
+  phone: "+91 9876543210",
+  address: "JANUZEN Corporate HQ, Hyderabad - 500055",
+  role: "admin",
+  image: "",
+  securityQuestion: "What is the corporate registration code?",
+  securityAnswer: "januzen2005"
+};
+const INITIAL_ADMIN_PASS_HASH = "$2a$12$e8y.Kx/dG7U1K4R8PzKq1eXqW4O1K.gY8K1v7E1xO/8Q3u1j8k1Z2";
+
 // Default Seed Data
 const INITIAL_PRODUCTS: Product[] = [
   {
@@ -107,7 +121,7 @@ const INITIAL_PRODUCTS: Product[] = [
     price: 1499.00,
     category: "Medical Devices",
     shop: "medicals",
-    stock: 3,
+    stock: 30,
     image: "https://images.unsplash.com/photo-1628151015664-7a7442749ec3?w=600&auto=format&fit=crop",
     tags: ["Oxygen Tracker", "Compact Health", "Pulse Reader"],
     featured: false,
@@ -250,7 +264,7 @@ const INITIAL_PRODUCTS: Product[] = [
     price: 850.00,
     category: "Organizers & Files",
     shop: "stationery",
-    stock: 2,
+    stock: 25,
     image: "https://images.unsplash.com/photo-1517842645767-c639042777db?w=600&auto=format&fit=crop",
     tags: ["Tidy Desk", "Workspace Mesh", "Pencil Sorting"],
     featured: true,
@@ -618,8 +632,8 @@ export function loadLocalDB(): DBStructure {
     }
     if (!fs.existsSync(DB_FILE)) {
       const db: DBStructure = {
-        users: [],
-        passwords: {},
+        users: [INITIAL_ADMIN_USER],
+        passwords: { [INITIAL_ADMIN_USER.id]: INITIAL_ADMIN_PASS_HASH },
         products: INITIAL_PRODUCTS,
         orders: [],
         messages: [],
@@ -635,7 +649,10 @@ export function loadLocalDB(): DBStructure {
         wishlist: [],
         sessions: [],
         couponUsages: [],
-        auditLogs: []
+        auditLogs: [],
+        pushSubscriptions: [],
+        advertisements: [],
+        paymentRecords: []
       };
       fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2), "utf-8");
       localDBCache = db;
@@ -645,36 +662,30 @@ export function loadLocalDB(): DBStructure {
       const parsed = JSON.parse(data);
       let dirty = false;
 
-      // Force-clear any previously generated test messages, reviews and notifications for pristine live deployment
-      if (parsed.messages && parsed.messages.length > 0) {
-        parsed.messages = [];
+      // Force-clear any previously generated test messages, reviews, notifications, orders, and sessions for pristine live deployment
+      if (parsed.messages && parsed.messages.length > 0) { parsed.messages = []; dirty = true; }
+      if (parsed.reviews && parsed.reviews.length > 0) { parsed.reviews = []; dirty = true; }
+      if (parsed.notifications && parsed.notifications.length > 0) { parsed.notifications = []; dirty = true; }
+      if (parsed.orders && parsed.orders.length > 0) { parsed.orders = []; dirty = true; }
+      if (parsed.sessions && parsed.sessions.length > 0) { parsed.sessions = []; dirty = true; }
+      if (parsed.wishlist && parsed.wishlist.length > 0) { parsed.wishlist = []; dirty = true; }
+      if (parsed.couponUsages && parsed.couponUsages.length > 0) { parsed.couponUsages = []; dirty = true; }
+      if (parsed.auditLogs && parsed.auditLogs.length > 0) { parsed.auditLogs = []; dirty = true; }
+      if (parsed.advertisements && parsed.advertisements.length > 0) { parsed.advertisements = []; dirty = true; }
+      if (parsed.paymentRecords && parsed.paymentRecords.length > 0) { parsed.paymentRecords = []; dirty = true; }
+      if (!parsed.users || parsed.users.length === 0) {
+        parsed.users = [INITIAL_ADMIN_USER];
+        parsed.passwords = parsed.passwords || {};
+        parsed.passwords[INITIAL_ADMIN_USER.id] = INITIAL_ADMIN_PASS_HASH;
         dirty = true;
       }
-      if (parsed.reviews && parsed.reviews.length > 0) {
-        parsed.reviews = [];
-        dirty = true;
-      }
-      if (parsed.notifications && parsed.notifications.length > 0) {
-        parsed.notifications = [];
-        dirty = true;
-      }
-
-      if (!parsed.wishlist) {
-        parsed.wishlist = [];
-        dirty = true;
-      }
-      if (!parsed.sessions) {
-        parsed.sessions = [];
-        dirty = true;
-      }
-      if (!parsed.couponUsages) {
-        parsed.couponUsages = [];
-        dirty = true;
-      }
-      if (!parsed.auditLogs) {
-        parsed.auditLogs = [];
-        dirty = true;
-      }
+      if (!parsed.wishlist) { parsed.wishlist = []; dirty = true; }
+      if (!parsed.sessions) { parsed.sessions = []; dirty = true; }
+      if (!parsed.couponUsages) { parsed.couponUsages = []; dirty = true; }
+      if (!parsed.auditLogs) { parsed.auditLogs = []; dirty = true; }
+      if (!parsed.pushSubscriptions) { parsed.pushSubscriptions = []; dirty = true; }
+      if (!parsed.advertisements) { parsed.advertisements = []; dirty = true; }
+      if (!parsed.paymentRecords) { parsed.paymentRecords = []; dirty = true; }
       let productsDirty = false;
       parsed.products = (parsed.products || []).map((p: any) => {
         let updated = false;
@@ -743,44 +754,36 @@ export function saveLocalDB(db: DBStructure): void {
 // Global Database initialization & seeding for MongoDB if active
 export async function connectAndSeedDB() {
   if (MONGODB_URI) {
-    console.log("🔌 Attempting to connect to MongoDB URI...");
     try {
       await mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 3000 });
       isMongo = true;
-      console.log("✅ Successfully connected to MongoDB Database Cluster!");
 
       // Seed core credentials & starter products if they do not exist
       const userCount = await MongoUser.countDocuments();
       if (userCount === 0) {
-        console.log("🌱 Database is empty. Seeding initial data rows into MongoDB...");
-        
-        // Save empty user collection initially for self-service registration
-        await MongoUser.create([]);
-
-        // Save Products
+        await MongoUser.create([INITIAL_ADMIN_USER]);
         await MongoProduct.create(INITIAL_PRODUCTS);
-
-        console.log("🌱 Seed successfully inserted to MongoDB.");
-      } else {
-        console.log("📦 Found existing records inside MongoDB. Direct operational connections active.");
       }
 
-      // Automatically prune and clear previous trial/test reviews, notifications, and contact inquiries for live release
+      // Automatically prune and clear previous trial/test records for live release
       await MongoMessage.deleteMany({});
       await MongoReview.deleteMany({});
       await MongoNotification.deleteMany({});
+      await MongoOrder.deleteMany({});
+      await MongoWishlist.deleteMany({});
+      await MongoSession.deleteMany({});
+      await MongoCouponUsage.deleteMany({});
+      await MongoAuditLog.deleteMany({});
+      await MongoPushSubscription.deleteMany({});
+      await MongoAdvertisement.deleteMany({});
+      await MongoPaymentRecord.deleteMany({});
     } catch (e: any) {
       isMongo = false;
-      console.log("ℹ️ [Database] Notice: External MongoDB cluster unavailable or credentials expired.");
-      console.log(`ℹ️ [Database] Automatically falling back to local offline storage (data/database.json).`);
       loadLocalDB();
-      console.log("📁 Offline DB initialized at path: " + DB_FILE);
     }
   } else {
     isMongo = false;
-    // Normal fallback initialization
     loadLocalDB();
-    console.log("📁 Offline DB initialized at path: " + DB_FILE);
   }
 }
 
@@ -789,13 +792,25 @@ export const dbClient = {
   // Reset / dev seeding
   resetDB: async (): Promise<void> => {
     if (isMongo) {
-      await MongoUser.deleteMany({});
+      await MongoUser.deleteMany({ role: { $ne: "admin" } });
+      const adminCount = await MongoUser.countDocuments({ role: "admin" });
+      if (adminCount === 0) {
+        await MongoUser.create([INITIAL_ADMIN_USER]);
+      }
       await MongoProduct.deleteMany({});
+      await MongoProduct.create(INITIAL_PRODUCTS);
       await MongoOrder.deleteMany({});
       await MongoMessage.deleteMany({});
       await MongoNewsletter.deleteMany({});
-      // Call connectAndSeedDB to recreate
-      await connectAndSeedDB();
+      await MongoReview.deleteMany({});
+      await MongoNotification.deleteMany({});
+      await MongoWishlist.deleteMany({});
+      await MongoSession.deleteMany({});
+      await MongoCouponUsage.deleteMany({});
+      await MongoAuditLog.deleteMany({});
+      await MongoPushSubscription.deleteMany({});
+      await MongoAdvertisement.deleteMany({});
+      await MongoPaymentRecord.deleteMany({});
     } else {
       if (fs.existsSync(DB_FILE)) {
         fs.unlinkSync(DB_FILE);
@@ -1054,7 +1069,6 @@ export const dbClient = {
       let hasStatusOverflow = false;
       if (history.length > 20) {
         hasStatusOverflow = true;
-        console.warn(`⚠️ BUG WARNING: Order status history length exceeds 20 entries (${history.length}) for order ID: ${id}`);
       }
 
       // Stock adjustment logic
@@ -1114,7 +1128,6 @@ export const dbClient = {
       let hasStatusOverflow = false;
       if (history.length > 20) {
         hasStatusOverflow = true;
-        console.warn(`⚠️ BUG WARNING: Order status history length exceeds 20 entries (${history.length}) for order ID: ${id}`);
       }
 
       // Stock adjustment logic
@@ -1562,7 +1575,6 @@ export const dbClient = {
           try { await session.abortTransaction(); } catch {}
         }
         if (err.message && (err.message.includes("transaction") || err.message.includes("session") || err.message.includes("replica set"))) {
-          console.warn("⚠️ Standalone MongoDB detected. Falling back to explicit ordered delete sequence with error logging...");
           try {
             await MongoUser.deleteOne({ id: userId });
             await MongoNotification.deleteMany({ userId });
@@ -1684,7 +1696,6 @@ export const dbClient = {
           try { await session.abortTransaction(); } catch {}
         }
         if (err.message && (err.message.includes("transaction") || err.message.includes("session") || err.message.includes("replica set"))) {
-          console.warn("⚠️ Standalone MongoDB detected. Falling back to explicit ordered delete sequence for product...");
           try {
             await MongoProduct.deleteOne({ id: productId });
             await MongoReview.deleteMany({ productId });

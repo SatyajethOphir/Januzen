@@ -26,7 +26,6 @@ export function initWebPush(): { publicKey: string; privateKey: string; subject:
     try {
       webpush.setVapidDetails(subject, publicKey, privateKey);
       vapidInitialized = true;
-      console.log("✅ [WEB PUSH] VAPID details initialized successfully.");
     } catch (err: any) {
       console.error("❌ [WEB PUSH] Failed to initialize VAPID keys:", err.message);
       throw err;
@@ -142,7 +141,6 @@ export class NotificationService {
    * Automatically remove invalid or expired subscriptions (410 Gone / 404 Not Found)
    */
   static async removeSubscription(endpoint: string): Promise<void> {
-    console.log(`🧹 [PUSH CLEANUP] Purging expired/invalid subscription: ${endpoint.substring(0, 30)}...`);
     if (isMongo) {
       await PushSubscriptionModel.deleteOne({ endpoint });
     } else {
@@ -303,7 +301,6 @@ export class NotificationService {
 
           if (statusCode === 410 || statusCode === 404 || statusCode === 403 || statusCode === 400) {
             // Subscription expired, unsubscribed, or VAPID key mismatch: remove so client can self-heal on next boot/focus
-            console.warn(`🧹 [PUSH CLEANUP] Purging expired/invalid subscription (status ${statusCode}): ${targetEndpoint.substring(0, 35)}... | Reason: ${errBody}`);
             await this.removeSubscription(targetEndpoint);
             failCount++;
             break;
