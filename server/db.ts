@@ -1947,7 +1947,7 @@ export const dbClient = {
       await MongoPushSubscription.findOneAndUpdate(
         { endpoint: sub.endpoint },
         sub,
-        { upsert: true, new: true }
+        { upsert: true, returnDocument: "after" }
       );
       return sub;
     } else {
@@ -2007,7 +2007,7 @@ export const dbClient = {
       const res = await MongoPushSubscription.findOneAndUpdate(
         { $or: [{ endpoint: oldToken }, { fcmToken: oldToken }] },
         { endpoint: newToken, fcmToken: newToken, type: "fcm", updatedAt, ...(userId ? { userId } : {}), ...(deviceInfo ? { deviceInfo } : {}) },
-        { new: true }
+        { returnDocument: "after" }
       );
       if (!res) {
         // If not found, insert a new record
@@ -2139,7 +2139,7 @@ export const dbClient = {
 
   updatePaymentRecord: async (id: string, updates: Partial<PaymentRecord>): Promise<PaymentRecord | null> => {
     if (isMongo) {
-      return await MongoPaymentRecord.findOneAndUpdate({ id }, { $set: updates }, { new: true }).lean() as any;
+      return await MongoPaymentRecord.findOneAndUpdate({ id }, { $set: updates }, { returnDocument: "after" }).lean() as any;
     } else {
       const db = loadLocalDB();
       if (!db.paymentRecords) db.paymentRecords = [];

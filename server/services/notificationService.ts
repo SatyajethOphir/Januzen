@@ -34,6 +34,7 @@ export interface PushPayload {
   type?: string;
   category?: NotificationCategory;
   actions?: Array<{ action: string; title: string; icon?: string }>;
+  tag?: string;
   requireInteraction?: boolean;
 }
 
@@ -69,7 +70,7 @@ export class NotificationService {
             createdAt: now
           }
         },
-        { upsert: true, new: true }
+        { upsert: true, returnDocument: "after" }
       );
       return sub;
     } else {

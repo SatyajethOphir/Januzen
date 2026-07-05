@@ -1,6 +1,5 @@
 import nodemailer from "nodemailer";
 import cron from "node-cron";
-import fetch from "node-fetch";
 
 /**
  * Unified Notification System for JANUZEN Enterprise

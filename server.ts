@@ -315,6 +315,7 @@ async function startServer() {
       await createAndSendNotification("all", title, body, linkUrl, imageUrl);
       const activeSubs = await NotificationService.getAllSubscriptions();
       const successCount = activeSubs.length;
+      const failCount = 0;
 
       const now = new Date();
       const expiresAt = new Date(now.getTime() + 48 * 60 * 60 * 1000).toISOString();
