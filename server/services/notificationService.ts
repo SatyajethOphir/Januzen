@@ -210,15 +210,27 @@ export class NotificationService {
     let successCount = 0;
     let failCount = 0;
 
-    if (subs.length === 0) {
+    if (!subs || subs.length === 0) {
       return { successCount: 0, failCount: 0 };
     }
+
+    // Deduplicate subscriptions by endpoint to prevent duplicate notifications to the same browser/device
+    const uniqueSubsMap = new Map();
+    for (const s of subs) {
+      if (s && s.endpoint && !uniqueSubsMap.has(s.endpoint)) {
+        uniqueSubsMap.set(s.endpoint, s);
+      }
+    }
+    const uniqueSubs = Array.from(uniqueSubsMap.values());
 
     const formattedTitle = payload.title.startsWith("JANUZEN") ? payload.title : `JANUZEN | ${payload.title}`;
     const defaultActions = payload.actions || [
       { action: "view", title: "👀 View" },
       { action: "dismiss", title: "✖ Dismiss" }
     ];
+
+    const cleanTitle = formattedTitle.replace(/[^a-zA-Z0-9]/g, "").toLowerCase().slice(0, 30);
+    const deterministicTag = payload.tag || `januzen-${payload.type || payload.category || "general"}-${cleanTitle}`;
 
     const pushDataString = JSON.stringify({
       title: formattedTitle,
@@ -229,12 +241,13 @@ export class NotificationService {
       url: payload.url || "/",
       type: payload.type || payload.category || "general",
       category: payload.category || "general",
+      tag: deterministicTag,
       actions: defaultActions,
       requireInteraction: payload.requireInteraction || false,
       timestamp: Date.now()
     });
 
-    for (const sub of subs) {
+    for (const sub of uniqueSubs) {
       if (!sub.endpoint || !sub.keys || !sub.keys.p256dh || !sub.keys.auth) {
         continue;
       }

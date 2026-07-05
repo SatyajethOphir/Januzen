@@ -432,6 +432,9 @@ export default function App() {
   React.useEffect(() => {
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
 
+    // Check and refresh web push subscription on app boot (crucial for standalone Add-to-Home-Screen PWAs)
+    checkAndRefreshSubscription(currentUser);
+
     const handleControllerChange = () => {
       checkAndRefreshSubscription(currentUser);
     };

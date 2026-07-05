@@ -52,12 +52,19 @@ self.addEventListener("push", (event) => {
   const rawTitle = payload.title || "JANUZEN Notification";
   const title = rawTitle.startsWith("JANUZEN") ? rawTitle : `JANUZEN | ${rawTitle}`;
   const body = payload.body || "You have a new update from Januzen.";
-  const icon = payload.icon || "/appicon.png";
-  const badge = payload.badge || "/logo.png";
-  const image = payload.image || undefined;
+  
+  const origin = self.location.origin;
+  const resolveUrl = (path) => (!path ? "/appicon.png" : path.startsWith("http") || path.startsWith("data:") ? path : `${origin}${path.startsWith("/") ? "" : "/"}${path}`);
+  const icon = resolveUrl(payload.icon || "/appicon.png");
+  const badge = resolveUrl(payload.badge || "/logo.png");
+  const image = payload.image ? resolveUrl(payload.image) : undefined;
+  
   const url = payload.url || "/";
   const type = payload.type || payload.category || "general";
-  const tag = payload.tag || `januzen-${type}-${Date.now()}`;
+  
+  // Deterministic tag prevents OS-level notification stacking (collapses duplicates automatically)
+  const cleanTitle = title.replace(/[^a-zA-Z0-9]/g, "").toLowerCase().slice(0, 30);
+  const tag = payload.tag || `januzen-${type}-${cleanTitle}`;
   const requireInteraction = payload.requireInteraction || type === "otp" || type === "order" || type === "security";
 
   let actions = payload.actions;
@@ -108,25 +115,36 @@ self.addEventListener("push", (event) => {
     actions
   };
 
+  const displayNotification = (targetTitle, targetOptions) => {
+    return self.registration.showNotification(targetTitle, targetOptions).catch((err) => {
+      console.warn("⚠️ [SW PUSH] Advanced notification display failed (likely iOS/OEM constraint). Falling back to basic OS alert:", err);
+      return self.registration.showNotification(targetTitle, {
+        body: targetOptions.body,
+        icon: resolveUrl("/appicon.png"),
+        tag: targetOptions.tag,
+        data: targetOptions.data
+      });
+    });
+  };
+
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
       // Check if any open PWA tab is actively visible and focused
       const activeVisibleClient = clientList.find((client) => client.visibilityState === "visible");
       if (activeVisibleClient) {
-        console.log("[SW PUSH] PWA is active and focused in foreground. Dispatching directly to window client.");
+        console.log("[SW PUSH] PWA is active and visible in foreground. Dispatching directly to in-app toast without duplicate OS banner.");
         activeVisibleClient.postMessage({
           type: "PUSH_RECEIVED",
           data: { title, body, url, type, image, actions }
         });
-        // Still show a silent or subtle notification if high urgency (OTP / Order out for delivery)
-        if (requireInteraction) {
-          return self.registration.showNotification(title, options);
-        }
         return Promise.resolve();
       } else {
         console.log("[SW PUSH] PWA is minimized/closed/locked. Displaying OS-level system push notification.");
-        return self.registration.showNotification(title, options);
+        return displayNotification(title, options);
       }
+    }).catch((err) => {
+      console.error("❌ [SW PUSH] Client match failed, invoking fallback OS notification:", err);
+      return displayNotification(title, options);
     })
   );
 });

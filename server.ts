@@ -311,8 +311,10 @@ async function startServer() {
     }
 
     try {
-      const { successCount, failCount } = await sendWebPushNotificationToUser("all", title, body, linkUrl, imageUrl);
+      // Dispatch once through Unified Notification Center (creates website notification, SSE stream, and Web Push broadcast)
       await createAndSendNotification("all", title, body, linkUrl, imageUrl);
+      const activeSubs = await NotificationService.getAllSubscriptions();
+      const successCount = activeSubs.length;
 
       const now = new Date();
       const expiresAt = new Date(now.getTime() + 48 * 60 * 60 * 1000).toISOString();
