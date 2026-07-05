@@ -1,5 +1,6 @@
 // JANUZEN PWA Service Worker (Standard Open-Standards Web Push API)
-const CACHE_NAME = "januzen-v1";
+const CACHE_VERSION = "v2.1.0";
+const CACHE_NAME = `januzen-cache-${CACHE_VERSION}`;
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",
@@ -10,6 +11,7 @@ const ASSETS_TO_CACHE = [
 
 // Install Service Worker
 self.addEventListener("install", (event) => {
+  console.log(`⬇️ [SW] Installing Service Worker version ${CACHE_VERSION}...`);
   event.waitUntil(
     Promise.all([
       caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE).catch(() => {})),
@@ -20,6 +22,7 @@ self.addEventListener("install", (event) => {
 
 // Activate Service Worker
 self.addEventListener("activate", (event) => {
+  console.log(`⚡ [SW] Activating Service Worker version ${CACHE_VERSION} and claiming clients...`);
   event.waitUntil(
     Promise.all([
       self.clients.claim(),
@@ -27,6 +30,7 @@ self.addEventListener("activate", (event) => {
         return Promise.all(
           cacheNames.map((cache) => {
             if (cache !== CACHE_NAME) {
+              console.log(`🧹 [SW CLEANUP] Deleting outdated cache storage: ${cache}`);
               return caches.delete(cache);
             }
           })
@@ -34,6 +38,13 @@ self.addEventListener("activate", (event) => {
       })
     ])
   );
+});
+
+// Handle messages from client tabs
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
 
 // --- STANDARD WEB PUSH EVENT HANDLER (VAPID) ---
@@ -64,7 +75,7 @@ self.addEventListener("push", (event) => {
   
   // Deterministic tag prevents OS-level notification stacking (collapses duplicates automatically)
   const cleanTitle = title.replace(/[^a-zA-Z0-9]/g, "").toLowerCase().slice(0, 30);
-  const tag = payload.tag || `januzen-${type}-${cleanTitle}`;
+  const tag = (payload.tag && String(payload.tag).trim()) || `januzen-${type}-${cleanTitle || Date.now()}`;
   const requireInteraction = payload.requireInteraction || type === "otp" || type === "order" || type === "security";
 
   let actions = payload.actions;
@@ -149,26 +160,102 @@ self.addEventListener("push", (event) => {
   );
 });
 
-// Fetch handler with Cache-First strategy for static assets, network-first for APIs
+// --- SELF-HEALING WEB PUSH: HANDLE OS / BROWSER TOKEN ROTATION ---
+self.addEventListener("pushsubscriptionchange", (event) => {
+  console.log("🔄 [SW PUSH] Push subscription change detected by OS/Browser. Automatically re-subscribing...");
+  event.waitUntil(
+    fetch("/api/push/vapid-public-key")
+      .then((res) => res.json())
+      .then(({ publicKey }) => {
+        if (!publicKey) throw new Error("Missing VAPID public key from backend");
+        const padding = "=".repeat((4 - (publicKey.length % 4)) % 4);
+        const base64 = (publicKey + padding).replace(/-/g, "+").replace(/_/g, "/");
+        const rawData = self.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) {
+          outputArray[i] = rawData.charCodeAt(i);
+        }
+        return self.registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: outputArray
+        });
+      })
+      .then((newSubscription) => {
+        return fetch("/api/push/subscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            subscription: newSubscription,
+            deviceInfo: "Android PWA Service Worker (Self-Healed Token)"
+          })
+        });
+      })
+      .then((res) => {
+        if (res.ok) {
+          console.log("✅ [SW PUSH] Rotated push subscription automatically synced to backend database!");
+        } else {
+          console.error("❌ [SW PUSH] Failed to sync rotated subscription with backend database.");
+        }
+      })
+      .catch((err) => {
+        console.error("❌ [SW PUSH] Error in pushsubscriptionchange handler:", err);
+      })
+  );
+});
+
+// Fetch handler: Network-First for HTML/Navigation, Cache-First for static assets
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
   
+  // Only handle HTTP and HTTPS schemes (ignore chrome-extension:, devtools:, data:, etc.)
+  if (!url.protocol.startsWith("http")) {
+    return;
+  }
+
   // Do not intercept API calls or SSE streams
   if (url.pathname.startsWith("/api/")) {
     return;
   }
 
+  // 1. Navigation requests (HTML / SPA routes): Network-First with offline fallback
+  if (
+    event.request.mode === "navigate" ||
+    url.pathname === "/" ||
+    url.pathname === "/index.html" ||
+    event.request.headers.get("accept")?.includes("text/html")
+  ) {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse.status === 200) {
+            const cacheCopy = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put("/index.html", cacheCopy));
+          }
+          return networkResponse;
+        })
+        .catch(() => {
+          console.log("📴 [SW] Offline navigation fallback serving /index.html from cache");
+          return caches.match("/index.html") || caches.match("/");
+        })
+    );
+    return;
+  }
+
+  // 2. Static Assets & Images: Cache-First, dynamically cache new version assets
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      if (response) {
-        return response;
+    caches.match(event.request).then((cachedResponse) => {
+      if (cachedResponse) {
+        return cachedResponse;
       }
       return fetch(event.request).then((networkResponse) => {
-        // Cache static assets dynamically
         if (
-          event.request.method === "GET" && 
+          event.request.method === "GET" &&
+          url.protocol.startsWith("http") &&
           networkResponse.status === 200 &&
-          (url.pathname.endsWith(".png") || url.pathname.endsWith(".js") || url.pathname.endsWith(".css") || url.pathname.endsWith(".jpg"))
+          (url.pathname.endsWith(".png") || url.pathname.endsWith(".jpg") || url.pathname.endsWith(".jpeg") ||
+           url.pathname.endsWith(".svg") || url.pathname.endsWith(".ico") || url.pathname.endsWith(".js") ||
+           url.pathname.endsWith(".css") || url.pathname.endsWith(".woff") || url.pathname.endsWith(".woff2") ||
+           url.pathname.endsWith(".json"))
         ) {
           const cacheCopy = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
@@ -178,8 +265,7 @@ self.addEventListener("fetch", (event) => {
         return networkResponse;
       });
     }).catch(() => {
-      // Offline fallback
-      return caches.match("/index.html");
+      return new Response("Resource unavailable offline", { status: 503, statusText: "Service Unavailable" });
     })
   );
 });

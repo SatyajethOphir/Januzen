@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs";
 import { User, Product, Order, Message, Coupon, Review, Notification, WishlistItem, Session, CouponUsage, AuditLog, PushSubscription, Advertisement, PaymentRecord } from "../src/types";
 
 // Check if MongoDB URI is available
-export const MONGODB_URI = process.env.MONGODB_URI || "";
+export const MONGODB_URI = (process.env.MONGODB_URI || "").trim().replace(/^["']|["']$/g, "");
 export let isMongo = false;
 
 // Databases Paths for fallback
@@ -771,8 +771,8 @@ export async function connectAndSeedDB() {
       await MongoNotification.deleteMany({});
     } catch (e: any) {
       isMongo = false;
-      console.warn("⚠️ [MongoDB] Connection or authentication failed. Automatically falling back to local database.json file.");
-      console.warn(`   Reason: ${e?.message || e}`);
+      console.log("ℹ️ [Database] Notice: External MongoDB cluster unavailable or credentials expired.");
+      console.log(`ℹ️ [Database] Automatically falling back to local offline storage (data/database.json).`);
       loadLocalDB();
       console.log("📁 Offline DB initialized at path: " + DB_FILE);
     }

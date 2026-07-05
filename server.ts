@@ -298,6 +298,13 @@ async function startServer() {
   };
 
   // --- API ROUTES ---
+  app.get("/api/version", (req, res) => {
+    res.json({
+      version: "v2.1.0",
+      commit: process.env.RENDER_GIT_COMMIT || "local",
+      timestamp: Date.now()
+    });
+  });
 
   // --- MODULAR WEBPUSH & NOTIFICATION ROUTES ---
   app.use("/api/push", createNotificationRoutes(authenticateAdmin));

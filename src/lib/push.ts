@@ -58,11 +58,13 @@ export async function subscribeToPush(userId?: string): Promise<boolean> {
     const applicationServerKey = urlBase64ToUint8Array(publicKey);
 
     if (subscription) {
-      let isKeyMatch = false;
+      let isKeyMatch = true; // Default to true if browser doesn't expose applicationServerKey
       if (subscription.options && subscription.options.applicationServerKey) {
         const existingKey = new Uint8Array(subscription.options.applicationServerKey);
         if (existingKey.length === applicationServerKey.length) {
           isKeyMatch = existingKey.every((byte, i) => byte === applicationServerKey[i]);
+        } else {
+          isKeyMatch = false;
         }
       }
       if (!isKeyMatch) {
@@ -152,25 +154,9 @@ export async function checkAndRefreshSubscription(currentUser?: any): Promise<vo
   if (Notification.permission !== "granted") return;
 
   try {
-    const registration = await navigator.serviceWorker.ready;
-    const existingSubscription = await registration.pushManager.getSubscription();
     const userId = currentUser?.id || (typeof currentUser === "string" ? currentUser : undefined);
-
-    if (!existingSubscription) {
-      console.log("🔄 [WEB PUSH] No active subscription found despite granted permission. Re-subscribing...");
-      await subscribeToPush(userId);
-    } else {
-      // Ensure backend knows about this subscription and updates user association
-      await fetch("/api/push/subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          subscription: existingSubscription,
-          userId,
-          deviceInfo: navigator.userAgent
-        })
-      });
-    }
+    // Automatically verify VAPID key match, recreate if stale/purged, and synchronize with backend
+    await subscribeToPush(userId);
   } catch (err: any) {
     console.error("[WEB PUSH] Error checking or refreshing push subscription:", err);
   }

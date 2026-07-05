@@ -6,10 +6,17 @@ import { dbClient, isMongo } from "../db";
 // Ensure VAPID keys are initialized
 let vapidInitialized = false;
 
-export function initWebPush(): { publicKey: string; privateKey: string } {
-  const publicKey = process.env.VAPID_PUBLIC_KEY || process.env.VITE_VAPID_PUBLIC_KEY;
-  const privateKey = process.env.VAPID_PRIVATE_KEY;
-  const subject = process.env.VAPID_SUBJECT || "mailto:support@januzen.com";
+export function initWebPush(): { publicKey: string; privateKey: string; subject: string } {
+  const rawPublic = process.env.VAPID_PUBLIC_KEY || process.env.VITE_VAPID_PUBLIC_KEY || "";
+  const rawPrivate = process.env.VAPID_PRIVATE_KEY || "";
+  const rawSubject = process.env.VAPID_SUBJECT || "mailto:support@januzen.com";
+
+  const publicKey = rawPublic.trim().replace(/^["']|["']$/g, "");
+  const privateKey = rawPrivate.trim().replace(/^["']|["']$/g, "");
+  let subject = rawSubject.trim().replace(/^["']|["']$/g, "");
+  if (!subject.startsWith("mailto:") && !subject.startsWith("http://") && !subject.startsWith("https://")) {
+    subject = `mailto:${subject}`;
+  }
 
   if (!publicKey || !privateKey) {
     throw new Error("❌ [WEB PUSH CRITICAL] Missing required VAPID environment variables (VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY). Cannot initialize Web Push without valid keys.");
@@ -26,7 +33,7 @@ export function initWebPush(): { publicKey: string; privateKey: string } {
     }
   }
 
-  return { publicKey, privateKey };
+  return { publicKey, privateKey, subject };
 }
 
 export interface PushPayload {
@@ -212,7 +219,7 @@ export class NotificationService {
     subs: any[],
     payload: PushPayload
   ): Promise<{ successCount: number; failCount: number }> {
-    initWebPush();
+    const { publicKey, privateKey, subject } = initWebPush();
     let successCount = 0;
     let failCount = 0;
 
@@ -253,10 +260,28 @@ export class NotificationService {
       timestamp: Date.now()
     });
 
+    const vapidOptions = {
+      vapidDetails: {
+        subject,
+        publicKey,
+        privateKey
+      },
+      TTL: 86400, // 24 hours TTL ensures FCM delivers even when Android device is sleeping/locked
+      headers: {
+        "Urgency": payload.requireInteraction ? "high" : "normal"
+      }
+    };
+
     for (const sub of uniqueSubs) {
       if (!sub.endpoint || !sub.keys || !sub.keys.p256dh || !sub.keys.auth) {
         continue;
       }
+
+      const targetEndpoint = String(sub.endpoint).trim();
+      const targetKeys = {
+        p256dh: String(sub.keys.p256dh).trim(),
+        auth: String(sub.keys.auth).trim()
+      };
 
       // Execute send with retry logic for transient errors
       let attempt = 0;
@@ -266,25 +291,27 @@ export class NotificationService {
       while (attempt <= maxRetries && !delivered) {
         try {
           await webpush.sendNotification(
-            { endpoint: sub.endpoint, keys: sub.keys },
-            pushDataString
+            { endpoint: targetEndpoint, keys: targetKeys },
+            pushDataString,
+            vapidOptions
           );
           successCount++;
           delivered = true;
         } catch (err: any) {
           const statusCode = err.statusCode || err.status;
+          const errBody = err.body || err.message || "";
 
           if (statusCode === 410 || statusCode === 404 || statusCode === 403 || statusCode === 400) {
-            // Subscription expired, unsubscribed, or VAPID key mismatch: remove immediately
-            console.warn(`🧹 [PUSH CLEANUP] Purging expired/invalid subscription (status ${statusCode}): ${sub.endpoint.substring(0, 35)}...`);
-            await this.removeSubscription(sub.endpoint);
+            // Subscription expired, unsubscribed, or VAPID key mismatch: remove so client can self-heal on next boot/focus
+            console.warn(`🧹 [PUSH CLEANUP] Purging expired/invalid subscription (status ${statusCode}): ${targetEndpoint.substring(0, 35)}... | Reason: ${errBody}`);
+            await this.removeSubscription(targetEndpoint);
             failCount++;
             break;
           } else if (attempt < maxRetries) {
             attempt++;
             await new Promise(res => setTimeout(res, 500 * attempt));
           } else {
-            console.error(`❌ [WEB PUSH] Error delivering to ${sub.endpoint.substring(0, 25)}... status: ${statusCode}`, err.message);
+            console.error(`❌ [WEB PUSH] Error delivering to ${targetEndpoint.substring(0, 25)}... status: ${statusCode} | ${err.message}`);
             failCount++;
             break;
           }

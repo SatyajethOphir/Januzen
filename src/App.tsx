@@ -6,6 +6,7 @@ import { Product, User, ProductOption } from "./types";
 import type { CartItem } from "./components/CartView";
 import OfficialLoader from "./components/OfficialLoader";
 import { subscribeToPush, checkAndRefreshSubscription } from "./lib/push";
+import { setupServiceWorkerVersionControl } from "./lib/versioning";
 
 import HomeView from "./components/HomeView";
 import ShopView from "./components/ShopView";
@@ -45,13 +46,28 @@ interface NavState {
 export default function App() {
   const [nav, setNav] = React.useState<NavState>({ page: "home", params: {} });
   const [currentUser, setCurrentUser] = React.useState<User | null>(null);
-  const [cart, setCart] = React.useState<CartItem[]>([]);
+  const [cart, setCart] = React.useState<CartItem[]>(() => {
+    try {
+      const saved = localStorage.getItem("januzen_cart");
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
   const [sideCartOpen, setSideCartOpen] = React.useState(false);
   const [featuredProducts, setFeaturedProducts] = React.useState<Product[]>([]);
   const [toasts, setToasts] = React.useState<Array<{ id: string; message: string; type: 'success' | 'error' | 'info' }>>([]);
   const [wishlistProductIds, setWishlistProductIds] = React.useState<string[]>([]);
   const [marquee, setMarquee] = React.useState<string>("");
   const [marqueeSpeed, setMarqueeSpeed] = React.useState<number>(30);
+
+  React.useEffect(() => {
+    try {
+      localStorage.setItem("januzen_cart", JSON.stringify(cart));
+    } catch (e) {
+      console.error("Failed to save cart to localStorage:", e);
+    }
+  }, [cart]);
   
   // Custom secure elite loading managers
   const [sessionLoading, setSessionLoading] = React.useState(true);
@@ -435,14 +451,13 @@ export default function App() {
     // Check and refresh web push subscription on app boot (crucial for standalone Add-to-Home-Screen PWAs)
     checkAndRefreshSubscription(currentUser);
 
-    const handleControllerChange = () => {
+    // Setup PWA version controller (reloads app once when new SW activates)
+    const cleanupSWControl = setupServiceWorkerVersionControl(() => {
       checkAndRefreshSubscription(currentUser);
-    };
-
-    navigator.serviceWorker.addEventListener("controllerchange", handleControllerChange);
+    });
 
     return () => {
-      navigator.serviceWorker.removeEventListener("controllerchange", handleControllerChange);
+      cleanupSWControl();
     };
   }, [currentUser]);
 
