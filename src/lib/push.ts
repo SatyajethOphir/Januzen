@@ -57,6 +57,31 @@ export async function subscribeToPush(userId?: string): Promise<boolean> {
     let subscription = await registration.pushManager.getSubscription();
     const applicationServerKey = urlBase64ToUint8Array(publicKey);
 
+    if (subscription) {
+      let isKeyMatch = false;
+      if (subscription.options && subscription.options.applicationServerKey) {
+        const existingKey = new Uint8Array(subscription.options.applicationServerKey);
+        if (existingKey.length === applicationServerKey.length) {
+          isKeyMatch = existingKey.every((byte, i) => byte === applicationServerKey[i]);
+        }
+      }
+      if (!isKeyMatch) {
+        console.warn("🧹 [WEB PUSH] VAPID public key mismatch detected. Purging stale browser subscription and creating a fresh one...");
+        try {
+          const oldEndpoint = subscription.endpoint;
+          await subscription.unsubscribe();
+          await fetch("/api/push/unsubscribe", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ endpoint: oldEndpoint })
+          }).catch(() => {});
+        } catch (e) {
+          console.error("⚠️ Failed to unsubscribe stale browser subscription:", e);
+        }
+        subscription = null;
+      }
+    }
+
     if (!subscription) {
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,

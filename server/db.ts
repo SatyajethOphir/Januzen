@@ -6,7 +6,7 @@ import { User, Product, Order, Message, Coupon, Review, Notification, WishlistIt
 
 // Check if MongoDB URI is available
 export const MONGODB_URI = process.env.MONGODB_URI || "";
-export let isMongo = !!MONGODB_URI;
+export let isMongo = false;
 
 // Databases Paths for fallback
 const DB_DIR = path.join(process.cwd(), "data");
@@ -742,10 +742,11 @@ export function saveLocalDB(db: DBStructure): void {
 
 // Global Database initialization & seeding for MongoDB if active
 export async function connectAndSeedDB() {
-  if (isMongo) {
+  if (MONGODB_URI) {
     console.log("🔌 Attempting to connect to MongoDB URI...");
     try {
       await mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 3000 });
+      isMongo = true;
       console.log("✅ Successfully connected to MongoDB Database Cluster!");
 
       // Seed core credentials & starter products if they do not exist
@@ -768,13 +769,15 @@ export async function connectAndSeedDB() {
       await MongoMessage.deleteMany({});
       await MongoReview.deleteMany({});
       await MongoNotification.deleteMany({});
-    } catch (e) {
-      console.error("❌ CRITICAL: Failed to connect to MongoDB cluster! Falling back to database.json file:", e);
+    } catch (e: any) {
       isMongo = false;
+      console.warn("⚠️ [MongoDB] Connection or authentication failed. Automatically falling back to local database.json file.");
+      console.warn(`   Reason: ${e?.message || e}`);
       loadLocalDB();
       console.log("📁 Offline DB initialized at path: " + DB_FILE);
     }
   } else {
+    isMongo = false;
     // Normal fallback initialization
     loadLocalDB();
     console.log("📁 Offline DB initialized at path: " + DB_FILE);

@@ -7,9 +7,13 @@ import { dbClient, isMongo } from "../db";
 let vapidInitialized = false;
 
 export function initWebPush(): { publicKey: string; privateKey: string } {
-  const publicKey = process.env.VAPID_PUBLIC_KEY || "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U";
-  const privateKey = process.env.VAPID_PRIVATE_KEY || "VnLwDtbz3Rto617w5K1H8XyQzS-6yE62xXwF_pZ1rO4";
+  const publicKey = process.env.VAPID_PUBLIC_KEY || process.env.VITE_VAPID_PUBLIC_KEY;
+  const privateKey = process.env.VAPID_PRIVATE_KEY;
   const subject = process.env.VAPID_SUBJECT || "mailto:support@januzen.com";
+
+  if (!publicKey || !privateKey) {
+    throw new Error("❌ [WEB PUSH CRITICAL] Missing required VAPID environment variables (VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY). Cannot initialize Web Push without valid keys.");
+  }
 
   if (!vapidInitialized) {
     try {
@@ -18,6 +22,7 @@ export function initWebPush(): { publicKey: string; privateKey: string } {
       console.log("✅ [WEB PUSH] VAPID details initialized successfully.");
     } catch (err: any) {
       console.error("❌ [WEB PUSH] Failed to initialize VAPID keys:", err.message);
+      throw err;
     }
   }
 
@@ -268,8 +273,10 @@ export class NotificationService {
           delivered = true;
         } catch (err: any) {
           const statusCode = err.statusCode || err.status;
-          if (statusCode === 410 || statusCode === 404) {
-            // Subscription expired or unsubscribed on client: remove immediately
+
+          if (statusCode === 410 || statusCode === 404 || statusCode === 403 || statusCode === 400) {
+            // Subscription expired, unsubscribed, or VAPID key mismatch: remove immediately
+            console.warn(`🧹 [PUSH CLEANUP] Purging expired/invalid subscription (status ${statusCode}): ${sub.endpoint.substring(0, 35)}...`);
             await this.removeSubscription(sub.endpoint);
             failCount++;
             break;
