@@ -9,7 +9,7 @@ const ASSETS_TO_CACHE = [
   "/logo.png"
 ];
 
-// Install Service Worker
+// Force immediate takeover — never wait for tabs to close
 self.addEventListener("install", (event) => {
   event.waitUntil(
     Promise.all([
@@ -19,21 +19,21 @@ self.addEventListener("install", (event) => {
   );
 });
 
-// Activate Service Worker
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    Promise.all([
-      self.clients.claim(),
-      caches.keys().then((cacheNames) => {
-        return Promise.all(
-          cacheNames.map((cache) => {
-            if (cache !== CACHE_NAME) {
-              return caches.delete(cache);
-            }
-          })
-        );
-      })
-    ])
+    (async () => {
+      // Take control of all open pages immediately
+      await clients.claim();
+      // Clean up any old caches from previous versions
+      const cacheKeys = await caches.keys();
+      await Promise.all(
+        cacheKeys.map((key) => {
+          if (key !== CACHE_NAME) {
+            return caches.delete(key);
+          }
+        })
+      );
+    })()
   );
 });
 
@@ -46,109 +46,106 @@ self.addEventListener("message", (event) => {
 
 // --- STANDARD WEB PUSH EVENT HANDLER (VAPID) ---
 self.addEventListener("push", (event) => {
-  let payload = {};
-  if (event.data) {
-    try {
-      payload = event.data.json();
-    } catch (e) {
-      payload = { title: "JANUZEN Alert", body: event.data.text() };
-    }
-  }
-
-  const rawTitle = payload.title || "JANUZEN Notification";
-  const title = rawTitle.startsWith("JANUZEN") ? rawTitle : `JANUZEN | ${rawTitle}`;
-  const body = payload.body || "You have a new update from Januzen.";
-  
-  const origin = self.location.origin;
-  const resolveUrl = (path) => (!path ? "/appicon.png" : path.startsWith("http") || path.startsWith("data:") ? path : `${origin}${path.startsWith("/") ? "" : "/"}${path}`);
-  const icon = resolveUrl(payload.icon || "/appicon.png");
-  const badge = resolveUrl(payload.badge || "/logo.png");
-  const image = payload.image ? resolveUrl(payload.image) : undefined;
-  
-  const url = payload.url || "/";
-  const type = payload.type || payload.category || "general";
-  
-  // Deterministic tag prevents OS-level notification stacking (collapses duplicates automatically)
-  const cleanTitle = title.replace(/[^a-zA-Z0-9]/g, "").toLowerCase().slice(0, 30);
-  const tag = (payload.tag && String(payload.tag).trim()) || `januzen-${type}-${cleanTitle || Date.now()}`;
-  const requireInteraction = payload.requireInteraction || type === "otp" || type === "order" || type === "security";
-
-  let actions = payload.actions;
-  if (!actions || actions.length === 0) {
-    if (type === "order" || type.startsWith("order_")) {
-      actions = [
-        { action: "view", title: "📦 View Order" },
-        { action: "dismiss", title: "✖ Dismiss" }
-      ];
-    } else if (type === "otp" || type === "security") {
-      actions = [
-        { action: "verify", title: "🔑 Verify Now" },
-        { action: "dismiss", title: "✖ Dismiss" }
-      ];
-    } else if (type === "chat" || type === "chat_message") {
-      actions = [
-        { action: "reply", title: "💬 Open Chat" },
-        { action: "dismiss", title: "✖ Dismiss" }
-      ];
-    } else if (type === "promotional_offer" || type === "offer") {
-      actions = [
-        { action: "shop", title: "🛍️ Shop Offer" },
-        { action: "dismiss", title: "✖ Dismiss" }
-      ];
-    } else {
-      actions = [
-        { action: "view", title: "👀 View" },
-        { action: "dismiss", title: "✖ Dismiss" }
-      ];
-    }
-  }
-
-  const options = {
-    body,
-    icon,
-    badge,
-    image,
-    vibrate: [200, 100, 200, 100, 200],
-    tag,
-    renotify: true,
-    requireInteraction,
-    data: {
-      url,
-      type,
-      category: payload.category || type,
-      timestamp: Date.now()
-    },
-    actions
-  };
-
-  const displayNotification = (targetTitle, targetOptions) => {
-    return self.registration.showNotification(targetTitle, targetOptions).catch((err) => {
-      return self.registration.showNotification(targetTitle, {
-        body: targetOptions.body,
-        icon: resolveUrl("/appicon.png"),
-        tag: targetOptions.tag,
-        data: targetOptions.data
-      });
-    });
-  };
-
+  // CRITICAL: wrap everything in event.waitUntil so Android doesn't
+  // kill the service worker before the notification is shown
   event.waitUntil(
-    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
-      // Check if any open PWA tab is actively visible and focused
-      const activeVisibleClient = clientList.find((client) => client.visibilityState === "visible");
-      if (activeVisibleClient) {
-        activeVisibleClient.postMessage({
-          type: "PUSH_RECEIVED",
-          data: { title, body, url, type, image, actions }
-        });
-        return Promise.resolve();
-      } else {
-        return displayNotification(title, options);
+    (async () => {
+      let title = "JANUZEN";
+      let options = {
+        body: "You have a new notification",
+        icon: "/appicon.png",
+        badge: "/logo.png",
+        vibrate: [200, 100, 200],
+        requireInteraction: false,
+        data: { url: "/", type: "general" }
+      };
+
+      if (event.data) {
+        try {
+          const data = event.data.json();
+          const rawTitle = data.title || title;
+          title = rawTitle.startsWith("JANUZEN") ? rawTitle : `JANUZEN | ${rawTitle}`;
+          const type = data.type || data.category || "general";
+          const cleanTitle = title.replace(/[^a-zA-Z0-9]/g, "").toLowerCase().slice(0, 30);
+
+          let actions = data.actions;
+          if (!actions || actions.length === 0) {
+            if (type === "order" || String(type).startsWith("order_")) {
+              actions = [
+                { action: "view", title: "📦 View Order" },
+                { action: "dismiss", title: "✖ Dismiss" }
+              ];
+            } else if (type === "otp" || type === "security") {
+              actions = [
+                { action: "verify", title: "🔑 Verify Now" },
+                { action: "dismiss", title: "✖ Dismiss" }
+              ];
+            } else if (type === "chat" || type === "chat_message") {
+              actions = [
+                { action: "reply", title: "💬 Open Chat" },
+                { action: "dismiss", title: "✖ Dismiss" }
+              ];
+            } else {
+              actions = [
+                { action: "view", title: "👀 View" },
+                { action: "dismiss", title: "✖ Dismiss" }
+              ];
+            }
+          }
+
+          options = {
+            ...options,
+            body: data.body || options.body,
+            icon: data.icon || "/appicon.png",
+            badge: data.badge || "/logo.png",
+            image: data.image || undefined,
+            tag: data.tag || `januzen-${type}-${cleanTitle || Date.now()}`,
+            renotify: true,
+            requireInteraction: data.requireInteraction || type === "otp" || type === "order" || type === "security",
+            actions,
+            data: {
+              url: data.url || "/",
+              type,
+              category: data.category || type,
+              timestamp: Date.now()
+            }
+          };
+        } catch (parseErr) {
+          try {
+            options.body = event.data.text();
+          } catch {
+            // Use defaults if all parsing fails
+          }
+        }
       }
-    }).catch((err) => {
-      console.error("❌ [SW PUSH] Client match failed, invoking fallback OS notification:", err);
-      return displayNotification(title, options);
-    })
+
+      // Show the notification — this MUST be awaited inside waitUntil
+      await self.registration.showNotification(title, options).catch((err) => {
+        return self.registration.showNotification(title, {
+          body: options.body,
+          icon: "/appicon.png",
+          tag: options.tag,
+          data: options.data
+        });
+      });
+
+      // Notify any open JANUZEN windows so they can show an in-app toast
+      // Do this AFTER showing the notification, not before
+      try {
+        const clientList = await clients.matchAll({
+          type: "window",
+          includeUncontrolled: true
+        });
+        clientList.forEach((client) => {
+          client.postMessage({
+            type: "PUSH_RECEIVED",
+            data: { title, body: options.body, url: options.data?.url, type: options.data?.type, image: options.image, actions: options.actions }
+          });
+        });
+      } catch {
+        // Never let client messaging failure prevent notification from showing
+      }
+    })()
   );
 });
 
@@ -281,22 +278,33 @@ self.addEventListener("notificationclick", (event) => {
   const fullUrl = new URL(targetUrl, self.location.origin).href;
 
   event.waitUntil(
-    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+    (async () => {
+      const clientList = await clients.matchAll({
+        type: "window",
+        includeUncontrolled: true
+      });
+
+      // Focus existing JANUZEN window if one is open
       for (const client of clientList) {
         if (client.url.startsWith(self.location.origin) && "focus" in client) {
-          client.focus();
-          client.postMessage({ type: "NAVIGATE_TO", url: targetUrl });
+          await client.focus();
           if ("navigate" in client && client.url !== fullUrl) {
             try {
               client.navigate(fullUrl);
-            } catch (e) {}
+            } catch (e) {
+              client.postMessage({ type: "NAVIGATE_TO", url: targetUrl });
+            }
+          } else {
+            client.postMessage({ type: "NAVIGATE_TO", url: targetUrl });
           }
           return;
         }
       }
-      if (self.clients.openWindow) {
-        return self.clients.openWindow(fullUrl);
+
+      // No existing window — open a new one
+      if (clients.openWindow) {
+        await clients.openWindow(fullUrl);
       }
-    })
+    })()
   );
 });

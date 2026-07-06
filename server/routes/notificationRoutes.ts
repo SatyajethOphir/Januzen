@@ -34,6 +34,7 @@ export const createNotificationRoutes = (customAdminAuth?: (req: Request, res: R
   // --- PUBLIC PUSH SUBSCRIPTION ROUTES ---
   router.get("/vapid-public-key", NotificationController.getVapidPublicKey);
   router.post("/subscribe", NotificationController.subscribe);
+  router.post("/verify-subscription", NotificationController.verifySubscription);
   router.post("/refresh-token", NotificationController.refreshToken);
   router.delete("/unsubscribe", NotificationController.unsubscribe);
   router.get("/subscriptions", NotificationController.getUserSubscriptions);

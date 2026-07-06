@@ -91,6 +91,31 @@ export class NotificationController {
   }
 
   /**
+   * POST /api/push/verify-subscription
+   * Verify if a subscription endpoint still exists in the backend database
+   */
+  static async verifySubscription(req: Request, res: Response): Promise<void> {
+    try {
+      const endpoint = req.body.endpoint || req.query.endpoint as string;
+      if (!endpoint) {
+        res.status(400).json({ error: "Endpoint parameter is required." });
+        return;
+      }
+
+      const exists = await NotificationService.verifySubscription(endpoint);
+      if (!exists) {
+        res.status(404).json({ error: "Subscription expired or not found." });
+        return;
+      }
+
+      res.json({ status: "valid", message: "Subscription is active." });
+    } catch (err: any) {
+      console.error("[PUSH CONTROLLER] Error in verifySubscription:", err);
+      res.status(500).json({ error: "Failed to verify subscription." });
+    }
+  }
+
+  /**
    * GET /api/push/subscriptions
    * Get active subscriptions for a user
    */

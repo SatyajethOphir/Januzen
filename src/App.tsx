@@ -5,7 +5,7 @@ import Navbar from "./components/Navbar";
 import { Product, User, ProductOption } from "./types";
 import type { CartItem } from "./components/CartView";
 import OfficialLoader from "./components/OfficialLoader";
-import { subscribeToPush, checkAndRefreshSubscription } from "./lib/push";
+import { subscribeToPush, checkAndRefreshSubscription, verifyAndRefreshSubscription } from "./lib/push";
 import { setupServiceWorkerVersionControl } from "./lib/versioning";
 
 import HomeView from "./components/HomeView";
@@ -218,6 +218,7 @@ export default function App() {
           if (res.ok) {
             setCurrentUser(data.user);
             checkAndRefreshSubscription(data.user);
+            verifyAndRefreshSubscription();
           } else {
             localStorage.removeItem("januzen_token");
             localStorage.removeItem("januzen_user");
@@ -450,14 +451,25 @@ export default function App() {
 
     // Check and refresh web push subscription on app boot (crucial for standalone Add-to-Home-Screen PWAs)
     checkAndRefreshSubscription(currentUser);
+    verifyAndRefreshSubscription();
 
     // Setup PWA version controller (reloads app once when new SW activates)
     const cleanupSWControl = setupServiceWorkerVersionControl(() => {
       checkAndRefreshSubscription(currentUser);
     });
 
+    // Handle PWA push notification in-app toast
+    const handlePushMessage = (event: MessageEvent) => {
+      if (event.data?.type === "PUSH_RECEIVED") {
+        const { title, body } = event.data.data;
+        showToastMsg(`${title}: ${body}`);
+      }
+    };
+    navigator.serviceWorker.addEventListener("message", handlePushMessage);
+
     return () => {
       cleanupSWControl();
+      navigator.serviceWorker.removeEventListener("message", handlePushMessage);
     };
   }, [currentUser]);
 

@@ -155,3 +155,53 @@ export async function checkAndRefreshSubscription(currentUser?: any): Promise<vo
     console.error("[WEB PUSH] Error checking or refreshing push subscription:", err);
   }
 }
+
+/**
+ * Verify subscription is still valid on backend on every app boot
+ */
+export async function verifyAndRefreshSubscription(): Promise<void> {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription();
+
+    // No local subscription — nothing to verify
+    if (!subscription) return;
+
+    // Send to backend to verify it hasn't expired (410 Gone / 404)
+    const res = await fetch("/api/push/verify-subscription", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ endpoint: subscription.endpoint })
+    });
+
+    if (res.status === 404 || res.status === 410) {
+      // Backend says this subscription is dead — unsubscribe locally
+      // and re-subscribe immediately so push starts working again
+      await subscription.unsubscribe();
+
+      // Re-subscribe with current VAPID key
+      const vapidRes = await fetch("/api/push/vapid-public-key");
+      const { publicKey } = await vapidRes.json();
+      const convertedKey = urlBase64ToUint8Array(publicKey);
+
+      const newSub = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: convertedKey
+      });
+
+      await fetch("/api/push/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subscription: newSub,
+          deviceInfo: navigator.userAgent || "Web PWA Client"
+        })
+      });
+    }
+  } catch (err) {
+    // Fail silently — don't interrupt app boot if offline
+  }
+}
+

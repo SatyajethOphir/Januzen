@@ -2,6 +2,8 @@ import "dotenv/config";
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
+import { createServer } from "http";
+import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { v2 as cloudinary } from "cloudinary";
@@ -2454,7 +2456,22 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  const httpServer = createServer(app);
+  const io = new Server(httpServer, {
+    cors: { origin: "*" }
+  });
+
+  io.on("connection", (socket) => {
+    socket.on("join-order", (orderId) => {
+        socket.join(orderId);
+    });
+    socket.on("update-location", async (data) => {
+        // Broadcast location update
+        io.to(data.orderId).emit("location-updated", data);
+    });
+  });
+
+  httpServer.listen(PORT, "0.0.0.0", () => {
     // Initialize Unified Notification Center Cron Jobs (node-cron automated background tasks)
     initNotificationCronJobs(dbClient, sendRealtimeNotification, sendWebPushNotificationToUser);
 

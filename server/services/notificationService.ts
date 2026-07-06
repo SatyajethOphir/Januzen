@@ -149,6 +149,19 @@ export class NotificationService {
   }
 
   /**
+   * Check if a subscription endpoint exists in the database
+   */
+  static async verifySubscription(endpoint: string): Promise<boolean> {
+    if (isMongo) {
+      const sub = await PushSubscriptionModel.findOne({ endpoint });
+      return !!sub;
+    } else {
+      const subs = await dbClient.getAllSubscriptions();
+      return subs.some((s: any) => s.endpoint === endpoint);
+    }
+  }
+
+  /**
    * Get all subscriptions for a specific user ID
    */
   static async getSubscriptionsForUser(userId: string): Promise<any[]> {
@@ -216,13 +229,14 @@ export class NotificationService {
   private static async dispatchToSubscriptions(
     subs: any[],
     payload: PushPayload
-  ): Promise<{ successCount: number; failCount: number }> {
+  ): Promise<{ successCount: number; failCount: number; stalCount: number }> {
     const { publicKey, privateKey, subject } = initWebPush();
     let successCount = 0;
     let failCount = 0;
+    let stalCount = 0;
 
     if (!subs || subs.length === 0) {
-      return { successCount: 0, failCount: 0 };
+      return { successCount: 0, failCount: 0, stalCount: 0 };
     }
 
     // Deduplicate subscriptions by endpoint to prevent duplicate notifications to the same browser/device
@@ -281,42 +295,38 @@ export class NotificationService {
         auth: String(sub.keys.auth).trim()
       };
 
-      // Execute send with retry logic for transient errors
-      let attempt = 0;
-      const maxRetries = 1;
-      let delivered = false;
-
-      while (attempt <= maxRetries && !delivered) {
-        try {
-          await webpush.sendNotification(
-            { endpoint: targetEndpoint, keys: targetKeys },
-            pushDataString,
-            vapidOptions
-          );
-          successCount++;
-          delivered = true;
-        } catch (err: any) {
-          const statusCode = err.statusCode || err.status;
-          const errBody = err.body || err.message || "";
-
-          if (statusCode === 410 || statusCode === 404 || statusCode === 403 || statusCode === 400) {
-            // Subscription expired, unsubscribed, or VAPID key mismatch: remove so client can self-heal on next boot/focus
-            await this.removeSubscription(targetEndpoint);
-            failCount++;
-            break;
-          } else if (attempt < maxRetries) {
-            attempt++;
-            await new Promise(res => setTimeout(res, 500 * attempt));
-          } else {
-            console.error(`❌ [WEB PUSH] Error delivering to ${targetEndpoint.substring(0, 25)}... status: ${statusCode} | ${err.message}`);
-            failCount++;
-            break;
-          }
+      try {
+        await webpush.sendNotification(
+          { endpoint: targetEndpoint, keys: targetKeys },
+          pushDataString,
+          vapidOptions
+        );
+        successCount++;
+      } catch (sendErr: any) {
+        const statusCode = sendErr.statusCode || sendErr.status;
+        if (statusCode === 410 || statusCode === 404) {
+          // Subscription definitively expired — remove it
+          await this.removeSubscription(targetEndpoint);
+          stalCount++;
+        } else if (statusCode === 429) {
+          // Rate limited by push service — log but don't remove subscription
+          console.warn("[PUSH] Rate limited by push service, slowing down...");
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          failCount++;
+        } else if (statusCode === 403 || statusCode === 400) {
+          await this.removeSubscription(targetEndpoint);
+          stalCount++;
+        } else {
+          console.error(`[PUSH] Send failed for endpoint ${targetEndpoint.substring(0, 30)}...:`,
+            statusCode, sendErr.message);
+          failCount++;
         }
       }
     }
 
-    return { successCount, failCount };
+    console.log(`[PUSH] Broadcast complete: ${successCount} delivered, ${failCount} failed, ${stalCount} stale removed`);
+
+    return { successCount, failCount, stalCount };
   }
 
   /**
