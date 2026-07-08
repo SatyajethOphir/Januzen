@@ -500,6 +500,18 @@ export default function OrdersHistoryView({ onNavigate, currentUser }: OrdersHis
                           </button>
                         </div>
 
+                        {order.status !== "Cancelled" && order.status !== "Delivered" && (
+                          <div className="pt-1.5">
+                            <button
+                              onClick={() => onNavigate("live-tracking", { orderId: order.id })}
+                              style={{ cursor: "pointer" }}
+                              className="w-full py-2.5 px-3 bg-[#0F9B8E] hover:bg-[#0C7C72] text-white text-xs font-mono font-bold uppercase rounded-lg transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer animate-pulse"
+                            >
+                              📍 Track on Live Map
+                            </button>
+                          </div>
+                        )}
+
                         <div className="pt-1.5">
                           <a
                             href={`https://wa.me/919666588553?text=Hello%20JANUZEN%20Support,%20I%20need%20assistance%20with%20my%20order%20%23${order.orderId}`}

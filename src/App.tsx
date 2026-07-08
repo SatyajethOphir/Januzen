@@ -23,6 +23,7 @@ import DeliveryHubView from "./components/DeliveryHubView";
 import SideCartDrawer from "./components/SideCartDrawer";
 import Error404View from "./components/Error404View";
 import InvoiceOnlineView from "./components/InvoiceOnlineView";
+import LiveTrackingView from "./components/LiveTrackingView";
 const LazyPersistentDeliveryWidget = React.lazy(() => import("./components/PersistentDeliveryWidget"));
 
 interface DeliveryWidgetErrorBoundaryProps {
@@ -672,7 +673,7 @@ export default function App() {
         <Suspense fallback={
           <OfficialLoader fullScreen={false} message="Streaming verified partner view modules..." />
         }>
-          {!["home", "medicals", "stationery", "product-detail", "cart", "checkout", "about", "contact", "login", "admin", "profile", "orders", "delivery", "invoice"].includes(nav.page) && (
+          {!["home", "medicals", "stationery", "product-detail", "cart", "checkout", "about", "contact", "login", "admin", "profile", "orders", "delivery", "invoice", "live-tracking"].includes(nav.page) && (
             <Error404View 
               onNavigate={handleNavigate} 
               searchedTerm={(nav.params && nav.params.query) || ""}
@@ -773,6 +774,14 @@ export default function App() {
 
           {nav.page === "invoice" && (
             <InvoiceOnlineView
+              orderId={nav.params.orderId}
+              onNavigate={handleNavigate}
+              currentUser={currentUser}
+            />
+          )}
+
+          {nav.page === "live-tracking" && (
+            <LiveTrackingView
               orderId={nav.params.orderId}
               onNavigate={handleNavigate}
               currentUser={currentUser}

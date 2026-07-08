@@ -1388,6 +1388,14 @@ export default function AdminDashboardView({ onNavigate }: { onNavigate?: (page:
                             <option value="Delivered">Delivered</option>
                             <option value="Cancelled">Cancelled</option>
                           </select>
+                          {o.status !== "Delivered" && o.status !== "Cancelled" && (
+                            <button
+                              onClick={() => onNavigate?.("live-tracking", { orderId: o.id })}
+                              className="w-full sm:w-36 p-1.5 bg-[#0F9B8E] hover:bg-[#0C7C72] text-white rounded text-[10px] font-bold font-mono tracking-wider text-center cursor-pointer shadow-sm transition-all mt-0.5"
+                            >
+                              📍 LIVE TRACK MAP
+                            </button>
+                          )}
                           <span className="block text-[8px] font-mono text-gray-400 uppercase leading-normal">
                             * UPDATING TRIGGERS BROADCAST EMAIL
                           </span>
