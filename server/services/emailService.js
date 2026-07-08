@@ -1,9 +1,9 @@
 import { BrevoClient } from "@getbrevo/brevo";
 
 // Lazy-initialized Brevo client to prevent startup crashes when API key is missing
-let brevoClientInstance: BrevoClient | null = null;
+let brevoClientInstance = null;
 
-function getBrevoClient(): BrevoClient {
+function getBrevoClient() {
   if (!brevoClientInstance) {
     const apiKey = process.env.BREVO_API_KEY;
     if (!apiKey) {
@@ -15,17 +15,17 @@ function getBrevoClient(): BrevoClient {
 }
 
 // Simple in-memory rate limiting map: email -> timestamps
-const rateLimits = new Map<string, number[]>();
+const rateLimits = new Map();
 const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute window
 const MAX_EMAILS_PER_MINUTE = 5; // allow maximum of 5 emails per minute per address
 
-function isRateLimited(email: string): boolean {
+function isRateLimited(email) {
   const now = Date.now();
   if (!rateLimits.has(email)) {
     rateLimits.set(email, [now]);
     return false;
   }
-  const timestamps = rateLimits.get(email)!.filter(t => now - t < RATE_LIMIT_WINDOW_MS);
+  const timestamps = rateLimits.get(email).filter(t => now - t < RATE_LIMIT_WINDOW_MS);
   if (timestamps.length >= MAX_EMAILS_PER_MINUTE) {
     return true;
   }
@@ -34,22 +34,14 @@ function isRateLimited(email: string): boolean {
   return false;
 }
 
-interface EmailOptions {
-  to: { email: string; name?: string }[];
-  subject: string;
-  htmlContent: string;
-  textContent?: string;
-  attachment?: { name: string; content: string }[];
-}
-
 // Central HTML Envelope Template for all Transactional Emails
 function getBrandedEnvelope(
-  title: string,
-  bodyHtml: string,
+  title,
+  bodyHtml,
   badgeText = "NOTIFICATION",
   headerColor = "#0F6E56",
   badgeColor = "#10B981"
-): string {
+) {
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);">
       <!-- Header Banner -->
@@ -82,7 +74,7 @@ export const EmailService = {
   /**
    * Primary method to send any transaction email through the Brevo Client SDK.
    */
-  async sendEmail(options: EmailOptions) {
+  async sendEmail(options) {
     if (options.to.length === 0) return;
     const recipientEmail = options.to[0].email;
 
@@ -112,9 +104,8 @@ export const EmailService = {
 
       await client.transactionalEmails.sendTransacEmail(payload);
       console.log(`[EMAIL SUCCESS] Email sent via Brevo to ${recipientEmail}: "${options.subject}"`);
-    } catch (err: any) {
+    } catch (err) {
       console.error(`[EMAIL ERROR] Failed to send email via Brevo to ${recipientEmail}:`, err.message || err);
-      // Fallback logging for transparency
       throw err;
     }
   },
@@ -122,7 +113,7 @@ export const EmailService = {
   /**
    * Transactional: Welcome Email on User Registration
    */
-  async sendWelcomeEmail(email: string, name: string) {
+  async sendWelcomeEmail(email, name) {
     const title = `Welcome to JANUZEN, ${name}!`;
     const subject = `Welcome to JANUZEN!`;
     const bodyHtml = `
@@ -146,7 +137,7 @@ export const EmailService = {
   /**
    * Transactional: One-Time Password Verification
    */
-  async sendOtpEmail(email: string, name: string, otp: string, purpose: string) {
+  async sendOtpEmail(email, name, otp, purpose) {
     const title = "Security Verification Code";
     const subject = `[JANUZEN] Your OTP Code: ${otp}`;
     const cleanPurpose = purpose.replace("otp_", "").toUpperCase().replace("_", " ");
@@ -171,7 +162,7 @@ export const EmailService = {
   /**
    * Transactional: Password Reset / Changed Security Alert
    */
-  async sendPasswordResetEmail(email: string, name: string) {
+  async sendPasswordResetEmail(email, name) {
     const title = "Password Update Notification";
     const subject = `[JANUZEN] Security Alert: Password Updated`;
     const bodyHtml = `
@@ -193,7 +184,7 @@ export const EmailService = {
   /**
    * Transactional: Contact Form Confirmation
    */
-  async sendContactFormConfirmation(email: string, name: string, userSubject: string, message: string) {
+  async sendContactFormConfirmation(email, name, userSubject, message) {
     const title = "We Received Your Inquiry";
     const subject = `[JANUZEN] We received your inquiry: ${userSubject}`;
     const bodyHtml = `
@@ -217,12 +208,12 @@ export const EmailService = {
   /**
    * API Connectivity & Credentials Handshake Check
    */
-  async testConnection(): Promise<{ success: boolean; details: string }> {
+  async testConnection() {
     try {
       const client = getBrevoClient();
       await client.senders.getSenders();
       return { success: true, details: "Brevo API Handshake & Senders retrieve successful." };
-    } catch (err: any) {
+    } catch (err) {
       console.error("[EMAIL] Brevo connection handshake failed:", err.message || err);
       return { success: false, details: err.message || String(err) };
     }

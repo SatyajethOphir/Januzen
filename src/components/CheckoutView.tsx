@@ -1,6 +1,6 @@
 import React from "react";
 import { safeLocalStorage as localStorage, safeSessionStorage as sessionStorage } from "../utils/storage";
-import { CheckCircle, Truck, ShoppingBag, ArrowRight, ArrowLeft, Loader2, CreditCard, Lock, ShieldCheck } from "lucide-react";
+import { CheckCircle, Truck, ShoppingBag, ArrowRight, ArrowLeft, Loader2, CreditCard, Lock, ShieldCheck, MapPin } from "lucide-react";
 import { CartItem } from "./CartView";
 import { User, ShippingAddress, Order } from "../types";
 import { RazorpayGatewayModal } from "./RazorpayGatewayModal";
@@ -18,6 +18,13 @@ export default function CheckoutView({ cartItems, currentUser, onNavigate, onCle
   const [errorMessage, setErrorMessage] = React.useState("");
   const [placedOrder, setPlacedOrder] = React.useState<Order | null>(null);
   const [shareLinks, setShareLinks] = React.useState<any>(null);
+  const [trackingPermission, setTrackingPermission] = React.useState<string>("");
+
+  React.useEffect(() => {
+    if (placedOrder) {
+      setTrackingPermission(localStorage.getItem(`tracking_permission_${placedOrder.id}`) || "");
+    }
+  }, [placedOrder]);
 
   // Form States
   const [fullName, setFullName] = React.useState(currentUser?.name || "");
@@ -607,11 +614,87 @@ export default function CheckoutView({ cartItems, currentUser, onNavigate, onCle
               <span>Payment Protocol</span>
               <span className="font-semibold">{placedOrder.paymentMethod}</span>
             </div>
-            <div className="flex justify-between items-baseline pt-2.5 pb-2.5">
+            <div className="flex justify-between items-baseline pt-2.5 pb-2.5 bg-transparent">
               <span className="text-gray-400">Delivery Target ETA</span>
               <span className="font-bold text-emerald-600 font-sans">Same day / Next 24 hours</span>
             </div>
           </div>
+
+          {/* 📍 REAL-TIME GPS TRACKING PERMISSION OPT-IN */}
+          {!trackingPermission ? (
+            <div className="bg-gradient-to-br from-indigo-50 to-teal-50 border border-indigo-100 p-5 rounded-2xl space-y-4 max-w-sm mx-auto shadow-sm">
+              <div className="flex items-center gap-3 justify-center text-left">
+                <div className="h-10 w-10 bg-indigo-600 rounded-full flex items-center justify-center text-white shrink-0 shadow animate-pulse">
+                  <MapPin className="h-5 w-5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-[#0D1B2A] uppercase tracking-wider font-sans">Enable Live GPS Tracking?</h4>
+                  <p className="text-[10px] text-gray-500 mt-0.5 leading-snug">Track representative Suresh's movement live relative to your physical location.</p>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    if (!navigator.geolocation) {
+                      (window as any).showToast?.("Geolocation is not supported by your browser.", "error");
+                      return;
+                    }
+                    navigator.geolocation.getCurrentPosition(
+                      async (pos) => {
+                        const { latitude, longitude } = pos.coords;
+                        try {
+                          await fetch(`/api/orders/${placedOrder.id}/tracking/update`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ lat: latitude, lng: longitude, isCustomer: true })
+                          });
+                          localStorage.setItem(`tracking_permission_${placedOrder.id}`, "granted");
+                          setTrackingPermission("granted");
+                          (window as any).showToast?.("GPS tracking enabled successfully!", "success");
+                        } catch (err) {
+                          console.error("Error updating customer coords:", err);
+                        }
+                      },
+                      (err) => {
+                        console.warn("Location permission denied:", err);
+                        localStorage.setItem(`tracking_permission_${placedOrder.id}`, "denied");
+                        setTrackingPermission("denied");
+                        (window as any).showToast?.("Using your saved delivery address.", "info");
+                      }
+                    );
+                  }}
+                  className="flex-1 py-2 bg-[#0F9B8E] hover:bg-[#0C7C72] text-white font-bold text-[10px] uppercase tracking-wider rounded-xl cursor-pointer shadow-sm transition-all"
+                >
+                  Grant GPS Permission
+                </button>
+                <button
+                  onClick={() => {
+                    localStorage.setItem(`tracking_permission_${placedOrder.id}`, "denied");
+                    setTrackingPermission("denied");
+                    (window as any).showToast?.("Using your saved delivery address for delivery.", "info");
+                  }}
+                  className="flex-1 py-2 bg-white hover:bg-slate-50 border text-gray-600 font-bold text-[10px] uppercase tracking-wider rounded-xl cursor-pointer transition-colors"
+                >
+                  No, Use Address
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-slate-50 border border-slate-200/60 p-3.5 rounded-xl max-w-sm mx-auto text-xs font-mono font-bold flex items-center justify-center gap-2">
+              {trackingPermission === "granted" ? (
+                <>
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
+                  <span className="text-emerald-700">🛰️ LIVE GPS TRACKING ACTIVE</span>
+                </>
+              ) : (
+                <>
+                  <span className="h-2 w-2 rounded-full bg-slate-400" />
+                  <span className="text-gray-500">📍 USING SAVED DELIVERY ADDRESS</span>
+                </>
+              )}
+            </div>
+          )}
           
           <div className="bg-slate-50 border border-slate-100 p-4 rounded-xl space-y-3 max-w-sm mx-auto">
             <p className="text-xs font-semibold text-slate-700 leading-normal">

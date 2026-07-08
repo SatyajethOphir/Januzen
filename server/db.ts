@@ -1111,6 +1111,16 @@ export const dbClient = {
         { $set: { status, statusHistory: history, stockAdjusted, hasStatusOverflow } },
         { returnDocument: 'after' }
       ).lean() as any;
+
+      if (["delivered", "cancelled", "returned"].includes(status.toLowerCase())) {
+        try {
+          const { TrackingService } = await import("./services/trackingService");
+          await TrackingService.deleteTracking(id);
+        } catch (error) {
+          console.error("Error cleaning up tracking model on order complete:", error);
+        }
+      }
+
       return doc;
     } else {
       const db = loadLocalDB();
@@ -1164,6 +1174,16 @@ export const dbClient = {
       order.stockAdjusted = stockAdjusted;
       order.hasStatusOverflow = hasStatusOverflow;
       saveLocalDB(db);
+
+      if (["delivered", "cancelled", "returned"].includes(status.toLowerCase())) {
+        try {
+          const { TrackingService } = await import("./services/trackingService");
+          await TrackingService.deleteTracking(id);
+        } catch (error) {
+          console.error("Error cleaning up tracking store on order complete:", error);
+        }
+      }
+
       return order;
     }
   },

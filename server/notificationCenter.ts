@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import cron from "node-cron";
+import { EmailService } from "./services/emailService";
 
 /**
  * Unified Notification System for JANUZEN Enterprise
@@ -77,12 +78,7 @@ export interface UnifiedNotificationRequest {
   };
 }
 
-// Helper to resolve Mailjet Credentials dynamically
-function getMailjetCredentials(): { publicKey: string | undefined; privateKey: string | undefined } {
-  const publicKey = process.env.MJ_APIKEY_PUBLIC || process.env.MAILJET_API_KEY || (process.env.EMAIL_HOST?.includes("mailjet") ? process.env.EMAIL_USER : undefined);
-  const privateKey = process.env.MJ_APIKEY_PRIVATE || process.env.MAILJET_SECRET_KEY || (process.env.EMAIL_HOST?.includes("mailjet") ? process.env.EMAIL_PASS : undefined);
-  return { publicKey, privateKey };
-}
+
 
 /**
  * Builds HTML Email Template based on Notification Category & Type
@@ -205,53 +201,7 @@ export function getUnifiedHtmlEmail(
   `;
 }
 
-/**
- * Send Mailjet REST API v3.1 Email
- */
-async function sendViaMailjet(
-  toEmail: string,
-  toName: string,
-  subject: string,
-  htmlContent: string,
-  pdfAttachment?: { filename: string; content: Buffer },
-  publicKey?: string,
-  privateKey?: string
-): Promise<void> {
-  if (!publicKey || !privateKey) throw new Error("Mailjet API keys missing");
-  const authHeader = "Basic " + Buffer.from(`${publicKey}:${privateKey}`).toString("base64");
 
-  const attachments: any[] = [];
-  if (pdfAttachment) {
-    attachments.push({
-      ContentType: "application/pdf",
-      Filename: pdfAttachment.filename,
-      Base64Content: pdfAttachment.content.toString("base64"),
-    });
-  }
-
-  const payload = {
-    Messages: [
-      {
-        From: { Email: process.env.EMAIL_USER || "team@januzen.in", Name: "JANUZEN Global LLP" },
-        To: [{ Email: toEmail, Name: toName }],
-        Subject: subject,
-        HTMLPart: htmlContent,
-        ...(attachments.length > 0 ? { Attachments: attachments } : {}),
-      },
-    ],
-  };
-
-  const response = await fetch("https://api.mailjet.com/v3.1/send", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: authHeader },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`Mailjet HTTP API error (${response.status}): ${errText}`);
-  }
-}
 
 /**
  * Send Nodemailer SMTP Email
@@ -362,18 +312,31 @@ export async function sendUnifiedNotification(
     }
   }
 
-  // 2. Email Channel (Mailjet REST or Nodemailer SMTP)
+  // 2. Email Channel (Brevo REST or Nodemailer SMTP)
   if (channels.includes("email") && userEmail) {
     try {
       const htmlContent = getUnifiedHtmlEmail(req.type, req.title, req.message, userName, req.metadata);
       const subject = `[JANUZEN] ${req.title}`;
 
-      const { publicKey, privateKey } = getMailjetCredentials();
-      if (publicKey && privateKey) {
+      let attachments: { name: string; content: string }[] | undefined = undefined;
+      if (req.pdfAttachment) {
+        attachments = [{
+          name: req.pdfAttachment.filename,
+          content: req.pdfAttachment.content.toString("base64")
+        }];
+      }
+
+      if (process.env.BREVO_API_KEY) {
         try {
-          await sendViaMailjet(userEmail, userName, subject, htmlContent, req.pdfAttachment, publicKey, privateKey);
-          channelsDispatched.push("email(mailjet)");
-        } catch (mjErr: any) {
+          await EmailService.sendEmail({
+            to: [{ email: userEmail, name: userName }],
+            subject,
+            htmlContent,
+            attachment: attachments
+          });
+          channelsDispatched.push("email(brevo)");
+        } catch (brevoErr: any) {
+          console.error(`[UNIFIED NOTIFICATION] Brevo API failed, falling back to SMTP:`, brevoErr.message || brevoErr);
           await sendViaSmtp(userEmail, subject, htmlContent, req.pdfAttachment);
           channelsDispatched.push("email(smtp)");
         }
@@ -381,7 +344,8 @@ export async function sendUnifiedNotification(
         await sendViaSmtp(userEmail, subject, htmlContent, req.pdfAttachment);
         channelsDispatched.push("email(smtp)");
       } else {
-        channelsDispatched.push("email");
+        console.log(`[UNIFIED NOTIFICATION] Email simulation mode (no Brevo/SMTP credentials). Sent to ${userEmail}: "${subject}"`);
+        channelsDispatched.push("email(simulated)");
       }
     } catch (emailErr: any) {
       console.error(`❌ [UNIFIED NOTIFICATION] Email dispatch error to ${userEmail}:`, emailErr.message || emailErr);

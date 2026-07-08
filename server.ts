@@ -18,6 +18,7 @@ import { dbClient, connectAndSeedDB, isMongo } from "./server/db";
 import sitemapRouter from "./server/routes/sitemap";
 import { generateInvoice, generateOfflineBill } from "./server/invoice";
 import { sendInvoiceEmail, sendOfflineBillEmail, testSmtpConnection } from "./server/mailer";
+import { EmailService } from "./server/services/emailService";
 import webpush from "web-push";
 import { sendUnifiedNotification, initNotificationCronJobs, NotificationType } from "./server/notificationCenter";
 import { NotificationService } from "./server/services/notificationService";
@@ -417,6 +418,11 @@ async function startServer() {
       // Track the session write
       await dbClient.createSession(newUser.id, newUser.name, newUser.email, token);
 
+      // Async send welcome email via Brevo
+      EmailService.sendWelcomeEmail(newUser.email, newUser.name).catch((err) => {
+        console.error("[EMAIL ERROR] Failed to send Welcome Email to " + newUser.email + ":", err.message || err);
+      });
+
       res.status(201).json({
         message: "Registration successful. Welcome to JANUZEN!",
         token,
@@ -549,6 +555,11 @@ async function startServer() {
       const hash = bcrypt.hashSync(newPassword, salt);
       await dbClient.resetUserPassword(email, hash);
       
+      // Async send password update alert via Brevo
+      EmailService.sendPasswordResetEmail(user.email, user.name).catch((err) => {
+        console.error("[EMAIL ERROR] Failed to send Password Reset alert to " + user.email + ":", err.message || err);
+      });
+
       res.json({ message: "Password has been successfully recovered and updated." });
     } catch (e) {
       console.error(e);
@@ -1345,14 +1356,21 @@ async function startServer() {
     }
   });
 
-  // Post coordinate updates from active delivery representative
+  // Post coordinate updates from active delivery representative or customer
   app.post("/api/orders/:id/tracking/update", async (req, res) => {
-    const { lat, lng, status, speed } = req.body;
+    const { lat, lng, status, speed, isCustomer } = req.body;
     if (lat === undefined || lng === undefined) {
       return res.status(400).json({ error: "Latitude and longitude are required to update tracking." });
     }
     try {
-      const updated = await TrackingService.updateTracking(req.params.id, Number(lat), Number(lng), status, speed ? Number(speed) : undefined);
+      const updated = await TrackingService.updateTracking(
+        req.params.id, 
+        Number(lat), 
+        Number(lng), 
+        status, 
+        speed ? Number(speed) : undefined,
+        !!isCustomer
+      );
       
       // Broadcast live position via Socket.IO
       io.to(req.params.id).emit("location-updated", updated);
@@ -1858,6 +1876,11 @@ async function startServer() {
       };
 
       await dbClient.createMessage(newMsg);
+
+      // Async send contact form confirmation email via Brevo
+      EmailService.sendContactFormConfirmation(newMsg.email, newMsg.name, newMsg.subject, newMsg.message).catch((err) => {
+        console.error("[EMAIL ERROR] Failed to send contact form confirmation email to " + newMsg.email + ":", err.message || err);
+      });
 
       res.status(201).json({
         message: "Message dispatched and logged successfully! JANUZEN representatives are reviewing your dispatch.",
@@ -2506,12 +2529,52 @@ async function startServer() {
   });
 
   io.on("connection", (socket) => {
-    socket.on("join-order", (orderId) => {
-        socket.join(orderId);
+    socket.on("join-order", async (orderId) => {
+      socket.join(orderId);
+      try {
+        const tracking = await TrackingService.getTracking(orderId);
+        socket.emit("location-updated", tracking);
+      } catch (err) {
+        console.error("Error fetching initial tracking on join-order:", err);
+      }
     });
+
+    socket.on("driver-location-update", async (data) => {
+      const { orderId, lat, lng, speed, status } = data;
+      try {
+        const updated = await TrackingService.updateTracking(
+          orderId,
+          Number(lat),
+          Number(lng),
+          status,
+          speed !== undefined ? Number(speed) : undefined,
+          false
+        );
+        io.to(orderId).emit("location-updated", updated);
+      } catch (err) {
+        console.error("Error handling driver-location-update socket:", err);
+      }
+    });
+
+    socket.on("customer-location-update", async (data) => {
+      const { orderId, lat, lng } = data;
+      try {
+        const updated = await TrackingService.updateTracking(
+          orderId,
+          Number(lat),
+          Number(lng),
+          undefined,
+          undefined,
+          true
+        );
+        io.to(orderId).emit("location-updated", updated);
+      } catch (err) {
+        console.error("Error handling customer-location-update socket:", err);
+      }
+    });
+
     socket.on("update-location", async (data) => {
-        // Broadcast location update
-        io.to(data.orderId).emit("location-updated", data);
+      io.to(data.orderId).emit("location-updated", data);
     });
   });
 

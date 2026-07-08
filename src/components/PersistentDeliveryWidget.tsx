@@ -295,25 +295,70 @@ export default function PersistentDeliveryWidget({ currentUser, onNavigate }: Pe
       socket.emit("join-order", activeOrder.id);
     });
 
-    // Handle real-time coordinates received from representative simulation
+    // Handle real-time coordinates received from representative
     socket.on("location-updated", (data) => {
       if (data.orderId === activeOrder.id) {
-        setTrackingData((prev: any) => {
-          if (!prev) return prev;
-          return {
-            ...prev,
-            currentLocation: data.currentLocation,
-            status: data.status,
-            speed: data.speed,
-            updatedAt: data.updatedAt
-          };
-        });
+        setTrackingData(data);
       }
     });
 
     return () => {
       socket.disconnect();
       socketRef.current = null;
+    };
+  }, [activeOrder]);
+
+  // Continuously obtain customer's real GPS location if permission was granted
+  React.useEffect(() => {
+    if (!activeOrder) return;
+
+    const permission = localStorage.getItem(`tracking_permission_${activeOrder.id}`);
+    if (permission !== "granted") {
+      console.log("Live customer tracking is disabled or permission denied for order:", activeOrder.id);
+      return;
+    }
+
+    let watchId: number | null = null;
+    let lastUploadTime = 0;
+
+    if (navigator.geolocation) {
+      watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          const now = Date.now();
+
+          // Stream coordinates every 5-10 seconds
+          if (now - lastUploadTime >= 5000) {
+            lastUploadTime = now;
+            console.log("Streaming customer's live GPS coordinates:", latitude, longitude);
+
+            if (socketRef.current && socketRef.current.connected) {
+              socketRef.current.emit("customer-location-update", {
+                orderId: activeOrder.id,
+                lat: latitude,
+                lng: longitude
+              });
+            } else {
+              // Fallback to REST API
+              fetch(`/api/orders/${activeOrder.id}/tracking/update`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ lat: latitude, lng: longitude, isCustomer: true })
+              }).catch(err => console.error("REST fallback customer tracking failed:", err));
+            }
+          }
+        },
+        (error) => {
+          console.error("Error watching customer GPS:", error);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    }
+
+    return () => {
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+      }
     };
   }, [activeOrder]);
 

@@ -7,7 +7,16 @@ const DeliveryTrackingSchema = new mongoose.Schema({
     lat: Number,
     lng: Number
   },
-  status: { type: String, enum: ['accepted', 'on_the_way', 'arrived', 'delivered', 'cancelled'], default: 'accepted' },
+  customerLocation: {
+    lat: Number,
+    lng: Number
+  },
+  liveCustomerTrackingEnabled: { type: Boolean, default: false },
+  eta: { type: Number, default: 0 },
+  distance: { type: Number, default: 0 },
+  routeCoords: { type: [[Number]], default: [] },
+  speed: { type: Number, default: 0 },
+  status: { type: String, enum: ['accepted', 'on_the_way', 'arrived', 'delivered', 'cancelled', 'out_for_delivery'], default: 'accepted' },
   updatedAt: { type: Date, default: Date.now }
 });
 
