@@ -9,8 +9,7 @@ export async function sendInvoiceEmail(order: any, pdfBuffer: Buffer): Promise<v
       htmlContent: InvoiceService.getInvoiceHtml(order),
       attachment: [{
         name: `JANUZEN-Invoice-${order.orderId}.pdf`,
-        content: pdfBuffer.toString("base64"),
-        contentType: "application/pdf"
+        content: pdfBuffer.toString("base64")
       }]
     });
   } catch (err) {
@@ -27,12 +26,15 @@ export async function sendOfflineBillEmail(data: any, pdfBuffer: Buffer): Promis
       htmlContent: InvoiceService.getOfflineBillHtml(data),
       attachment: [{
         name: `JANUZEN-Bill-${data.billNumber}.pdf`,
-        content: pdfBuffer.toString("base64"),
-        contentType: "application/pdf"
+        content: pdfBuffer.toString("base64")
       }]
     });
   } catch (err) {
     console.error(`[MAILER] Failed to send bill email for bill ${data.billNumber}:`, err);
     throw err;
   }
+}
+
+export async function testSmtpConnection(): Promise<{ success: boolean; details: string }> {
+  return EmailService.testConnection();
 }

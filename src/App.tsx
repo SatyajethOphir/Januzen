@@ -23,6 +23,32 @@ import DeliveryHubView from "./components/DeliveryHubView";
 import SideCartDrawer from "./components/SideCartDrawer";
 import Error404View from "./components/Error404View";
 import InvoiceOnlineView from "./components/InvoiceOnlineView";
+const LazyPersistentDeliveryWidget = React.lazy(() => import("./components/PersistentDeliveryWidget"));
+
+interface DeliveryWidgetErrorBoundaryProps {
+  children: React.ReactNode;
+}
+
+interface DeliveryWidgetErrorBoundaryState {
+  hasError: boolean;
+}
+
+class DeliveryWidgetErrorBoundary extends React.Component<DeliveryWidgetErrorBoundaryProps, DeliveryWidgetErrorBoundaryState> {
+  state: DeliveryWidgetErrorBoundaryState = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error("ErrorBoundary caught an error inside PersistentDeliveryWidget:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) return null;
+    return (this as any).props.children;
+  }
+}
 
 const syncServiceWorkerToken = (token: string | null) => {
   if (typeof window !== "undefined" && "serviceWorker" in navigator) {
@@ -754,6 +780,13 @@ export default function App() {
           )}
         </Suspense>
       </main>
+
+      {/* Persistent delivery status tracking drawer */}
+      <DeliveryWidgetErrorBoundary>
+        <Suspense fallback={null}>
+          <LazyPersistentDeliveryWidget currentUser={currentUser} onNavigate={handleNavigate} />
+        </Suspense>
+      </DeliveryWidgetErrorBoundary>
 
       {/* 📢 CUSTOM TOAST NOTIFICATION CONTAINER (BOTTOM RIGHT) */}
       <style>{`

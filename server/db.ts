@@ -662,17 +662,17 @@ export function loadLocalDB(): DBStructure {
       const parsed = JSON.parse(data);
       let dirty = false;
 
-      // Force-clear any previously generated test messages, reviews, notifications, orders, and sessions for pristine live deployment
-      if (parsed.messages && parsed.messages.length > 0) { parsed.messages = []; dirty = true; }
-      if (parsed.reviews && parsed.reviews.length > 0) { parsed.reviews = []; dirty = true; }
-      if (parsed.notifications && parsed.notifications.length > 0) { parsed.notifications = []; dirty = true; }
-      if (parsed.orders && parsed.orders.length > 0) { parsed.orders = []; dirty = true; }
-      if (parsed.sessions && parsed.sessions.length > 0) { parsed.sessions = []; dirty = true; }
-      if (parsed.wishlist && parsed.wishlist.length > 0) { parsed.wishlist = []; dirty = true; }
-      if (parsed.couponUsages && parsed.couponUsages.length > 0) { parsed.couponUsages = []; dirty = true; }
-      if (parsed.auditLogs && parsed.auditLogs.length > 0) { parsed.auditLogs = []; dirty = true; }
-      if (parsed.advertisements && parsed.advertisements.length > 0) { parsed.advertisements = []; dirty = true; }
-      if (parsed.paymentRecords && parsed.paymentRecords.length > 0) { parsed.paymentRecords = []; dirty = true; }
+      // Ensure arrays and default objects are initialized without wiping existing data
+      if (!parsed.messages) { parsed.messages = []; dirty = true; }
+      if (!parsed.reviews) { parsed.reviews = []; dirty = true; }
+      if (!parsed.notifications) { parsed.notifications = []; dirty = true; }
+      if (!parsed.orders) { parsed.orders = []; dirty = true; }
+      if (!parsed.sessions) { parsed.sessions = []; dirty = true; }
+      if (!parsed.wishlist) { parsed.wishlist = []; dirty = true; }
+      if (!parsed.couponUsages) { parsed.couponUsages = []; dirty = true; }
+      if (!parsed.auditLogs) { parsed.auditLogs = []; dirty = true; }
+      if (!parsed.advertisements) { parsed.advertisements = []; dirty = true; }
+      if (!parsed.paymentRecords) { parsed.paymentRecords = []; dirty = true; }
       if (!parsed.users || parsed.users.length === 0) {
         parsed.users = [INITIAL_ADMIN_USER];
         parsed.passwords = parsed.passwords || {};
@@ -765,7 +765,8 @@ export async function connectAndSeedDB() {
         await MongoProduct.create(INITIAL_PRODUCTS);
       }
 
-      // Automatically prune and clear previous trial/test records for live release
+      // Do not automatically delete previous test/live records on startup
+      /*
       await MongoMessage.deleteMany({});
       await MongoReview.deleteMany({});
       await MongoNotification.deleteMany({});
@@ -777,6 +778,7 @@ export async function connectAndSeedDB() {
       await MongoPushSubscription.deleteMany({});
       await MongoAdvertisement.deleteMany({});
       await MongoPaymentRecord.deleteMany({});
+      */
     } catch (e: any) {
       isMongo = false;
       loadLocalDB();

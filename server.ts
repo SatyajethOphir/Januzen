@@ -21,6 +21,7 @@ import { sendInvoiceEmail, sendOfflineBillEmail, testSmtpConnection } from "./se
 import webpush from "web-push";
 import { sendUnifiedNotification, initNotificationCronJobs, NotificationType } from "./server/notificationCenter";
 import { NotificationService } from "./server/services/notificationService";
+import { TrackingService } from "./server/services/trackingService";
 import { createNotificationRoutes } from "./server/routes/notificationRoutes";
 
 const PORT = 3000;
@@ -1274,6 +1275,12 @@ async function startServer() {
       if (!updatedOrder) {
         return res.status(404).json({ error: "Order not found" });
       }
+      
+      // If status is delivered or cancelled, clean up the tracking database record
+      if (status.toLowerCase() === "delivered" || status.toLowerCase() === "cancelled") {
+        await TrackingService.deleteTracking(req.params.id);
+      }
+
       await createAndSendNotification(
         updatedOrder.userId,
         `Delivery Dispatch: ${status}`,
@@ -1306,6 +1313,9 @@ async function startServer() {
           return res.status(500).json({ error: "Failed to update order status." });
         }
 
+        // Clean up tracking on successful OTP delivery
+        await TrackingService.deleteTracking(order.id);
+
         await createAndSendNotification(
           updatedOrder.userId,
           `Delivery OTP Verified Successfully!`,
@@ -1319,6 +1329,38 @@ async function startServer() {
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: "Server discrepancy during OTP confirmation check." });
+    }
+  });
+
+  // --- REAL-TIME DELIVERY TRACKING ENDPOINTS ---
+  
+  // Get active tracking coordinates and metadata for an order
+  app.get("/api/orders/:id/tracking", async (req, res) => {
+    try {
+      const tracking = await TrackingService.getTracking(req.params.id);
+      res.json(tracking);
+    } catch (err: any) {
+      console.error("Error retrieving tracking data:", err);
+      res.status(500).json({ error: "Failed to retrieve real-time tracking coordinates." });
+    }
+  });
+
+  // Post coordinate updates from active delivery representative
+  app.post("/api/orders/:id/tracking/update", async (req, res) => {
+    const { lat, lng, status, speed } = req.body;
+    if (lat === undefined || lng === undefined) {
+      return res.status(400).json({ error: "Latitude and longitude are required to update tracking." });
+    }
+    try {
+      const updated = await TrackingService.updateTracking(req.params.id, Number(lat), Number(lng), status, speed ? Number(speed) : undefined);
+      
+      // Broadcast live position via Socket.IO
+      io.to(req.params.id).emit("location-updated", updated);
+
+      res.json({ success: true, tracking: updated });
+    } catch (err: any) {
+      console.error("Error updating live location:", err);
+      res.status(500).json({ error: "Failed to post live location coordinates." });
     }
   });
 

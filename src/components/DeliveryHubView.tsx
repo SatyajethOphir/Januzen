@@ -2,7 +2,7 @@ import React from "react";
 import { safeLocalStorage as localStorage, safeSessionStorage as sessionStorage } from "../utils/storage";
 import { 
   Truck, Phone, ShieldCheck, MapPin, Loader2, RefreshCw, CheckCircle2, Navigation, User,
-  ShieldAlert, LogIn, ArrowLeft
+  ShieldAlert, LogIn, ArrowLeft, Bike, Compass
 } from "lucide-react";
 import { Order } from "../types";
 
@@ -51,6 +51,113 @@ export default function DeliveryHubView({ currentUser, onNavigate }: DeliveryHub
   const [selectedDriverName, setSelectedDriverName] = React.useState("Suresh Kumar");
   const [otpInputs, setOtpInputs] = React.useState<Record<string, string>>({});
   const [otpErrors, setOtpErrors] = React.useState<Record<string, string>>({});
+  
+  // Real-time GPS coordinate simulations for delivery reps
+  const [activeSimulations, setActiveSimulations] = React.useState<Record<string, {
+    intervalId: any;
+    progress: number;
+    lat: number;
+    lng: number;
+    destination: { lat: number; lng: number };
+  }>>({});
+
+  const startSimulation = async (orderId: string) => {
+    if (activeSimulations[orderId]) {
+      clearInterval(activeSimulations[orderId].intervalId);
+    }
+
+    try {
+      const trackingRes = await fetch(`/api/orders/${orderId}/tracking`);
+      if (!trackingRes.ok) return;
+      const trackingData = await trackingRes.json();
+      const dest = trackingData.customerLocation;
+
+      const startLat = 17.5147;
+      const startLng = 78.4116;
+
+      let step = 0;
+      const totalSteps = 15;
+
+      const intervalId = setInterval(async () => {
+        step++;
+        const progress = (step / totalSteps) * 100;
+        
+        const currentLat = startLat + (dest.lat - startLat) * (step / totalSteps);
+        const currentLng = startLng + (dest.lng - startLng) * (step / totalSteps);
+        
+        const speed = Math.round(22 + Math.random() * 12);
+        const status = step === totalSteps ? "arrived" : "out_for_delivery";
+
+        await fetch(`/api/orders/${orderId}/tracking/update`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            lat: currentLat,
+            lng: currentLng,
+            status,
+            speed
+          })
+        });
+
+        if (step >= totalSteps) {
+          clearInterval(intervalId);
+          setActiveSimulations(prev => {
+            const copy = { ...prev };
+            delete copy[orderId];
+            return copy;
+          });
+          (window as any).showToast?.("GPS simulation complete! Representative Suresh has arrived at customer's destination.", "success");
+        } else {
+          setActiveSimulations(prev => ({
+            ...prev,
+            [orderId]: {
+              ...prev[orderId],
+              progress,
+              lat: currentLat,
+              lng: currentLng
+            }
+          }));
+        }
+      }, 3000);
+
+      setActiveSimulations(prev => ({
+        ...prev,
+        [orderId]: {
+          intervalId,
+          progress: 0,
+          lat: startLat,
+          lng: startLng,
+          destination: dest
+        }
+      }));
+
+      (window as any).showToast?.("Started live GPS representative simulation tracking!", "success");
+    } catch (err) {
+      console.error("Failed to start simulation:", err);
+    }
+  };
+
+  const stopSimulation = (orderId: string) => {
+    const sim = activeSimulations[orderId];
+    if (sim) {
+      clearInterval(sim.intervalId);
+      setActiveSimulations(prev => {
+        const copy = { ...prev };
+        delete copy[orderId];
+        return copy;
+      });
+      (window as any).showToast?.("GPS tracking simulation cancelled.", "info");
+    }
+  };
+
+  React.useEffect(() => {
+    return () => {
+      // Clean up all simulation intervals on unmount
+      Object.values(activeSimulations).forEach((sim: any) => {
+        clearInterval(sim.intervalId);
+      });
+    };
+  }, []);
 
   // Delivery riders database
   const deliveryTeam = [
@@ -361,6 +468,65 @@ export default function DeliveryHubView({ currentUser, onNavigate }: DeliveryHub
                         <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">NET INVOICED REVENUE</span>
                         <span className="font-mono text-base font-black text-emerald-700">₹{(order.totals?.total || 0).toFixed(2)}</span>
                       </div>
+
+                      {/* 📡 REAL-TIME REPRESENTATIVE GPS SIMULATOR CONTROLLER */}
+                      {order.status.toLowerCase() !== "delivered" && order.status.toLowerCase() !== "cancelled" && (
+                        <div className="mt-4 p-4.5 bg-slate-50 border border-gray-200 rounded-2xl space-y-3.5">
+                          <div className="flex justify-between items-center">
+                            <p className="text-[10px] text-gray-900 font-mono font-black uppercase tracking-wider flex items-center gap-1.5">
+                              <Compass className="h-4 w-4 text-[#0F9B8E] animate-spin" />
+                              📡 LIVE GPS POSITION TRANSMISSION
+                            </p>
+                            <span className={`text-[9px] font-mono font-bold uppercase rounded px-2 py-0.5 ${
+                              activeSimulations[order.id]
+                                ? "bg-red-50 text-red-700 border border-red-200 animate-pulse"
+                                : "bg-gray-100 text-gray-500 border border-gray-200"
+                            }`}>
+                              {activeSimulations[order.id] ? "● Broadcasting Live GPS" : "Transmitter Idle"}
+                            </span>
+                          </div>
+
+                          {activeSimulations[order.id] ? (
+                            <div className="space-y-2.5">
+                              <div className="flex justify-between text-xs font-mono">
+                                <span className="text-gray-500">Rider Progress:</span>
+                                <span className="font-bold text-[#0F9B8E]">{Math.round(activeSimulations[order.id].progress)}%</span>
+                              </div>
+                              <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden border">
+                                <div 
+                                  className="h-full bg-[#0F9B8E] transition-all duration-300"
+                                  style={{ width: `${activeSimulations[order.id].progress}%` }}
+                                />
+                              </div>
+                              <div className="flex justify-between items-baseline text-[10px] font-mono text-gray-500 pt-1">
+                                <span>LAT: {activeSimulations[order.id].lat.toFixed(5)}</span>
+                                <span>LNG: {activeSimulations[order.id].lng.toFixed(5)}</span>
+                              </div>
+                              <button
+                                onClick={() => stopSimulation(order.id)}
+                                style={{ cursor: "pointer" }}
+                                className="w-full py-2 bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 font-mono font-bold uppercase text-[10px] rounded-xl transition-all"
+                              >
+                                Stop GPS Simulation
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="space-y-3">
+                              <p className="text-[11px] text-gray-500 leading-relaxed font-sans">
+                                Simulate the courier rider's active transit GPS coordinates moving from <b>Gajularamaram Hub</b> to <b>Customer's Address</b> in Hyderabad.
+                              </p>
+                              <button
+                                onClick={() => startSimulation(order.id)}
+                                style={{ cursor: "pointer" }}
+                                className="w-full py-2 bg-slate-900 hover:bg-black text-white font-mono font-bold uppercase text-[10px] rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition-all"
+                              >
+                                <Bike className="h-4 w-4 text-emerald-400" />
+                                Start Active GPS Simulation
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                       {order.status.toLowerCase() !== "delivered" && order.status.toLowerCase() !== "cancelled" && (
                         <div className="mt-4 p-3 bg-indigo-50 border border-indigo-155 rounded-xl space-y-2">
