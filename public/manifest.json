@@ -3,12 +3,12 @@
   "name": "Januzen",
   "icons": [
     {
-      "src": "/appicon.png",
+      "src": "/logo.png",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "/appicon.png",
+      "src": "/logo.png",
       "type": "image/png",
       "sizes": "512x512"
     }

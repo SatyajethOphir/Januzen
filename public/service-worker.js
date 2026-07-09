@@ -1,11 +1,10 @@
 // JANUZEN PWA Service Worker (Standard Open-Standards Web Push API)
-const CACHE_VERSION = "v3.0.0-prod";
+const CACHE_VERSION = "v3.1.0-prod";
 const CACHE_NAME = `januzen-cache-${CACHE_VERSION}`;
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",
   "/manifest.json",
-  "/appicon.png",
   "/logo.png"
 ];
 
@@ -53,7 +52,7 @@ self.addEventListener("push", (event) => {
       let title = "JANUZEN";
       let options = {
         body: "You have a new notification",
-        icon: "/appicon.png",
+        icon: "/logo.png",
         badge: "/logo.png",
         vibrate: [200, 100, 200],
         requireInteraction: false,
@@ -96,7 +95,7 @@ self.addEventListener("push", (event) => {
           options = {
             ...options,
             body: data.body || options.body,
-            icon: data.icon || "/appicon.png",
+            icon: data.icon || "/logo.png",
             badge: data.badge || "/logo.png",
             image: data.image || undefined,
             tag: data.tag || `januzen-${type}-${cleanTitle || Date.now()}`,
@@ -123,7 +122,7 @@ self.addEventListener("push", (event) => {
       await self.registration.showNotification(title, options).catch((err) => {
         return self.registration.showNotification(title, {
           body: options.body,
-          icon: "/appicon.png",
+          icon: "/logo.png",
           tag: options.tag,
           data: options.data
         });

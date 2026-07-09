@@ -260,7 +260,7 @@ export class NotificationService {
     const pushDataString = JSON.stringify({
       title: formattedTitle,
       body: payload.body,
-      icon: payload.icon || "/appicon.png",
+      icon: payload.icon || "/logo.png",
       badge: payload.badge || "/logo.png",
       image: payload.image,
       url: payload.url || "/",

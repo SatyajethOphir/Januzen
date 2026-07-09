@@ -178,7 +178,7 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
           const title = notif.title.startsWith("JANUZEN") ? notif.title : `JANUZEN | ${notif.title}`;
           const options = {
             body: notif.content,
-            icon: "/appicon.png",
+            icon: "/logo.png",
             badge: "/logo.png",
             tag: notif.id,
             requireInteraction: true // Keep the notification visible for important details like OTPs

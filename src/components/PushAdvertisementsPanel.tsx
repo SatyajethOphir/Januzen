@@ -317,7 +317,7 @@ export default function PushAdvertisementsPanel({ token }: { token: string | nul
               {/* App Icon */}
               <div className="h-9 w-9 bg-[#0D1B2A] rounded-xl flex items-center justify-center border border-slate-700 shrink-0 overflow-hidden shadow-inner">
                 <img 
-                  src="/appicon.png" 
+                  src="/logo.png" 
                   alt="JANUZEN" 
                   className="h-full w-full object-cover"
                   onError={(e) => {
