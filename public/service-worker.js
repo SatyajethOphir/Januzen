@@ -272,7 +272,7 @@ self.addEventListener("notificationclick", (event) => {
   } else if (action === "reply" || action === "💬 Open Chat" || data.type === "chat") {
     targetUrl = "/profile?tab=support";
   } else if (action === "view" || action === "📦 View Order" || data.type === "order") {
-    targetUrl = "/orders";
+    targetUrl = "/live-tracking";
   }
 
   const fullUrl = new URL(targetUrl, self.location.origin).href;

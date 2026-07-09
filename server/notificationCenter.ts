@@ -203,64 +203,9 @@ export function getUnifiedHtmlEmail(
 
 
 
-/**
- * Send Nodemailer SMTP Email
- */
-async function sendViaSmtp(
-  toEmail: string,
-  subject: string,
-  htmlContent: string,
-  pdfAttachment?: { filename: string; content: Buffer }
-): Promise<void> {
-  const emailUser = process.env.EMAIL_USER || "team@januzen.in";
-  const emailPass = process.env.EMAIL_PASS;
-  if (!emailPass) throw new Error("SMTP EMAIL_PASS credentials missing");
 
-  const emailHost = process.env.EMAIL_HOST || "smtp.hostinger.com";
-  let port = parseInt(process.env.EMAIL_PORT || "465", 10);
-  let secure = process.env.EMAIL_SECURE !== "false";
+// sendViaSmtp has been removed to avoid SMTP ENETUNREACH issues on Render. Brevo REST HTTPS API is used exclusively.
 
-  const mailOptions: any = {
-    from: `"JANUZEN Global LLP" <${emailUser}>`,
-    to: toEmail,
-    subject: subject,
-    html: htmlContent,
-  };
-
-  if (pdfAttachment) {
-    mailOptions.attachments = [
-      {
-        filename: pdfAttachment.filename,
-        content: pdfAttachment.content,
-        contentType: "application/pdf",
-      },
-    ];
-  }
-
-  try {
-    const transporter = nodemailer.createTransport({
-      host: emailHost,
-      port: port,
-      secure: secure,
-      auth: { user: emailUser, pass: emailPass },
-      tls: { rejectUnauthorized: false, servername: emailHost },
-      connectionTimeout: 8000,
-    } as any);
-    await transporter.sendMail(mailOptions);
-  } catch (primaryErr) {
-    // Fallback port
-    const fallbackPort = port === 465 ? 587 : 465;
-    const fallbackTransporter = nodemailer.createTransport({
-      host: emailHost,
-      port: fallbackPort,
-      secure: fallbackPort === 465,
-      auth: { user: emailUser, pass: emailPass },
-      tls: { rejectUnauthorized: false },
-      connectionTimeout: 8000,
-    } as any);
-    await fallbackTransporter.sendMail(mailOptions);
-  }
-}
 
 /**
  * Core Dispatcher: Sends Unified Notification across selected channels
@@ -336,15 +281,10 @@ export async function sendUnifiedNotification(
           });
           channelsDispatched.push("email(brevo)");
         } catch (brevoErr: any) {
-          console.error(`[UNIFIED NOTIFICATION] Brevo API failed, falling back to SMTP:`, brevoErr.message || brevoErr);
-          await sendViaSmtp(userEmail, subject, htmlContent, req.pdfAttachment);
-          channelsDispatched.push("email(smtp)");
+          console.error(`[UNIFIED NOTIFICATION] Brevo API failed:`, brevoErr.message || brevoErr);
         }
-      } else if (process.env.EMAIL_PASS) {
-        await sendViaSmtp(userEmail, subject, htmlContent, req.pdfAttachment);
-        channelsDispatched.push("email(smtp)");
       } else {
-        console.log(`[UNIFIED NOTIFICATION] Email simulation mode (no Brevo/SMTP credentials). Sent to ${userEmail}: "${subject}"`);
+        console.log(`[UNIFIED NOTIFICATION] Email simulation mode (no BREVO_API_KEY). Sent to ${userEmail}: "${subject}"`);
         channelsDispatched.push("email(simulated)");
       }
     } catch (emailErr: any) {

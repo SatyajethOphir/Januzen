@@ -78,19 +78,105 @@ function getBrandedEnvelope(
   `;
 }
 
+/**
+ * Strips HTML tags and decodes entities to produce safe textContent.
+ * Ensures a valid non-empty text content is ALWAYS returned.
+ */
+function htmlToText(html: string): string {
+  if (!html) return "Please view this email in an HTML-compatible email reader.";
+  let text = html;
+  
+  // Replace line breaks / list items / table rows / paragraph tags with plain formatting
+  text = text.replace(/<br\s*\/?>/gi, "\n");
+  text = text.replace(/<\/p>/gi, "\n\n");
+  text = text.replace(/<\/h[1-6]>/gi, "\n\n");
+  text = text.replace(/<\/tr>/gi, "\n");
+  text = text.replace(/<\/div>/gi, "\n");
+  text = text.replace(/<li>/gi, "• ");
+  text = text.replace(/<\/li>/gi, "\n");
+  
+  // Strip all other HTML tags
+  text = text.replace(/<[^>]+>/g, "");
+  
+  // Decode common HTML entities
+  text = text.replace(/&nbsp;/g, " ");
+  text = text.replace(/&amp;/g, "&");
+  text = text.replace(/&lt;/g, "<");
+  text = text.replace(/&gt;/g, ">");
+  text = text.replace(/&quot;/g, '"');
+  
+  // Trim and collapse multiple consecutive newlines or spaces
+  text = text.replace(/[ \t]+/g, " ");
+  text = text.replace(/\n\s*\n\s*\n+/g, "\n\n");
+  
+  const trimmed = text.trim();
+  return trimmed || "Please view this email in an HTML-compatible email reader.";
+}
+
+/**
+ * Determines if an error is temporary (network issue or 5xx server-side error)
+ */
+function isTransientError(err: any): boolean {
+  if (err.code && ["ETIMEDOUT", "ECONNRESET", "ENOTFOUND", "EAI_AGAIN", "EHOSTUNREACH", "ENETUNREACH"].includes(err.code)) {
+    return true;
+  }
+  const status = err.status || err.statusCode || (err.response && err.response.status);
+  if (status && (status >= 500 || status === 429)) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Standard retry pattern with exponential backoff
+ */
+async function retryWithBackoff<T>(fn: () => Promise<T>, retries = 3, delay = 1000): Promise<T> {
+  try {
+    return await fn();
+  } catch (err: any) {
+    if (retries > 0 && isTransientError(err)) {
+      console.warn(`[EMAIL RETRY] Transient error encountered: ${err.message || err}. Retrying in ${delay}ms... (Remaining: ${retries})`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return retryWithBackoff(fn, retries - 1, delay * 2);
+    }
+    throw err;
+  }
+}
+
 export const EmailService = {
   /**
    * Primary method to send any transaction email through the Brevo Client SDK.
    */
   async sendEmail(options: EmailOptions) {
-    if (options.to.length === 0) return;
+    if (!options.to || options.to.length === 0) {
+      console.warn("[EMAIL SKIPPED] No recipients specified in options.");
+      return;
+    }
+    
     const recipientEmail = options.to[0].email;
+    if (!recipientEmail) {
+      console.warn("[EMAIL SKIPPED] Recipient email is empty.");
+      return;
+    }
 
     // Apply rate limiting
     if (isRateLimited(recipientEmail)) {
       console.warn(`[EMAIL RATE LIMIT] Skipped email to ${recipientEmail} (Subject: "${options.subject}") - Rate limit exceeded.`);
       return;
     }
+
+    // Validate request payload parameters
+    if (!options.subject) {
+      throw new Error("Email subject is required");
+    }
+    if (!options.htmlContent) {
+      throw new Error("Email htmlContent is required");
+    }
+
+    // Automatically generate valid non-empty textContent if not provided
+    const textContent = options.textContent && options.textContent.trim().length > 0
+      ? options.textContent
+      : htmlToText(options.htmlContent);
 
     try {
       const client = getBrevoClient();
@@ -103,18 +189,35 @@ export const EmailService = {
           name: senderName, 
           email: senderEmail 
         },
-        to: options.to,
+        to: options.to.map(r => ({ email: r.email, name: r.name || "Customer" })),
         subject: options.subject,
         htmlContent: options.htmlContent,
-        textContent: options.textContent || "",
+        textContent: textContent,
         attachment: options.attachment
       };
 
-      await client.transactionalEmails.sendTransacEmail(payload);
-      console.log(`[EMAIL SUCCESS] Email sent via Brevo to ${recipientEmail}: "${options.subject}"`);
+      // Logging request payload details for transparency and debugging
+      console.log(`[EMAIL SENDING] Initiating Brevo REST call to ${recipientEmail} (Subject: "${options.subject}")`);
+      console.log(`[EMAIL PAYLOAD LOG]`, JSON.stringify({
+        sender: payload.sender,
+        to: payload.to,
+        subject: payload.subject,
+        attachmentCount: payload.attachment ? payload.attachment.length : 0,
+        textContentLength: payload.textContent.length,
+        htmlContentLength: payload.htmlContent.length
+      }, null, 2));
+
+      // Invoke Brevo transaction API using transient retry wrapper
+      await retryWithBackoff(async () => {
+        return await client.transactionalEmails.sendTransacEmail(payload);
+      });
+
+      console.log(`[EMAIL SUCCESS] Email sent successfully via Brevo to ${recipientEmail}: "${options.subject}"`);
     } catch (err: any) {
       console.error(`[EMAIL ERROR] Failed to send email via Brevo to ${recipientEmail}:`, err.message || err);
-      // Fallback logging for transparency
+      if (err.response && err.response.body) {
+        console.error(`[EMAIL ERROR RESPONSE BODY]`, JSON.stringify(err.response.body));
+      }
       throw err;
     }
   },

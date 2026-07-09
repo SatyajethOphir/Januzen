@@ -209,6 +209,40 @@ export default function LiveTrackingView({ orderId, onNavigate, currentUser }: L
     };
   }, [selectedOrderId]);
 
+  // Customer periodic position update if permission is active
+  React.useEffect(() => {
+    if (!selectedOrderId || !activeOrder) return;
+    
+    // Check if order is already completed or cancelled to stop tracking immediately
+    const normalizedStatus = String(activeOrder.status || "").toLowerCase();
+    if (normalizedStatus === "delivered" || normalizedStatus === "cancelled") return;
+
+    const hasPermission = localStorage.getItem(`tracking_permission_${selectedOrderId}`) === "granted";
+    if (!hasPermission) return;
+
+    const intervalId = setInterval(() => {
+      if (!navigator.geolocation) return;
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          const { latitude, longitude } = pos.coords;
+          try {
+            await fetch(`/api/orders/${selectedOrderId}/tracking/update`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ lat: latitude, lng: longitude, isCustomer: true })
+            });
+          } catch (err) {
+            console.error("Error updating customer live position in tracker:", err);
+          }
+        },
+        (err) => console.warn("Failed to watch active customer location in tracker:", err),
+        { enableHighAccuracy: true, timeout: 5000 }
+      );
+    }, 10000); // 10 seconds
+
+    return () => clearInterval(intervalId);
+  }, [selectedOrderId, activeOrder]);
+
   // 4. Calculate OSRM route, ETA, and Distance dynamically when locations change
   React.useEffect(() => {
     if (!trackingData?.currentLocation || !trackingData?.customerLocation) {

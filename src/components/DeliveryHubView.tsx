@@ -288,6 +288,26 @@ export default function DeliveryHubView({ currentUser, onNavigate }: DeliveryHub
     }
   };
 
+  const handleNavigateGoogleMaps = async (orderId: string) => {
+    try {
+      const res = await fetch(`/api/orders/${orderId}/tracking`);
+      if (res.ok) {
+        const tracking = await res.json();
+        if (tracking && tracking.customerLocation) {
+          const { lat, lng } = tracking.customerLocation;
+          window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, "_blank");
+        } else {
+          (window as any).showToast?.("No coordinates found for this delivery.", "warning");
+        }
+      } else {
+        (window as any).showToast?.("Failed to retrieve coordinates.", "error");
+      }
+    } catch (err) {
+      console.error(err);
+      (window as any).showToast?.("Discrepancy opening navigation.", "error");
+    }
+  };
+
   // Filter orders that are not delivered/cancelled or have just been placed/dispatched
   const activeDispatches = orders.filter(o => o.status !== "Cancelled");
 
@@ -462,6 +482,13 @@ export default function DeliveryHubView({ currentUser, onNavigate }: DeliveryHub
                             ) : (
                               <p>{String(order.shippingAddress || "Gajularamaram, Hyderabad, Telangana, India")}</p>
                             )}
+                            <button
+                              onClick={() => handleNavigateGoogleMaps(order.id)}
+                              className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 hover:text-indigo-800 text-[10px] font-mono font-black uppercase rounded-lg cursor-pointer transition-all shadow-xs"
+                            >
+                              <Navigation className="h-3.5 w-3.5" />
+                              Navigate with Google Maps
+                            </button>
                           </div>
                         </div>
                       </div>

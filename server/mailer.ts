@@ -1,12 +1,12 @@
 import { EmailService } from "./services/emailService";
-import { InvoiceService } from "./services/invoiceService";
+import { getInvoiceHtml, getOfflineBillHtml } from "./invoice";
 
 export async function sendInvoiceEmail(order: any, pdfBuffer: Buffer): Promise<void> {
   try {
     await EmailService.sendEmail({
       to: [{ email: order.userEmail, name: order.userName || "Customer" }],
       subject: `Your JANUZEN Invoice — ${order.orderId}`,
-      htmlContent: InvoiceService.getInvoiceHtml(order),
+      htmlContent: getInvoiceHtml(order),
       attachment: [{
         name: `JANUZEN-Invoice-${order.orderId}.pdf`,
         content: pdfBuffer.toString("base64")
@@ -23,7 +23,7 @@ export async function sendOfflineBillEmail(data: any, pdfBuffer: Buffer): Promis
     await EmailService.sendEmail({
       to: [{ email: data.customerEmail, name: data.customerName || "Customer" }],
       subject: `Your JANUZEN Bill — ${data.billNumber}`,
-      htmlContent: InvoiceService.getOfflineBillHtml(data),
+      htmlContent: getOfflineBillHtml(data),
       attachment: [{
         name: `JANUZEN-Bill-${data.billNumber}.pdf`,
         content: pdfBuffer.toString("base64")

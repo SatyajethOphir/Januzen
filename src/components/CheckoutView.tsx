@@ -26,6 +26,53 @@ export default function CheckoutView({ cartItems, currentUser, onNavigate, onCle
     }
   }, [placedOrder]);
 
+  React.useEffect(() => {
+    if (!placedOrder || trackingPermission !== "granted") return;
+
+    // Run immediately once
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          const { latitude, longitude } = pos.coords;
+          try {
+            await fetch(`/api/orders/${placedOrder.id}/tracking/update`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ lat: latitude, lng: longitude, isCustomer: true })
+            });
+          } catch (err) {
+            console.error("Error updating initial customer location:", err);
+          }
+        },
+        (err) => console.warn("Failed to update initial customer location:", err),
+        { enableHighAccuracy: true }
+      );
+    }
+
+    // Set interval loop
+    const intervalId = setInterval(() => {
+      if (!navigator.geolocation) return;
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          const { latitude, longitude } = pos.coords;
+          try {
+            await fetch(`/api/orders/${placedOrder.id}/tracking/update`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ lat: latitude, lng: longitude, isCustomer: true })
+            });
+          } catch (err) {
+            console.error("Error updating customer location on interval:", err);
+          }
+        },
+        (err) => console.warn("Failed to update active customer location on interval:", err),
+        { enableHighAccuracy: true, timeout: 5000 }
+      );
+    }, 10000); // 10 seconds
+
+    return () => clearInterval(intervalId);
+  }, [placedOrder, trackingPermission]);
+
   // Form States
   const [fullName, setFullName] = React.useState(currentUser?.name || "");
   const [addressLine, setAddressLine] = React.useState(currentUser?.address || "");
