@@ -8,9 +8,10 @@ import {
 } from "lucide-react";
 import { Product, Order, Message, User } from "../types";
 import PushAdvertisementsPanel from "./PushAdvertisementsPanel";
+import DeliveryTeamPanel from "./DeliveryTeamPanel";
 
 export default function AdminDashboardView({ onNavigate }: { onNavigate?: (page: string, params?: any) => void }) {
-  const [activeTab, setActiveTab] = React.useState<"stats" | "products" | "orders" | "messages" | "users" | "coupons" | "marquee" | "storage" | "settings" | "offline-bill" | "advertisement">("stats");
+  const [activeTab, setActiveTab] = React.useState<"stats" | "products" | "orders" | "messages" | "users" | "coupons" | "marquee" | "storage" | "settings" | "offline-bill" | "advertisement" | "delivery-team">("stats");
   const [token, setToken] = React.useState<string | null>(null);
 
   // Offline Bill States
@@ -1072,7 +1073,7 @@ export default function AdminDashboardView({ onNavigate }: { onNavigate?: (page:
         
         {/* Rapid selectors menu */}
         <div className="flex flex-wrap gap-1 bg-slate-100 p-1 rounded-xl">
-          {(["stats", "products", "orders", "messages", "users", "coupons", "marquee", "storage", "settings", "offline-bill", "advertisement"] as const).map((tab) => (
+          {(["stats", "products", "orders", "messages", "users", "coupons", "marquee", "storage", "settings", "offline-bill", "advertisement", "delivery-team"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -1082,7 +1083,7 @@ export default function AdminDashboardView({ onNavigate }: { onNavigate?: (page:
                   : "text-gray-500 hover:text-black hover:bg-white/50"
               }`}
             >
-              {tab === "stats" ? "Analytics Stats" : tab === "marquee" ? "Edit Marquee" : tab === "storage" ? "Storage Guardrails" : tab === "settings" ? "GST & Shipping" : tab === "offline-bill" ? "Offline Bill" : tab === "advertisement" ? "Push Ads" : tab}
+              {tab === "stats" ? "Analytics Stats" : tab === "marquee" ? "Edit Marquee" : tab === "storage" ? "Storage Guardrails" : tab === "settings" ? "GST & Shipping" : tab === "offline-bill" ? "Offline Bill" : tab === "advertisement" ? "Push Ads" : tab === "delivery-team" ? "Delivery Team" : tab}
             </button>
           ))}
         </div>
@@ -2625,6 +2626,11 @@ export default function AdminDashboardView({ onNavigate }: { onNavigate?: (page:
           {/* TAB 11: PUSH NOTIFICATION ADVERTISEMENTS */}
           {activeTab === "advertisement" && (
             <PushAdvertisementsPanel token={token} />
+          )}
+
+          {/* TAB 12: DELIVERY FLEET PARTNER ROSTER */}
+          {activeTab === "delivery-team" && (
+            <DeliveryTeamPanel />
           )}
 
         </div>

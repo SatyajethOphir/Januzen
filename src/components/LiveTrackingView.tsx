@@ -50,6 +50,8 @@ export default function LiveTrackingView({ orderId, onNavigate, currentUser }: L
   const [loading, setLoading] = React.useState<boolean>(true);
   const [error, setError] = React.useState<string>("");
   const [refreshing, setRefreshing] = React.useState<boolean>(false);
+  const [trackingEnded, setTrackingEnded] = React.useState<boolean>(false);
+  const [trackingEndedMsg, setTrackingEndedMsg] = React.useState<string>("");
 
   // Map state
   const mapContainerRef = React.useRef<HTMLDivElement | null>(null);
@@ -135,18 +137,12 @@ export default function LiveTrackingView({ orderId, onNavigate, currentUser }: L
         headers["Authorization"] = `Bearer ${token}`;
       }
 
-      // Fetch tracking info
-      const trackingRes = await fetch(`/api/orders/${selectedOrderId}/tracking`, { headers });
-      if (!trackingRes.ok) {
-        throw new Error("Unable to retrieve live telemetry status for this order.");
-      }
-      const trackPayload = await trackingRes.json();
-      setTrackingData(trackPayload);
+      setTrackingEnded(false);
+      setTrackingEndedMsg("");
 
       // Fetch order metadata (find in ordersList or call API)
       let foundOrder = ordersList.find(o => o.id === selectedOrderId);
       if (!foundOrder) {
-        // Fallback fetch all to find
         const isAdmin = currentUser?.isAdmin;
         const url = isAdmin ? "/api/admin/orders" : "/api/orders";
         const oRes = await fetch(url, { headers });
@@ -158,14 +154,40 @@ export default function LiveTrackingView({ orderId, onNavigate, currentUser }: L
 
       if (foundOrder) {
         setActiveOrder(foundOrder);
+      }
+
+      // Fetch tracking info
+      const trackingRes = await fetch(`/api/orders/${selectedOrderId}/tracking`, { headers });
+      
+      if (trackingRes.ok) {
+        const trackPayload = await trackingRes.json();
+        const trackingStatus = String(trackPayload.status || "").toLowerCase();
+        const orderStatus = foundOrder ? String(foundOrder.status || "").toLowerCase() : trackingStatus;
+
+        if (orderStatus === "delivered" || orderStatus === "cancelled" || trackingStatus === "delivered" || trackingStatus === "cancelled") {
+          setTrackingData(null);
+          setTrackingEnded(true);
+          setTrackingEndedMsg("For the privacy and safety of our delivery partners, live location is no longer available after the order has been completed.");
+        } else {
+          setTrackingData(trackPayload);
+        }
+      } else if (trackingRes.status === 403) {
+        const errPayload = await trackingRes.json();
+        setTrackingData(null);
+        setTrackingEnded(true);
+        setTrackingEndedMsg(errPayload.error || "For the privacy and safety of our delivery partners, live location is no longer available after the order has been completed.");
       } else {
-        // Mock a minimal order object if not found
+        throw new Error("Unable to retrieve live telemetry status for this order.");
+      }
+
+      if (!foundOrder) {
+        // Mock a minimal order object if not found in list
         setActiveOrder({
           id: selectedOrderId,
-          orderId: trackPayload.orderId || `ORD-${selectedOrderId.substring(0, 8).toUpperCase()}`,
-          status: trackPayload.status || "Dispatched",
+          orderId: `ORD-${selectedOrderId.substring(0, 8).toUpperCase()}`,
+          status: "Dispatched",
           items: [],
-          totals: { subtotal: 0, shipping: 0, tax: 0, total: trackPayload.distance * 12 || 120 },
+          totals: { subtotal: 0, shipping: 0, tax: 0, total: 120 },
           shippingAddress: { fullName: "Valued Customer", addressLine: "Hyderabad, India", city: "Hyderabad", postalCode: "500090", phone: "" },
           paymentMethod: "Online",
           createdAt: new Date().toISOString(),
@@ -203,6 +225,17 @@ export default function LiveTrackingView({ orderId, onNavigate, currentUser }: L
       }
     });
 
+    socket.on("tracking-ended", (data) => {
+      if (data.orderId === selectedOrderId) {
+        setTrackingData(null);
+        setTrackingEnded(true);
+        setTrackingEndedMsg(data.message || "For the privacy and safety of our delivery partners, live location is no longer available after the order has been completed.");
+        if (socketRef.current) {
+          socketRef.current.disconnect();
+        }
+      }
+    });
+
     return () => {
       socket.disconnect();
       socketRef.current = null;
@@ -211,7 +244,7 @@ export default function LiveTrackingView({ orderId, onNavigate, currentUser }: L
 
   // Customer periodic position update if permission is active
   React.useEffect(() => {
-    if (!selectedOrderId || !activeOrder) return;
+    if (trackingEnded || !selectedOrderId || !activeOrder) return;
     
     // Check if order is already completed or cancelled to stop tracking immediately
     const normalizedStatus = String(activeOrder.status || "").toLowerCase();
@@ -288,7 +321,14 @@ export default function LiveTrackingView({ orderId, onNavigate, currentUser }: L
 
   // 5. Leaflet Map initialization and synchronization
   React.useEffect(() => {
-    if (!mapContainerRef.current || !trackingData) return;
+    if (trackingEnded || !mapContainerRef.current || !trackingData) {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+      markersRef.current = {};
+      return;
+    }
 
     let isMounted = true;
     let L: any = null;
@@ -439,10 +479,11 @@ export default function LiveTrackingView({ orderId, onNavigate, currentUser }: L
       }
       markersRef.current = {};
     };
-  }, [trackingData === null, activeOrder?.id]);
+  }, [trackingEnded, trackingData === null, activeOrder?.id]);
 
   // 6. Smoothly move markers and update polyline when data changes
   React.useEffect(() => {
+    if (trackingEnded) return;
     const map = mapRef.current;
     if (!map || !trackingData) return;
 
@@ -837,19 +878,21 @@ export default function LiveTrackingView({ orderId, onNavigate, currentUser }: L
               {/* Map controls floating bar */}
               <div className="bg-white border border-gray-150 rounded-2xl p-3 shadow-xs flex flex-wrap justify-between items-center gap-3">
                 <div className="flex items-center gap-2">
-                  <span className="flex h-2.5 w-2.5 rounded-full bg-[#0F9B8E] animate-pulse" />
+                  <span className={`flex h-2.5 w-2.5 rounded-full ${trackingEnded ? "bg-slate-400 animate-none" : "bg-[#0F9B8E] animate-pulse"}`} />
                   <span className="text-xs text-slate-800 font-medium">Tracking Order ID: <b className="font-mono">{activeOrder.orderId}</b></span>
                 </div>
                 
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleRecenterMap}
-                    style={{ cursor: "pointer" }}
-                    className="px-3.5 py-1.5 bg-slate-900 hover:bg-black text-white text-[11px] font-mono font-bold uppercase rounded-lg flex items-center gap-1 transition-all"
-                  >
-                    <Compass className="h-3.5 w-3.5" />
-                    Recenter Bounds
-                  </button>
+                  {!trackingEnded && (
+                    <button
+                      onClick={handleRecenterMap}
+                      style={{ cursor: "pointer" }}
+                      className="px-3.5 py-1.5 bg-slate-900 hover:bg-black text-white text-[11px] font-mono font-bold uppercase rounded-lg flex items-center gap-1 transition-all"
+                    >
+                      <Compass className="h-3.5 w-3.5" />
+                      Recenter Bounds
+                    </button>
+                  )}
                   <button
                     onClick={() => onNavigate("invoice", { orderId: activeOrder.id })}
                     style={{ cursor: "pointer" }}
@@ -861,37 +904,60 @@ export default function LiveTrackingView({ orderId, onNavigate, currentUser }: L
                 </div>
               </div>
 
-              {/* Map container frame with full map widget inside */}
-              <div className="flex-1 bg-slate-100 rounded-3xl overflow-hidden border border-gray-150 relative shadow-md">
-                
-                {/* Embedded OSM Canvas Div */}
-                <div ref={mapContainerRef} className="w-full h-full z-10" />
-
-                {/* Loading/Route overlays inside map frame */}
-                {routeLoading && (
-                  <div className="absolute top-4 right-4 bg-slate-950/85 backdrop-blur-md text-white px-3 py-2 rounded-xl flex items-center gap-2 text-[10px] font-mono font-bold border border-white/10 z-20 shadow-lg">
-                    <Compass className="h-3.5 w-3.5 animate-spin text-amber-400" />
-                    Platting live road path...
+              {trackingEnded ? (
+                /* Tracking Ended State */
+                <div className="flex-1 bg-white rounded-3xl p-8 border border-gray-150 flex flex-col items-center justify-center text-center shadow-md min-h-[350px]">
+                  <div className="h-16 w-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 mb-6 border border-slate-200">
+                    <ShieldCheck className="h-8 w-8 text-slate-600" />
                   </div>
-                )}
-                
-                {/* Live GPS feed visual cue */}
-                <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-md text-slate-900 px-3 py-2 rounded-xl flex flex-col gap-0.5 text-[9px] font-mono border border-gray-100 z-20 shadow-md">
-                  <div className="flex items-center gap-1.5 font-bold text-slate-850">
-                    <span className="h-2 w-2 rounded-full bg-teal-500 animate-ping" />
-                    GPS TRANSIT FEED ACTIVE
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-slate-100 text-slate-800 border border-slate-200 uppercase tracking-widest mb-3">
+                    Tracking Ended
+                  </span>
+                  <h3 className="font-serif text-xl font-black text-slate-900">Live Map Feed Deactivated</h3>
+                  <p className="text-gray-600 text-xs font-sans max-w-md mt-3 leading-relaxed">
+                    {trackingEndedMsg || "For the privacy and safety of our delivery partners, live location is no longer available after the order has been completed."}
+                  </p>
+                  <div className="mt-6 text-[10px] font-mono text-gray-400 bg-slate-50 border px-3 py-1.5 rounded-xl">
+                    Active Session Terminated • Zero Location Data Cached
                   </div>
-                  <span className="text-gray-400">Stream frequency: 3000ms</span>
                 </div>
-              </div>
+              ) : (
+                /* Map container frame with full map widget inside */
+                <div className="flex-1 bg-slate-100 rounded-3xl overflow-hidden border border-gray-150 relative shadow-md">
+                  
+                  {/* Embedded OSM Canvas Div */}
+                  <div ref={mapContainerRef} className="w-full h-full z-10" />
+
+                  {/* Loading/Route overlays inside map frame */}
+                  {routeLoading && (
+                    <div className="absolute top-4 right-4 bg-slate-950/85 backdrop-blur-md text-white px-3 py-2 rounded-xl flex items-center gap-2 text-[10px] font-mono font-bold border border-white/10 z-20 shadow-lg">
+                      <Compass className="h-3.5 w-3.5 animate-spin text-amber-400" />
+                      Platting live road path...
+                    </div>
+                  )}
+                  
+                  {/* Live GPS feed visual cue */}
+                  <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-md text-slate-900 px-3 py-2 rounded-xl flex flex-col gap-0.5 text-[9px] font-mono border border-gray-100 z-20 shadow-md">
+                    <div className="flex items-center gap-1.5 font-bold text-slate-850">
+                      <span className="h-2 w-2 rounded-full bg-teal-500 animate-ping" />
+                      GPS TRANSIT FEED ACTIVE
+                    </div>
+                    <span className="text-gray-400">Stream frequency: 3000ms</span>
+                  </div>
+                </div>
+              )}
 
               {/* Interactive Info Footer */}
               <div className="bg-amber-50 border border-amber-200/70 text-amber-900 text-xs px-4 py-3 rounded-2xl flex items-start gap-2.5 font-sans shadow-xs">
                 <Sparkles className="h-4.5 w-4.5 text-amber-600 mt-0.5 shrink-0" />
                 <div className="leading-relaxed">
-                  <p className="font-bold">Automated Routing & Route Re-Calculation Enabled</p>
+                  <p className="font-bold">
+                    {trackingEnded ? "Courier Privacy Standards Enabled" : "Automated Routing & Route Re-Calculation Enabled"}
+                  </p>
                   <p className="text-[11px] text-amber-800 mt-0.5">
-                    Our system leverages the OpenStreetMap engine and OSRM protocols. Whenever the courier representative Suresh changes transit location, the route coordinates and Remaining distance auto-recalculates immediately in real time.
+                    {trackingEnded
+                      ? "To maintain strict privacy compliance, the delivery representative's real-time transit telemetry feed is permanently disconnected once the delivery reaches finalization. Thank you for partnering with Januzen."
+                      : "Our system leverages the OpenStreetMap engine and OSRM protocols. Whenever the courier representative Suresh changes transit location, the route coordinates and Remaining distance auto-recalculates immediately in real time."}
                   </p>
                 </div>
               </div>

@@ -29,6 +29,44 @@ const PORT = 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "JANUZEN_JWT_SECRET_KEY";
 const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY || "phoenix123&";
 
+// Global Socket.IO instance reference for tracking session termination
+let ioInstance: any = null;
+
+/**
+ * Cleanly terminates a live delivery tracking session:
+ * 1. Alerts any connected Socket.IO clients that tracking has concluded.
+ * 2. Forces all client socket connections to leave the order's room.
+ * 3. Irreversibly deletes the temporary live telemetry coordinate logs from memory/DB.
+ */
+async function terminateTrackingSession(orderId: string) {
+  try {
+    if (ioInstance) {
+      // Broadcast tracking-ended event to active listeners
+      ioInstance.to(orderId).emit("tracking-ended", {
+        orderId,
+        message: "For the privacy and safety of our delivery partners, live location is no longer available after the order has been completed."
+      });
+
+      // Force sockets in room to leave
+      const clients = ioInstance.sockets.adapter.rooms.get(orderId);
+      if (clients) {
+        for (const socketId of clients) {
+          const socket = ioInstance.sockets.sockets.get(socketId);
+          if (socket) {
+            socket.leave(orderId);
+          }
+        }
+      }
+    }
+
+    // Delete temporary driver location logs (retains only status and history)
+    await TrackingService.deleteTracking(orderId);
+    console.log(`[PRIVACY-SECURE] Safely terminated tracking session and deleted coordinate history for order ${orderId}.`);
+  } catch (err) {
+    console.error(`[TRACKING COMPLIANCE ERROR] Failed to terminate tracking session for order ${orderId}:`, err);
+  }
+}
+
 // Initialize Razorpay SDK (with Production Simulator fallback)
 let razorpayClient: any = null;
 try {
@@ -163,7 +201,7 @@ async function createAndSendNotification(userId: string, title: string, content:
 
   const formattedTitle = title.startsWith("JANUZEN") ? title : "JANUZEN | " + title;
 
-  // Dispatch via Unified Notification Center (Email + Website Dashboard + Push + WhatsApp)
+  // Dispatch via Unified Notification Center (Website Dashboard + Push + WhatsApp)
   await sendUnifiedNotification({
     userId,
     userEmail,
@@ -174,7 +212,7 @@ async function createAndSendNotification(userId: string, title: string, content:
     message: content,
     linkUrl,
     imageUrl,
-    channels: userEmail ? ["email", "website", "push"] : ["website", "push"]
+    channels: ["website", "push"]
   }, dbClient, sendRealtimeNotification, sendWebPushNotificationToUser);
 
   const notif = {
@@ -1080,16 +1118,6 @@ async function startServer() {
         `Hi ${newOrder.userName}, your order ${newOrder.orderId} has been placed successfully! Your delivery verification OTP is [${deliveryOTP}]. Total amount: ₹${total.toFixed(2)}. We will notify you when it's dispatched.`
       );
 
-      // Generate and email invoice — wrapped in try/catch so invoice
-      // failure never blocks the order confirmation response
-      try {
-        const invoiceBuffer = await generateInvoice(newOrder);
-        await sendInvoiceEmail(newOrder, invoiceBuffer);
-      } catch (invoiceErr) {
-        console.error("[INVOICE] Failed to generate/send invoice:", invoiceErr);
-        // Do NOT re-throw — order is already placed, don't fail the response
-      }
-
       res.status(201).json({
         message: "Order placed successfully!",
         order: newOrder,
@@ -1097,7 +1125,7 @@ async function startServer() {
           whatsapp: `https://wa.me/?text=${encodeURIComponent(
             `Hi! I just placed an order with JANUZEN Global LLP 🛍️\n\nOrder ID: ${orderIdCode}\nTotal: ₹${total}\n\nView products at: https://januzen.in`
           )}`,
-          invoiceNote: "Invoice has been sent to your email address."
+          invoiceNote: "Invoice will be available for download in your dashboard once confirmed."
         }
       });
     } catch (e) {
@@ -1207,6 +1235,23 @@ async function startServer() {
         "/orders"
       );
 
+      const normalizedStatus = status.toLowerCase();
+
+      // If order is confirmed or fulfillment has begun/completed, send the invoice email if not already sent
+      if (["confirmed", "processing", "dispatched", "out_for_delivery", "delivered"].includes(normalizedStatus)) {
+        try {
+          const invoiceBuffer = await generateInvoice(updatedOrder);
+          await sendInvoiceEmail(updatedOrder, invoiceBuffer);
+        } catch (invoiceErr) {
+          console.error("[INVOICE] Failed to generate/send invoice during status change:", invoiceErr);
+        }
+      }
+
+      // If status is delivered or cancelled, cleanly terminate tracking
+      if (normalizedStatus === "delivered" || normalizedStatus === "cancelled") {
+        await terminateTrackingSession(updatedOrder.id);
+      }
+
       res.json({
         message: `Status updated successfully to ${status}`,
         order: updatedOrder
@@ -1267,6 +1312,9 @@ async function startServer() {
         `Hi ${updatedOrder.userName}, your order ${updatedOrder.orderId} was successfully cancelled.`
       );
 
+      // Cleanly terminate tracking session upon order cancellation
+      await terminateTrackingSession(updatedOrder.id);
+
       res.json({ message: "Order cancelled successfully.", order: updatedOrder });
     } catch (e) {
       console.error(e);
@@ -1276,7 +1324,7 @@ async function startServer() {
 
   // Delivery Agent update order status (Public/Driver Hub helper - no strict Admin token required so delivery associates can run it)
   app.put("/api/orders/:id/status-driver", async (req, res) => {
-    const { status, note } = req.body;
+    const { status, note, deliveryPartnerId } = req.body;
     const allowed = ["dispatched", "out_for_delivery", "delivered", "cancelled"];
     if (!allowed.includes(status.toLowerCase())) {
       return res.status(400).json({ error: "Status must be: dispatched, out_for_delivery, delivered, or cancelled" });
@@ -1287,9 +1335,23 @@ async function startServer() {
         return res.status(404).json({ error: "Order not found" });
       }
       
-      // If status is delivered or cancelled, clean up the tracking database record
+      // If status is dispatched or out_for_delivery and partner is provided, assign them to tracking
+      if (deliveryPartnerId && (status.toLowerCase() === "dispatched" || status.toLowerCase() === "out_for_delivery")) {
+        if (isMongo) {
+          const { DeliveryTracking } = await import("./server/models/DeliveryTracking");
+          await DeliveryTracking.findOneAndUpdate(
+            { orderId: req.params.id },
+            { $set: { deliveryPartnerId } },
+            { upsert: true, new: true }
+          );
+        } else {
+          await TrackingService.getTracking(req.params.id, deliveryPartnerId);
+        }
+      }
+
+      // If status is delivered or cancelled, cleanly terminate tracking
       if (status.toLowerCase() === "delivered" || status.toLowerCase() === "cancelled") {
-        await TrackingService.deleteTracking(req.params.id);
+        await terminateTrackingSession(req.params.id);
       }
 
       await createAndSendNotification(
@@ -1325,7 +1387,7 @@ async function startServer() {
         }
 
         // Clean up tracking on successful OTP delivery
-        await TrackingService.deleteTracking(order.id);
+        await terminateTrackingSession(order.id);
 
         await createAndSendNotification(
           updatedOrder.userId,
@@ -1348,6 +1410,19 @@ async function startServer() {
   // Get active tracking coordinates and metadata for an order
   app.get("/api/orders/:id/tracking", async (req, res) => {
     try {
+      // Fetch order first to check status for privacy protection
+      const orders = await dbClient.getOrders();
+      const order = orders.find(o => o.id === req.params.id || o.orderId === req.params.id);
+      if (order) {
+        const orderStatus = String(order.status || "").toLowerCase();
+        if (orderStatus === "delivered" || orderStatus === "cancelled") {
+          return res.status(403).json({
+            error: "For the privacy and safety of our delivery partners, live location is no longer available after the order has been completed.",
+            trackingEnded: true
+          });
+        }
+      }
+      
       const tracking = await TrackingService.getTracking(req.params.id);
       res.json(tracking);
     } catch (err: any) {
@@ -1363,6 +1438,16 @@ async function startServer() {
       return res.status(400).json({ error: "Latitude and longitude are required to update tracking." });
     }
     try {
+      // Prevent updating completed or cancelled orders
+      const orders = await dbClient.getOrders();
+      const order = orders.find(o => o.id === req.params.id || o.orderId === req.params.id);
+      if (order) {
+        const orderStatus = String(order.status || "").toLowerCase();
+        if (orderStatus === "delivered" || orderStatus === "cancelled") {
+          return res.status(403).json({ error: "Tracking session has concluded. Location updates are disabled." });
+        }
+      }
+
       const updated = await TrackingService.updateTracking(
         req.params.id, 
         Number(lat), 
@@ -1373,12 +1458,63 @@ async function startServer() {
       );
       
       // Broadcast live position via Socket.IO
-      io.to(req.params.id).emit("location-updated", updated);
+      if (ioInstance) {
+        ioInstance.to(req.params.id).emit("location-updated", updated);
+      }
 
       res.json({ success: true, tracking: updated });
     } catch (err: any) {
       console.error("Error updating live location:", err);
       res.status(500).json({ error: "Failed to post live location coordinates." });
+    }
+  });
+
+  // --- DELIVERY PARTNER CRUD ENDPOINTS ---
+
+  // Get all delivery partners
+  app.get("/api/delivery-partners", async (req, res) => {
+    try {
+      const partners = await TrackingService.getDeliveryPartners();
+      res.json(partners);
+    } catch (err: any) {
+      console.error("Error listing delivery partners:", err);
+      res.status(500).json({ error: "Failed to fetch delivery partners." });
+    }
+  });
+
+  // Add or update delivery partner
+  app.put("/api/delivery-partners", async (req, res) => {
+    const { name, phone, vehicle, zone, status, avatar } = req.body;
+    if (!name) {
+      return res.status(400).json({ error: "Partner name is required." });
+    }
+    try {
+      const partner = await TrackingService.updateDeliveryPartner(name, {
+        phone,
+        vehicle,
+        zone,
+        status,
+        avatar
+      });
+      res.json({ success: true, partner });
+    } catch (err: any) {
+      console.error("Error editing delivery partner:", err);
+      res.status(500).json({ error: "Failed to update delivery partner." });
+    }
+  });
+
+  // Delete a delivery partner
+  app.delete("/api/delivery-partners/:name", async (req, res) => {
+    const { name } = req.params;
+    if (!name) {
+      return res.status(400).json({ error: "Partner name is required." });
+    }
+    try {
+      const success = await TrackingService.deleteDeliveryPartner(name);
+      res.json({ success });
+    } catch (err: any) {
+      console.error("Error deleting delivery partner:", err);
+      res.status(500).json({ error: "Failed to delete delivery partner." });
     }
   });
 
@@ -1838,6 +1974,7 @@ async function startServer() {
 
       if (record.orderId) {
         await dbClient.updateOrderStatus(record.orderId, "cancelled", `Refund processed: ${reason}`);
+        await terminateTrackingSession(record.orderId);
       }
 
       await createAndSendNotification(
@@ -2027,7 +2164,7 @@ async function startServer() {
           type: purpose as any,
           title: "Your JANUZEN Security Verification Code",
           message: `Your 6-digit verification OTP is [${otpCode}]. Valid for 10 minutes. Do not share this code with anyone.`,
-          channels: ["email", "website"],
+          channels: ["website", "push"],
           metadata: { otp: otpCode }
         },
         dbClient,
@@ -2527,11 +2664,25 @@ async function startServer() {
   const io = new Server(httpServer, {
     cors: { origin: "*" }
   });
+  ioInstance = io;
 
   io.on("connection", (socket) => {
     socket.on("join-order", async (orderId) => {
-      socket.join(orderId);
       try {
+        const orders = await dbClient.getOrders();
+        const order = orders.find(o => o.id === orderId || o.orderId === orderId);
+        if (order) {
+          const orderStatus = String(order.status || "").toLowerCase();
+          if (orderStatus === "delivered" || orderStatus === "cancelled") {
+            socket.emit("tracking-ended", {
+              orderId,
+              message: "For the privacy and safety of our delivery partners, live location is no longer available after the order has been completed."
+            });
+            return;
+          }
+        }
+
+        socket.join(orderId);
         const tracking = await TrackingService.getTracking(orderId);
         socket.emit("location-updated", tracking);
       } catch (err) {

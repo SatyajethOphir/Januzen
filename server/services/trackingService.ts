@@ -1,9 +1,52 @@
 import { DeliveryTracking } from "../models/DeliveryTracking";
+import { DeliveryPartner } from "../models/DeliveryPartner";
 import { isMongo, MongoOrder } from "../db";
 
 // Starting hub: Gajularamaram, Hyderabad, India
 const H_LAT = 17.5147;
 const H_LNG = 78.4116;
+
+// Local delivery partners list for memory fallback
+const localDeliveryPartners = [
+  {
+    name: "Suresh Kumar",
+    phone: "+91 98881 23456",
+    vehicle: "Eco Hero Electric (TS-08-EV-4412)",
+    zone: "Gajularamaram & West Hyd (Primary Representative on Standby)",
+    status: "Active / On Duty",
+    avatar: "SK"
+  },
+  {
+    name: "Ramesh Patel",
+    phone: "+91 98881 23457",
+    vehicle: "Bajaj Pulsar 150 (TS-07-HD-9081)",
+    zone: "Kukatpally & North Hyd",
+    status: "Active / Out on Delivery",
+    avatar: "RP"
+  },
+  {
+    name: "Divya Reddy",
+    phone: "+91 98881 23458",
+    vehicle: "Ather 450X (TS-09-EV-1122)",
+    zone: "Express Delivery & Central Hyd",
+    status: "On Standby",
+    avatar: "DR"
+  }
+];
+
+async function ensureDeliveryPartnersSeeded() {
+  if (isMongo) {
+    try {
+      const count = await DeliveryPartner.countDocuments();
+      if (count === 0) {
+        console.log("[SEED] Seeding default delivery partners into MongoDB...");
+        await DeliveryPartner.insertMany(localDeliveryPartners);
+      }
+    } catch (err) {
+      console.error("[SEED ERROR] Failed to seed default delivery partners:", err);
+    }
+  }
+}
 
 // Local Map-based fallback store for memory fallback
 const localTrackingStore = new Map<string, {
@@ -137,6 +180,8 @@ export class TrackingService {
       console.error("Error fetching order in tracking system:", err);
     }
 
+    await ensureDeliveryPartnersSeeded();
+
     if (isMongo) {
       try {
         let tracking = await DeliveryTracking.findOne({ orderId });
@@ -160,6 +205,24 @@ export class TrackingService {
             updatedAt: new Date()
           });
         }
+
+        // Dynamically find driver details
+        const driverName = tracking.deliveryPartnerId || deliveryPartnerId;
+        const partner = await (DeliveryPartner as any).findOne({ name: driverName });
+        const driverDetails = partner ? {
+          name: partner.name,
+          phone: partner.phone,
+          vehicle: partner.vehicle,
+          zone: partner.zone,
+          status: partner.status
+        } : {
+          name: "Suresh Kumar",
+          phone: "+91 98881 23456",
+          vehicle: "Eco Hero Electric (TS-08-EV-4412)",
+          zone: "Gajularamaram",
+          status: "Active / On Duty"
+        };
+
         return {
           orderId: tracking.orderId,
           deliveryPartnerId: tracking.deliveryPartnerId,
@@ -171,11 +234,7 @@ export class TrackingService {
           routeCoords: tracking.routeCoords || [],
           status: tracking.status,
           updatedAt: tracking.updatedAt.toISOString(),
-          driverDetails: {
-            name: "Suresh Kumar",
-            phone: "+91 98881 23456",
-            vehicle: "Eco Hero Electric (TS-08-EV-4412)"
-          }
+          driverDetails
         };
       } catch (err) {
         console.error("Error fetching DeliveryTracking from Mongo:", err);
@@ -203,13 +262,25 @@ export class TrackingService {
       localTrackingStore.set(orderId, tracking);
     }
 
+    const driverName = tracking.deliveryPartnerId || deliveryPartnerId;
+    const partnerDetails = localDeliveryPartners.find(p => p.name === driverName);
+    const driverDetails = partnerDetails ? {
+      name: partnerDetails.name,
+      phone: partnerDetails.phone,
+      vehicle: partnerDetails.vehicle,
+      zone: partnerDetails.zone,
+      status: partnerDetails.status
+    } : {
+      name: "Suresh Kumar",
+      phone: "+91 98881 23456",
+      vehicle: "Eco Hero Electric (TS-08-EV-4412)",
+      zone: "Gajularamaram",
+      status: "Active / On Duty"
+    };
+
     return {
       ...tracking,
-      driverDetails: {
-        name: "Suresh Kumar",
-        phone: "+91 98881 23456",
-        vehicle: "Eco Hero Electric (TS-08-EV-4412)"
-      }
+      driverDetails
     };
   }
 
@@ -351,5 +422,80 @@ export class TrackingService {
     }
 
     return localTrackingStore.delete(orderId);
+  }
+
+  /**
+   * Fetch all delivery partners
+   */
+  static async getDeliveryPartners(): Promise<any[]> {
+    await ensureDeliveryPartnersSeeded();
+    if (isMongo) {
+      try {
+        return await (DeliveryPartner as any).find({});
+      } catch (err) {
+        console.error("Error fetching delivery partners:", err);
+      }
+    }
+    return localDeliveryPartners;
+  }
+
+  /**
+   * Add or update delivery partner details
+   */
+  static async updateDeliveryPartner(name: string, updateData: { phone?: string; vehicle?: string; zone?: string; status?: string; avatar?: string }): Promise<any> {
+    await ensureDeliveryPartnersSeeded();
+    if (isMongo) {
+      try {
+        const updated = await (DeliveryPartner as any).findOneAndUpdate(
+          { name },
+          { $set: updateData },
+          { new: true, upsert: true }
+        );
+        return updated;
+      } catch (err) {
+        console.error("Error updating delivery partner:", err);
+      }
+    }
+    
+    let partner = localDeliveryPartners.find(p => p.name === name);
+    if (partner) {
+      if (updateData.phone !== undefined) partner.phone = updateData.phone;
+      if (updateData.vehicle !== undefined) partner.vehicle = updateData.vehicle;
+      if (updateData.zone !== undefined) partner.zone = updateData.zone;
+      if (updateData.status !== undefined) partner.status = updateData.status;
+      if (updateData.avatar !== undefined) partner.avatar = updateData.avatar;
+      return partner;
+    } else {
+      const newPartner = {
+        name,
+        phone: updateData.phone || "+91 98881 23456",
+        vehicle: updateData.vehicle || "Eco Hero Electric (TS-08-EV-4412)",
+        zone: updateData.zone || "Hyderabad",
+        status: updateData.status || "On Standby",
+        avatar: updateData.avatar || name.substring(0, 2).toUpperCase()
+      };
+      localDeliveryPartners.push(newPartner);
+      return newPartner;
+    }
+  }
+
+  /**
+   * Delete a delivery partner
+   */
+  static async deleteDeliveryPartner(name: string): Promise<boolean> {
+    if (isMongo) {
+      try {
+        await DeliveryPartner.deleteOne({ name });
+        return true;
+      } catch (err) {
+        console.error("Error deleting delivery partner:", err);
+      }
+    }
+    const index = localDeliveryPartners.findIndex(p => p.name === name);
+    if (index !== -1) {
+      localDeliveryPartners.splice(index, 1);
+      return true;
+    }
+    return false;
   }
 }

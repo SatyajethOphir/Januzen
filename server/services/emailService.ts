@@ -223,98 +223,31 @@ export const EmailService = {
   },
 
   /**
-   * Transactional: Welcome Email on User Registration
+   * Transactional: Welcome Email on User Registration (Disabled to optimize email usage)
    */
   async sendWelcomeEmail(email: string, name: string) {
-    const title = `Welcome to JANUZEN, ${name}!`;
-    const subject = `Welcome to JANUZEN!`;
-    const bodyHtml = `
-      <p>We are absolutely thrilled to welcome you to the JANUZEN family!</p>
-      <p>Your account has been successfully registered. You now have full access to our premium services:</p>
-      <ul style="color: #475569; font-size: 14px; padding-left: 20px; line-height: 1.6;">
-        <li>🏥 <strong>Nuthan Medicals:</strong> Certified standard healthcare dispatches and prescription refills.</li>
-        <li>📝 <strong>JA Stationery:</strong> High-opacity copypaper and certified standard office supplies.</li>
-        <li>⚡ <strong>Zero-Emissions Logistics:</strong> Enjoy lightning-fast local dispatches tracked in real-time.</li>
-      </ul>
-      <p>Log in to your account anytime to track your orders, manage prescriptions, or explore new products.</p>
-    `;
-    const htmlContent = getBrandedEnvelope(title, bodyHtml, "WELCOME TO JANUZEN", "#0F6E56", "#10B981");
-    await this.sendEmail({
-      to: [{ email, name }],
-      subject,
-      htmlContent
-    });
+    console.log(`[EMAIL OPTIMIZATION] Welcome email skipped for ${email} to minimize email usage as per policy.`);
   },
 
   /**
-   * Transactional: One-Time Password Verification
+   * Transactional: One-Time Password Verification (Disabled to optimize email usage)
    */
   async sendOtpEmail(email: string, name: string, otp: string, purpose: string) {
-    const title = "Security Verification Code";
-    const subject = `[JANUZEN] Your OTP Code: ${otp}`;
-    const cleanPurpose = purpose.replace("otp_", "").toUpperCase().replace("_", " ");
-    const bodyHtml = `
-      <p>Dear ${name},</p>
-      <p>A request was received to verify your identity on JANUZEN for <strong>${cleanPurpose}</strong>.</p>
-      <div style="background: #F8FAFC; border: 2px dashed #0F6E56; border-radius: 12px; padding: 24px; text-align: center; margin: 24px 0;">
-        <p style="margin: 0 0 8px 0; font-size: 12px; color: #64748B; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Your One-Time Password (OTP)</p>
-        <div style="font-size: 32px; font-family: 'Courier New', Courier, monospace; font-weight: 900; color: #0F6E56; letter-spacing: 8px;">${otp}</div>
-        <p style="margin: 8px 0 0 0; font-size: 11px; color: #EF4444; font-weight: bold;">⚠️ Valid for 10 minutes. Never share this code with anyone, including JANUZEN staff.</p>
-      </div>
-      <p>If you did not request this code, please change your security parameters immediately.</p>
-    `;
-    const htmlContent = getBrandedEnvelope(title, bodyHtml, "SECURE OTP VERIFICATION", "#0D1B2A", "#F59E0B");
-    await this.sendEmail({
-      to: [{ email, name }],
-      subject,
-      htmlContent
-    });
+    console.log(`[EMAIL OPTIMIZATION] OTP email skipped for ${email} (OTP: ${otp}) to minimize email usage as per policy.`);
   },
 
   /**
-   * Transactional: Password Reset / Changed Security Alert
+   * Transactional: Password Reset / Changed Security Alert (Disabled to optimize email usage)
    */
   async sendPasswordResetEmail(email: string, name: string) {
-    const title = "Password Update Notification";
-    const subject = `[JANUZEN] Security Alert: Password Updated`;
-    const bodyHtml = `
-      <p>Dear ${name},</p>
-      <p>This is to confirm that your JANUZEN account password has been successfully updated or recovered.</p>
-      <p>If you authorized this change, no further action is required on your part.</p>
-      <div style="background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 8px; padding: 16px; margin: 20px 0; color: #854D0E; font-size: 13px; line-height: 1.5;">
-        <strong>⚠️ Security Alert:</strong> If you did not request this password change, please contact us at <a href="mailto:team@januzen.in" style="color: #B45309; font-weight: bold;">team@januzen.in</a> immediately to lock and protect your account.
-      </div>
-    `;
-    const htmlContent = getBrandedEnvelope(title, bodyHtml, "SECURITY PARAMETER RESET", "#1E293B", "#EF4444");
-    await this.sendEmail({
-      to: [{ email, name }],
-      subject,
-      htmlContent
-    });
+    console.log(`[EMAIL OPTIMIZATION] Password reset security alert email skipped for ${email} to minimize email usage as per policy.`);
   },
 
   /**
-   * Transactional: Contact Form Confirmation
+   * Transactional: Contact Form Confirmation (Disabled to optimize email usage)
    */
   async sendContactFormConfirmation(email: string, name: string, userSubject: string, message: string) {
-    const title = "We Received Your Inquiry";
-    const subject = `[JANUZEN] We received your inquiry: ${userSubject}`;
-    const bodyHtml = `
-      <p>Dear ${name},</p>
-      <p>Thank you for reaching out to us. We have successfully received your message and a JANUZEN representative has logged it into our support queue.</p>
-      <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 18px; margin: 20px 0; font-size: 13px; color: #475569; line-height: 1.6;">
-        <h4 style="margin: 0 0 8px 0; color: #0D1B2A; font-size: 14px; border-bottom: 1px solid #E2E8F0; padding-bottom: 6px;">Your Inquiry Details</h4>
-        <p style="margin: 4px 0;"><strong>Subject:</strong> ${userSubject}</p>
-        <p style="white-space: pre-line; margin-top: 8px; background: white; padding: 10px; border-radius: 4px; border: 1px solid #F1F5F9; color: #1E293B;">${message}</p>
-      </div>
-      <p>Our typical support turnaround time is within 24 business hours. If your request requires urgent delivery dispatch coordinates, feel free to contact us via the help desk.</p>
-    `;
-    const htmlContent = getBrandedEnvelope(title, bodyHtml, "INQUIRY LOGGED", "#0F6E56", "#3B82F6");
-    await this.sendEmail({
-      to: [{ email, name }],
-      subject,
-      htmlContent
-    });
+    console.log(`[EMAIL OPTIMIZATION] Contact form confirmation skipped for ${email} (Subject: "${userSubject}") to minimize email usage as per policy.`);
   },
 
   /**

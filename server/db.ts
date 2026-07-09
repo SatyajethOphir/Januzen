@@ -369,6 +369,7 @@ const OrderSchema = new Schema({
   statusHistory: { type: Schema.Types.Mixed, default: [] },
   paymentMethod: { type: String, default: "Cash on Delivery", maxlength: 100 },
   createdAt: { type: String, required: true, index: true },
+  invoiceEmailSent: { type: Boolean, default: false }
 });
 
 const WishlistSchema = new Schema({
@@ -1032,6 +1033,17 @@ export const dbClient = {
     }
   },
 
+  getOrderById: async (id: string): Promise<Order | null> => {
+    if (isMongo) {
+      const doc = await MongoOrder.findOne({ id }).lean() as any;
+      return doc;
+    } else {
+      const db = loadLocalDB();
+      const order = db.orders.find(o => o.id === id);
+      return (order as any) || null;
+    }
+  },
+
   createOrder: async (order: Order): Promise<Order> => {
     if (!order.statusHistory || order.statusHistory.length === 0) {
       order.statusHistory = [
@@ -1185,6 +1197,19 @@ export const dbClient = {
       }
 
       return order;
+    }
+  },
+
+  updateOrderInvoiceEmailSent: async (id: string, sent = true): Promise<void> => {
+    if (isMongo) {
+      await MongoOrder.updateOne({ id }, { $set: { invoiceEmailSent: sent } });
+    } else {
+      const db = loadLocalDB();
+      const idx = db.orders.findIndex(o => o.id === id);
+      if (idx > -1) {
+        (db.orders[idx] as any).invoiceEmailSent = sent;
+        saveLocalDB(db);
+      }
     }
   },
 

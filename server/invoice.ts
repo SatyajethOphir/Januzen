@@ -347,42 +347,145 @@ export async function generateOfflineBill(data: {
 }
 
 export function getInvoiceHtml(order: any): string {
+  const appUrl = process.env.APP_URL || "https://januzen.in";
+  
+  // Format items rows
+  const itemRows = (order.items || []).map((item: any) => {
+    const shopName = item.shop === "medicals" ? "Nuthan Medicals" : "JA Stationery";
+    const lineTotal = (Number(item.price) * Number(item.quantity)).toFixed(2);
+    return `
+      <tr>
+        <td style="padding: 12px 10px; border-bottom: 1px solid #F1F5F9; font-size: 13px; color: #334155;">
+          <div style="font-weight: 600; color: #0F172A;">${item.name}</div>
+          <div style="font-size: 11px; color: #64748B;">Division: ${shopName}</div>
+        </td>
+        <td style="padding: 12px 10px; border-bottom: 1px solid #F1F5F9; font-size: 13px; color: #334155; text-align: center;">${item.quantity}</td>
+        <td style="padding: 12px 10px; border-bottom: 1px solid #F1F5F9; font-size: 13px; color: #334155; text-align: right;">₹${Number(item.price).toFixed(2)}</td>
+        <td style="padding: 12px 10px; border-bottom: 1px solid #F1F5F9; font-size: 13px; color: #0F6E56; font-weight: bold; text-align: right;">₹${lineTotal}</td>
+      </tr>
+    `;
+  }).join("");
+
+  const sa = order.shippingAddress || {};
+  const formattedAddress = typeof sa === "object"
+    ? `${sa.addressLine || ""}, ${sa.city || ""} - ${sa.postalCode || ""}`
+    : String(sa);
+  const formattedPhone = sa.phone || order.userPhone || "Not Provided";
+
+  const invoiceNo = order.invoiceId || `INV-${order.orderId.split("-").pop() || "GEN"}`;
+  const orderDate = new Date(order.createdAt).toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric"
+  });
+
   return `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-      <div style="background: #0F6E56; padding: 24px; text-align: center;">
-        <h1 style="color: white; margin: 0; font-size: 24px; letter-spacing: 1px;">JANUZEN Global LLP</h1>
-        <p style="color: #a7f3d0; margin: 4px 0 0 0; font-size: 13px;">Corporate Facility & Healthcare Logistics</p>
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; max-width: 650px; margin: 0 auto; border: 1px solid #E2E8F0; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); background-color: #FFFFFF;">
+      <!-- Elegant Header with Januzen Branding -->
+      <div style="background: linear-gradient(135deg, #0F6E56 0%, #0B5341 100%); padding: 32px 24px; text-align: center; color: #FFFFFF;">
+        <span style="background: rgba(255, 255, 255, 0.15); color: #E6F4EA; font-size: 11px; font-family: monospace; font-weight: bold; padding: 6px 12px; border-radius: 20px; letter-spacing: 1.5px; display: inline-block; margin-bottom: 12px; text-transform: uppercase;">TAX INVOICE & ORDER CONFIRMATION</span>
+        <h1 style="margin: 0; font-size: 28px; font-weight: 800; letter-spacing: 0.5px; color: #FFFFFF;">JANUZEN Global LLP</h1>
+        <p style="margin: 6px 0 0 0; font-size: 14px; color: #A7F3D0; font-weight: 500;">Nuthan Medicals & JA Stationery Divisions</p>
       </div>
-      <div style="padding: 24px; background: #ffffff;">
-        <p style="font-size: 16px; color: #1e293b; margin-top: 0;">Dear <strong>${order.userName}</strong>,</p>
-        <p style="color: #475569; line-height: 1.6;">Thank you for your order! Your purchase is confirmed, and your invoice has been automatically generated as a PDF and attached to this email.</p>
-        
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px; margin: 20px 0;">
-          <h3 style="margin-top: 0; margin-bottom: 12px; color: #0F6E56; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">Order Details</h3>
-          <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #334155;">
+
+      <!-- Core Content Area -->
+      <div style="padding: 32px 24px;">
+        <p style="font-size: 16px; color: #1E293B; margin-top: 0; font-weight: bold;">Dear ${order.userName || "Customer"},</p>
+        <p style="color: #475569; line-height: 1.6; font-size: 14px; margin-bottom: 24px;">
+          Thank you for choosing JANUZEN. Your payment has been verified, and your order has been successfully confirmed. Below is your detailed purchase invoice summary. An official PDF copy has been attached to this email for your records.
+        </p>
+
+        <!-- Metadata Section: Invoice and Customer info -->
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 28px; background-color: #F8FAFC; border-radius: 12px; border: 1px solid #F1F5F9;">
+          <tr>
+            <td style="padding: 16px; width: 50%; vertical-align: top; border-right: 1px solid #E2E8F0;">
+              <h4 style="margin: 0 0 8px 0; color: #0F6E56; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">INVOICE DETAILS</h4>
+              <table style="width: 100%; font-size: 13px; line-height: 1.5; color: #475569;">
+                <tr><td style="font-weight: 600; color: #0F172A; width: 90px; padding: 2px 0;">Invoice No:</td><td style="font-family: monospace; padding: 2px 0;">${invoiceNo}</td></tr>
+                <tr><td style="font-weight: 600; color: #0F172A; padding: 2px 0;">Order ID:</td><td style="font-family: monospace; color: #0F6E56; font-weight: 600; padding: 2px 0;">${order.orderId}</td></tr>
+                <tr><td style="font-weight: 600; color: #0F172A; padding: 2px 0;">Invoice Date:</td><td style="padding: 2px 0;">${orderDate}</td></tr>
+                <tr><td style="font-weight: 600; color: #0F172A; padding: 2px 0;">Payment:</td><td style="color: #10B981; font-weight: 600; padding: 2px 0;">${order.paymentMethod}</td></tr>
+              </table>
+            </td>
+            <td style="padding: 16px; width: 50%; vertical-align: top;">
+              <h4 style="margin: 0 0 8px 0; color: #0F6E56; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">SHIPPED TO</h4>
+              <div style="font-size: 13px; font-weight: bold; color: #0F172A; margin-bottom: 4px;">${order.userName}</div>
+              <div style="font-size: 12px; color: #475569; line-height: 1.4; margin-bottom: 4px;">${formattedAddress}</div>
+              <div style="font-size: 12px; color: #64748B;">Phone: ${formattedPhone}</div>
+              <div style="font-size: 12px; color: #64748B;">Email: ${order.userEmail}</div>
+            </td>
+          </tr>
+        </table>
+
+        <!-- Itemized Bill Table -->
+        <h4 style="margin: 0 0 12px 0; color: #0F6E56; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">ITEMIZED BILL</h4>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px; text-align: left;">
+          <thead>
+            <tr style="background-color: #0F6E56; color: #FFFFFF;">
+              <th style="padding: 10px; font-size: 12px; font-weight: bold; border-top-left-radius: 6px; border-bottom-left-radius: 6px;">Item Description</th>
+              <th style="padding: 10px; font-size: 12px; font-weight: bold; text-align: center; width: 50px;">Qty</th>
+              <th style="padding: 10px; font-size: 12px; font-weight: bold; text-align: right; width: 100px;">Price</th>
+              <th style="padding: 10px; font-size: 12px; font-weight: bold; text-align: right; width: 100px; border-top-right-radius: 6px; border-bottom-right-radius: 6px;">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemRows}
+          </tbody>
+        </table>
+
+        <!-- Totals & Taxes Breakdown -->
+        <div style="width: 100%; text-align: right; margin-bottom: 32px;">
+          <table style="width: 280px; margin-left: auto; border-collapse: collapse; font-size: 13px; line-height: 1.6; color: #475569;">
             <tr>
-              <td style="padding: 4px 0; font-weight: bold; width: 120px;">Order ID:</td>
-              <td style="padding: 4px 0; font-family: monospace; font-size: 14px; color: #0F6E56;">${order.orderId}</td>
+              <td style="padding: 4px 10px 4px 0; text-align: right; width: 150px;">Subtotal:</td>
+              <td style="padding: 4px 0 4px 10px; text-align: right; color: #1E293B;">₹${Number(order.totals.subtotal).toFixed(2)}</td>
+            </tr>
+            ${order.totals.discount > 0 ? `
+            <tr>
+              <td style="padding: 4px 10px 4px 0; text-align: right; color: #EF4444;">Discount Applied:</td>
+              <td style="padding: 4px 0 4px 10px; text-align: right; color: #EF4444;">-₹${Number(order.totals.discount).toFixed(2)}</td>
+            </tr>
+            ` : ""}
+            <tr>
+              <td style="padding: 4px 10px 4px 0; text-align: right;">GST Tax (5%):</td>
+              <td style="padding: 4px 0 4px 10px; text-align: right; color: #1E293B;">₹${Number(order.totals.tax).toFixed(2)}</td>
             </tr>
             <tr>
-              <td style="padding: 4px 0; font-weight: bold;">Grand Total:</td>
-              <td style="padding: 4px 0; font-weight: bold; color: #1e293b; font-size: 14px;">₹${Number(order.totals.total).toFixed(2)}</td>
+              <td style="padding: 4px 10px 4px 0; text-align: right;">Delivery Charges:</td>
+              <td style="padding: 4px 0 4px 10px; text-align: right; color: #1E293B;">${order.totals.shipping === 0 ? "FREE" : `₹${Number(order.totals.shipping).toFixed(2)}`}</td>
             </tr>
-            <tr>
-              <td style="padding: 4px 0; font-weight: bold;">Payment Method:</td>
-              <td style="padding: 4px 0;">${order.paymentMethod}</td>
-            </tr>
-            <tr>
-              <td style="padding: 4px 0; font-weight: bold;">Order Date:</td>
-              <td style="padding: 4px 0;">${new Date(order.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</td>
+            <tr style="border-top: 1px solid #E2E8F0;">
+              <td style="padding: 10px 10px 4px 0; text-align: right; font-weight: bold; font-size: 15px; color: #0F6E56;">Grand Total:</td>
+              <td style="padding: 10px 0 4px 10px; text-align: right; font-weight: bold; font-size: 16px; color: #0F6E56;">₹${Number(order.totals.total).toFixed(2)}</td>
             </tr>
           </table>
         </div>
-        
-        <p style="color: #475569; line-height: 1.6; font-size: 13px;">We are preparing your items for delivery. If you have any inquiries, feel free to reply directly to this email or reach us at <a href="mailto:team@januzen.in" style="color: #0F6E56; text-decoration: underline;">team@januzen.in</a>.</p>
+
+        <!-- Action Buttons (Download & View) -->
+        <div style="text-align: center; margin-bottom: 28px; padding-top: 12px; border-top: 1px solid #F1F5F9;">
+          <a href="${appUrl}/#/orders" style="display: inline-block; background-color: #0F6E56; color: #FFFFFF; font-weight: bold; text-decoration: none; padding: 14px 24px; border-radius: 8px; font-size: 14px; margin: 8px 10px; box-shadow: 0 4px 10px rgba(15,110,86,0.25); text-transform: uppercase; letter-spacing: 0.5px;">
+            Download Invoice (PDF)
+          </a>
+          <a href="${appUrl}/#/orders" style="display: inline-block; background-color: #FFFFFF; color: #475569; font-weight: bold; text-decoration: none; padding: 13px 23px; border-radius: 8px; font-size: 14px; margin: 8px 10px; border: 1px solid #CBD5E1; text-transform: uppercase; letter-spacing: 0.5px;">
+            View Order Status
+          </a>
+        </div>
+
+        <!-- Help Desk / Support Details -->
+        <div style="background-color: #F0FDF4; border: 1px solid #DCFCE7; border-radius: 12px; padding: 20px; text-align: center; font-size: 13px; color: #15803D;">
+          <strong style="display: block; margin-bottom: 4px; font-size: 14px;">Need Assistance?</strong>
+          We are here to support you at any stage. For clinical consultations, refills, or stationery logistics inquiries:
+          <div style="margin-top: 10px; font-weight: bold; color: #0F6E56;">
+            Email: <a href="mailto:team@januzen.in" style="color: #0F6E56; text-decoration: underline;">team@januzen.in</a> &nbsp;|&nbsp; Phone: +91-9666588553
+          </div>
+        </div>
       </div>
-      <div style="background: #f1f5f9; padding: 16px; text-align: center; color: #64748b; font-size: 11px; border-top: 1px solid #e2e8f0;">
-        <strong>JANUZEN Global LLP</strong> | Nuthan Medicals & JA Stationery | <a href="https://januzen.in" style="color: #0F6E56; text-decoration: none;">januzen.in</a>
+
+      <!-- Professional Footer -->
+      <div style="background: #F8FAFC; padding: 20px 24px; text-align: center; color: #64748B; font-size: 12px; border-top: 1px solid #E2E8F0;">
+        <strong>JANUZEN Global LLP</strong> | Corporate Facility & Healthcare Logistics<br/>
+        <span style="font-size: 10px; color: #94A3B8; display: block; margin-top: 4px;">Gajularamaram, Hyderabad, Telangana — GSTIN: ${process.env.GSTIN || "Pending Registration"}</span>
+        <span style="font-size: 9px; color: #CBD5E1; display: block; margin-top: 8px;">This is a secured automated transactional invoice generated directly from JANUZEN logistics servers.</span>
       </div>
     </div>
   `;

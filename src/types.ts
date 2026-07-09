@@ -84,6 +84,7 @@ export interface Order {
   createdAt: string;
   hasStatusOverflow?: boolean;
   deliveryOTP?: string;
+  invoiceEmailSent?: boolean;
 }
 
 export interface WishlistItem {

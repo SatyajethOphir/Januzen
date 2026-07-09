@@ -52,6 +52,7 @@ export default function DeliveryHubView({ currentUser, onNavigate }: DeliveryHub
   const [selectedDriverName, setSelectedDriverName] = React.useState("Suresh Kumar");
   const [otpInputs, setOtpInputs] = React.useState<Record<string, string>>({});
   const [otpErrors, setOtpErrors] = React.useState<Record<string, string>>({});
+  const [deliveryPartners, setDeliveryPartners] = React.useState<any[]>([]);
   
   // Real-time driver GPS trackers
   const [activeTrackers, setActiveTrackers] = React.useState<Record<string, {
@@ -176,7 +177,7 @@ export default function DeliveryHubView({ currentUser, onNavigate }: DeliveryHub
   }, [activeTrackers]);
 
   // Delivery riders database
-  const deliveryTeam = [
+  const deliveryTeamFallback = [
     {
       name: "Suresh Kumar",
       phone: "+91 98881 23456",
@@ -203,6 +204,25 @@ export default function DeliveryHubView({ currentUser, onNavigate }: DeliveryHub
     }
   ];
 
+  const loadDeliveryPartners = async () => {
+    try {
+      const res = await fetch("/api/delivery-partners");
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.length > 0) {
+          setDeliveryPartners(data);
+        } else {
+          setDeliveryPartners(deliveryTeamFallback);
+        }
+      } else {
+        setDeliveryPartners(deliveryTeamFallback);
+      }
+    } catch (err) {
+      console.error("Error loading delivery partners:", err);
+      setDeliveryPartners(deliveryTeamFallback);
+    }
+  };
+
   const loadAllOrders = async (quiet = false) => {
     if (!quiet) setLoading(true);
     try {
@@ -222,9 +242,11 @@ export default function DeliveryHubView({ currentUser, onNavigate }: DeliveryHub
 
   React.useEffect(() => {
     loadAllOrders();
+    loadDeliveryPartners();
     // Auto refresh active dispatches every 4 seconds to maintain coordination
     const interval = setInterval(() => {
       loadAllOrders(true);
+      loadDeliveryPartners();
     }, 4000);
     return () => clearInterval(interval);
   }, []);
@@ -240,7 +262,8 @@ export default function DeliveryHubView({ currentUser, onNavigate }: DeliveryHub
         },
         body: JSON.stringify({
           status: newStatus,
-          note: `Delivery assigned to agent ${selectedDriverName}.`
+          note: `Delivery assigned to agent ${selectedDriverName}.`,
+          deliveryPartnerId: selectedDriverName
         })
       });
       if (res.ok) {
@@ -342,7 +365,7 @@ export default function DeliveryHubView({ currentUser, onNavigate }: DeliveryHub
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {deliveryTeam.map((member, i) => (
+          {deliveryPartners.map((member, i) => (
             <div key={i} className="bg-white border border-gray-150 rounded-2xl p-5 hover:shadow-md transition-all space-y-4 relative overflow-hidden">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-full bg-[#0D1B2A] text-white font-mono font-black text-xs flex items-center justify-center uppercase shadow-sm">
@@ -398,7 +421,7 @@ export default function DeliveryHubView({ currentUser, onNavigate }: DeliveryHub
                 value={selectedDriverName}
                 onChange={(e) => setSelectedDriverName(e.target.value)}
               >
-                {deliveryTeam.map((d, idx) => (
+                {deliveryPartners.map((d, idx) => (
                   <option key={idx} value={d.name}>{d.name}</option>
                 ))}
               </select>
