@@ -31,7 +31,14 @@
         "Essential Handhelds"
       ],
       "featured": true,
-      "isActive": true
+      "isActive": true,
+      "stockQuantity": 45,
+      "lowStockThreshold": 5,
+      "stockStatus": "in_stock",
+      "brand": "JANUZEN",
+      "piecesPerUnit": 1,
+      "totalUnitsAvailable": 45,
+      "pricePerPiece": 450
     },
     {
       "id": "m2",
@@ -48,7 +55,14 @@
         "Maintenance"
       ],
       "featured": false,
-      "isActive": true
+      "isActive": true,
+      "stockQuantity": 60,
+      "lowStockThreshold": 5,
+      "stockStatus": "in_stock",
+      "brand": "JANUZEN",
+      "piecesPerUnit": 1,
+      "totalUnitsAvailable": 60,
+      "pricePerPiece": 240
     },
     {
       "id": "m3",
@@ -65,7 +79,14 @@
         "Anti-inflammatory"
       ],
       "featured": true,
-      "isActive": true
+      "isActive": true,
+      "stockQuantity": 120,
+      "lowStockThreshold": 5,
+      "stockStatus": "in_stock",
+      "brand": "JANUZEN",
+      "piecesPerUnit": 1,
+      "totalUnitsAvailable": 120,
+      "pricePerPiece": 95
     },
     {
       "id": "m4",
@@ -82,7 +103,14 @@
         "Seasonal Relief"
       ],
       "featured": false,
-      "isActive": true
+      "isActive": true,
+      "stockQuantity": 80,
+      "lowStockThreshold": 5,
+      "stockStatus": "in_stock",
+      "brand": "JANUZEN",
+      "piecesPerUnit": 1,
+      "totalUnitsAvailable": 80,
+      "pricePerPiece": 120
     },
     {
       "id": "m5",
@@ -99,7 +127,14 @@
         "Accurate Diagnostics"
       ],
       "featured": true,
-      "isActive": true
+      "isActive": true,
+      "stockQuantity": 15,
+      "lowStockThreshold": 5,
+      "stockStatus": "in_stock",
+      "brand": "JANUZEN",
+      "piecesPerUnit": 1,
+      "totalUnitsAvailable": 15,
+      "pricePerPiece": 2999
     },
     {
       "id": "m6",
@@ -116,7 +151,14 @@
         "Pulse Reader"
       ],
       "featured": false,
-      "isActive": true
+      "isActive": true,
+      "stockQuantity": 30,
+      "lowStockThreshold": 5,
+      "stockStatus": "in_stock",
+      "brand": "JANUZEN",
+      "piecesPerUnit": 1,
+      "totalUnitsAvailable": 30,
+      "pricePerPiece": 1499
     },
     {
       "id": "m7",
@@ -133,7 +175,14 @@
         "Wound Care"
       ],
       "featured": false,
-      "isActive": true
+      "isActive": true,
+      "stockQuantity": 140,
+      "lowStockThreshold": 5,
+      "stockStatus": "in_stock",
+      "brand": "JANUZEN",
+      "piecesPerUnit": 1,
+      "totalUnitsAvailable": 140,
+      "pricePerPiece": 60
     },
     {
       "id": "m8",
@@ -150,7 +199,14 @@
         "Comprehensive Kit"
       ],
       "featured": true,
-      "isActive": true
+      "isActive": true,
+      "stockQuantity": 22,
+      "lowStockThreshold": 5,
+      "stockStatus": "in_stock",
+      "brand": "JANUZEN",
+      "piecesPerUnit": 1,
+      "totalUnitsAvailable": 22,
+      "pricePerPiece": 1650
     },
     {
       "id": "m9",
@@ -167,7 +223,14 @@
         "Daily Wellness"
       ],
       "featured": true,
-      "isActive": true
+      "isActive": true,
+      "stockQuantity": 95,
+      "lowStockThreshold": 5,
+      "stockStatus": "in_stock",
+      "brand": "JANUZEN",
+      "piecesPerUnit": 1,
+      "totalUnitsAvailable": 95,
+      "pricePerPiece": 720
     },
     {
       "id": "m10",
@@ -184,7 +247,14 @@
         "Omega Fatty Acids"
       ],
       "featured": false,
-      "isActive": true
+      "isActive": true,
+      "stockQuantity": 65,
+      "lowStockThreshold": 5,
+      "stockStatus": "in_stock",
+      "brand": "JANUZEN",
+      "piecesPerUnit": 1,
+      "totalUnitsAvailable": 65,
+      "pricePerPiece": 890
     },
     {
       "id": "s1",
@@ -201,7 +271,14 @@
         "Anti-jam Fibres"
       ],
       "featured": true,
-      "isActive": true
+      "isActive": true,
+      "stockQuantity": 250,
+      "lowStockThreshold": 5,
+      "stockStatus": "in_stock",
+      "brand": "JANUZEN",
+      "piecesPerUnit": 1,
+      "totalUnitsAvailable": 250,
+      "pricePerPiece": 320
     },
     {
       "id": "s2",
@@ -218,7 +295,14 @@
         "Refillable Nib"
       ],
       "featured": true,
-      "isActive": true
+      "isActive": true,
+      "stockQuantity": 18,
+      "lowStockThreshold": 5,
+      "stockStatus": "in_stock",
+      "brand": "JANUZEN",
+      "piecesPerUnit": 1,
+      "totalUnitsAvailable": 18,
+      "pricePerPiece": 1850
     },
     {
       "id": "s3",
@@ -235,7 +319,14 @@
         "Journaling Colors"
       ],
       "featured": false,
-      "isActive": true
+      "isActive": true,
+      "stockQuantity": 90,
+      "lowStockThreshold": 5,
+      "stockStatus": "in_stock",
+      "brand": "JANUZEN",
+      "piecesPerUnit": 1,
+      "totalUnitsAvailable": 90,
+      "pricePerPiece": 450
     },
     {
       "id": "s4",
@@ -252,7 +343,14 @@
         "Threadbound Flat"
       ],
       "featured": true,
-      "isActive": true
+      "isActive": true,
+      "stockQuantity": 75,
+      "lowStockThreshold": 5,
+      "stockStatus": "in_stock",
+      "brand": "JANUZEN",
+      "piecesPerUnit": 1,
+      "totalUnitsAvailable": 75,
+      "pricePerPiece": 699
     },
     {
       "id": "s5",
@@ -269,7 +367,14 @@
         "Organized Life"
       ],
       "featured": false,
-      "isActive": true
+      "isActive": true,
+      "stockQuantity": 40,
+      "lowStockThreshold": 5,
+      "stockStatus": "in_stock",
+      "brand": "JANUZEN",
+      "piecesPerUnit": 1,
+      "totalUnitsAvailable": 40,
+      "pricePerPiece": 1249
     },
     {
       "id": "s6",
@@ -286,7 +391,14 @@
         "Accordion Poly"
       ],
       "featured": false,
-      "isActive": true
+      "isActive": true,
+      "stockQuantity": 80,
+      "lowStockThreshold": 5,
+      "stockStatus": "in_stock",
+      "brand": "JANUZEN",
+      "piecesPerUnit": 1,
+      "totalUnitsAvailable": 80,
+      "pricePerPiece": 349
     },
     {
       "id": "s7",
@@ -303,7 +415,14 @@
         "Pencil Sorting"
       ],
       "featured": true,
-      "isActive": true
+      "isActive": true,
+      "stockQuantity": 25,
+      "lowStockThreshold": 5,
+      "stockStatus": "in_stock",
+      "brand": "JANUZEN",
+      "piecesPerUnit": 1,
+      "totalUnitsAvailable": 25,
+      "pricePerPiece": 850
     },
     {
       "id": "s8",
@@ -320,7 +439,14 @@
         "Travel Paint Case"
       ],
       "featured": true,
-      "isActive": true
+      "isActive": true,
+      "stockQuantity": 15,
+      "lowStockThreshold": 5,
+      "stockStatus": "in_stock",
+      "brand": "JANUZEN",
+      "piecesPerUnit": 1,
+      "totalUnitsAvailable": 15,
+      "pricePerPiece": 2200
     }
   ],
   "orders": [],
@@ -359,7 +485,31 @@
   "sessions": [],
   "couponUsages": [],
   "auditLogs": [],
-  "pushSubscriptions": [],
+  "pushSubscriptions": [
+    {
+      "id": "sub_1783833206065_f0ix",
+      "endpoint": "https://fcm.googleapis.com/fcm/send/eOx4KzPYbYU:APA91bE2lj-RVf9lJm2MoEtmhV6H_XUyUSxB8moE7QlxoD1BIHxgYvhK2pXH8w-O4luqqwzn7kme4oY_O1QVCLorA6ewIMQ6DIH1UGGBT-HOlOvar6WR2Nu4eSVpQF-00cRu8uwQA9Xe",
+      "keys": {
+        "p256dh": "BHQWyF0Ytm9F-p3LLNn_qNFCR7ON9WgxTxxUOOofHrp49_Lt5iq6FAG5Gjer2VVP3-BRi8dr32d1taEve2RysPc",
+        "auth": "ThZw4HkL9i446YsBgpkfmA"
+      },
+      "deviceInfo": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+      "createdAt": "2026-07-12T05:13:26.065Z",
+      "updatedAt": "2026-07-12T05:13:26.065Z"
+    },
+    {
+      "id": "sub_1783843745741_bzxm",
+      "endpoint": "https://fcm.googleapis.com/fcm/send/fuTutxB5oJ0:APA91bELPWkhWdNqsn_6X2jOBxL51VSUfvDn8WM7nA3f5mqiyQQjwn2ulTVGp1nLRF1_OO_0OLR_ce8fSGTr3FnHPDeUB4VfdY_2w7cEYAIwfesn2jKSMb5Zrjg2CgFY6gQn9vLlY-AH",
+      "keys": {
+        "p256dh": "BLyj3jfFfnRvmJ3mJpMr7eOJW4Yc8YxiH4yftmTNptJ-QgNTZVGfLyV8emIqh7Qj9QoOcMJ4wcz6KLn1_aM4hIQ",
+        "auth": "r48RCC-jOnHnuLTWk_UPgQ"
+      },
+      "deviceInfo": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+      "createdAt": "2026-07-12T08:09:05.741Z",
+      "updatedAt": "2026-07-12T08:09:05.741Z"
+    }
+  ],
   "advertisements": [],
-  "paymentRecords": []
+  "paymentRecords": [],
+  "marqueeSpeed": 30
 }
