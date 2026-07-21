@@ -41,4 +41,19 @@ export function JaStationeryLogo({ className = "", size = 40 }: LogoProps) {
   );
 }
 
+// ✨ ZENORA Everyday Essentials Logo
+import { Sparkles } from "lucide-react";
+
+export function ZenoraLogo({ className = "", size = 40 }: LogoProps) {
+  const sizeNum = typeof size === "number" ? size : parseInt(size, 10) || 40;
+  return (
+    <div 
+      className={`inline-flex items-center justify-center rounded-lg bg-gradient-to-tr from-purple-500 to-indigo-500 text-white ${className}`}
+      style={{ width: sizeNum, height: sizeNum }}
+    >
+      <Sparkles size={sizeNum * 0.6} />
+    </div>
+  );
+}
+
 

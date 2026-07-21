@@ -1,11 +1,14 @@
 // JANUZEN PWA Service Worker (Standard Open-Standards Web Push API)
-const CACHE_VERSION = "v3.1.0-prod";
+const CACHE_VERSION = "v3.2.0-prod";
 const CACHE_NAME = `januzen-cache-${CACHE_VERSION}`;
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",
   "/manifest.json",
-  "/logo.png"
+  "/logo.png",
+  "/badge.png",
+  "/badge-96x96.png",
+  "/favicon.png"
 ];
 
 // Force immediate takeover — never wait for tabs to close
@@ -53,7 +56,7 @@ self.addEventListener("push", (event) => {
       let options = {
         body: "You have a new notification",
         icon: "/logo.png",
-        badge: "/logo.png",
+        badge: "/badge.png",
         vibrate: [200, 100, 200],
         requireInteraction: false,
         data: { url: "/", type: "general" }
@@ -96,7 +99,7 @@ self.addEventListener("push", (event) => {
             ...options,
             body: data.body || options.body,
             icon: data.icon || "/logo.png",
-            badge: data.badge || "/logo.png",
+            badge: data.badge || "/badge.png",
             image: data.image || undefined,
             tag: data.tag || `januzen-${type}-${cleanTitle || Date.now()}`,
             renotify: true,

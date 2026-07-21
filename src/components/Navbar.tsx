@@ -4,7 +4,7 @@ import { gsap } from "gsap";
 import { safeLocalStorage as localStorage, safeSessionStorage as sessionStorage } from "../utils/storage";
 import { ShoppingBag, User, LogOut, ShieldAlert, Activity, BookOpen, Menu, X, Settings, Palette, Bell } from "lucide-react";
 import { User as UserType } from "../types";
-import { JanuzenLogo, NuthanMedicalsLogo, JaStationeryLogo } from "./Logos";
+import { JanuzenLogo, NuthanMedicalsLogo, JaStationeryLogo, ZenoraLogo } from "./Logos";
 import { subscribeToPush } from "../lib/push";
 import { NotificationDrawer } from "./NotificationDrawer";
 
@@ -277,6 +277,7 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
     { label: "Home", view: "home" },
     { label: "Nuthan Medicals", view: "medicals" },
     { label: "JA Stationery", view: "stationery" },
+    { label: "Zenora", view: "zenora" },
     { label: "About", view: "about" },
     { label: "Contact", view: "contact" },
     ...(currentUser?.role === "admin" ? [{ label: "Delivery Portal", view: "delivery" }] : []),
@@ -333,6 +334,15 @@ export default function Navbar({ currentView, onNavigate, currentUser, onLogout,
                 <div className="flex flex-col">
                   <span className="font-serif text-[11px] font-bold text-[#F5B041] uppercase tracking-wider leading-none">JA</span>
                   <span className="text-[7px] text-[#F5B041]/85 font-mono tracking-widest uppercase">Stationery</span>
+                </div>
+              </div>
+            )}
+            {currentView === "zenora" && (
+              <div className="hidden 2xl:flex items-center gap-2 border-l border-white/20 pl-3 ml-1 animate-fade-in">
+                <ZenoraLogo size={28} />
+                <div className="flex flex-col">
+                  <span className="font-serif text-[11px] font-bold text-[#A5B4FC] uppercase tracking-wider leading-none">Zenora</span>
+                  <span className="text-[7px] text-[#A5B4FC]/85 font-mono tracking-widest uppercase">Essentials</span>
                 </div>
               </div>
             )}

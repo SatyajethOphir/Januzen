@@ -261,7 +261,7 @@ export class NotificationService {
       title: formattedTitle,
       body: payload.body,
       icon: payload.icon || "/logo.png",
-      badge: payload.badge || "/logo.png",
+      badge: payload.badge || "/badge.png",
       image: payload.image,
       url: payload.url || "/",
       type: payload.type || payload.category || "general",

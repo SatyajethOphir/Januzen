@@ -66,7 +66,7 @@ const syncServiceWorkerToken = (token: string | null) => {
 };
 
 interface NavState {
-  page: "home" | "medicals" | "stationery" | "product-detail" | "cart" | "checkout" | "about" | "contact" | "login" | "admin" | "orders" | "profile" | "delivery" | "error" | string;
+  page: "home" | "medicals" | "stationery" | "zenora" | "product-detail" | "cart" | "checkout" | "about" | "contact" | "login" | "admin" | "orders" | "profile" | "delivery" | "error" | string;
   params: Record<string, any>;
 }
 
@@ -125,6 +125,8 @@ export default function App() {
       setNav({ page: "medicals", params: {} });
     } else if (shop === "stationery") {
       setNav({ page: "stationery", params: {} });
+    } else if (shop === "zenora") {
+      setNav({ page: "zenora", params: {} });
     }
   }, []);
 
@@ -149,7 +151,7 @@ export default function App() {
     }
   }, [currentUser]);
 
-  const handleToggleWishlist = async (productId: string, productType: 'medicals' | 'stationery') => {
+  const handleToggleWishlist = async (productId: string, productType: 'medicals' | 'stationery' | 'zenora') => {
     if (!currentUser) {
       showToastMsg("⚠️ Please log in to edit your wishlist.");
       setNav({ page: "login", params: { redirectAfter: nav.page, redirectParams: nav.params } });
@@ -313,6 +315,8 @@ export default function App() {
           setNav({ page: "medicals" });
         } else if (path.includes("stationery")) {
           setNav({ page: "stationery" });
+        } else if (path.includes("zenora")) {
+          setNav({ page: "zenora" });
         }
       } else if (event.data.type === "PUSH_RECEIVED" && event.data.data) {
         const d = event.data.data;
@@ -387,6 +391,10 @@ export default function App() {
       case "stationery":
         titleStr = "JA Stationery | Curated Office Calendars, Leather Diaries & Writing Books";
         descContent = "Explore JA Stationery. Luxury leather business diaries, executive academic planners, customized corporate stationery notebooks, and high-caliber stationery items.";
+        break;
+      case "zenora":
+        titleStr = "Zenora Essentials | Everyday Home, Kitchen & Cleaning Essentials by JANUZEN";
+        descContent = "Explore Zenora Essentials. Premium household products, bio-friendly cleaning supplies, kitchen tools, and daily personal-use necessities.";
         break;
       case "product-detail":
         titleStr = "Premium Catalog Item | JANUZEN Global LLP";
@@ -673,7 +681,7 @@ export default function App() {
         <Suspense fallback={
           <OfficialLoader fullScreen={false} message="Streaming verified partner view modules..." />
         }>
-          {!["home", "medicals", "stationery", "product-detail", "cart", "checkout", "about", "contact", "login", "admin", "profile", "orders", "delivery", "invoice", "live-tracking"].includes(nav.page) && (
+          {!["home", "medicals", "stationery", "zenora", "product-detail", "cart", "checkout", "about", "contact", "login", "admin", "profile", "orders", "delivery", "invoice", "live-tracking"].includes(nav.page) && (
             <Error404View 
               onNavigate={handleNavigate} 
               searchedTerm={(nav.params && nav.params.query) || ""}
@@ -703,6 +711,16 @@ export default function App() {
           {nav.page === "stationery" && (
             <ShopView
               division="stationery"
+              onNavigate={handleNavigate}
+              onAddToBag={handleAddToBag}
+              wishlistProductIds={wishlistProductIds}
+              onToggleWishlist={handleToggleWishlist}
+            />
+          )}
+
+          {nav.page === "zenora" && (
+            <ShopView
+              division="zenora"
               onNavigate={handleNavigate}
               onAddToBag={handleAddToBag}
               wishlistProductIds={wishlistProductIds}

@@ -135,7 +135,7 @@ function sendRealtimeNotification(userId: string, notification: any) {
   }
 }
 
-async function sendWebPushNotificationToUser(userId: string, title: string, content: string, linkUrl?: string, imageUrl?: string): Promise<{ successCount: number; failCount: number }> {
+async function sendWebPushNotificationToUser(userId: string, title: string, content: string, linkUrl?: string, imageUrl?: string, tag?: string): Promise<{ successCount: number; failCount: number }> {
   let type = "general";
   if (title.toLowerCase().includes("order") || title.toLowerCase().includes("delivery") || title.toLowerCase().includes("dispatch") || linkUrl?.includes("orders")) {
     type = "order";
@@ -151,7 +151,8 @@ async function sendWebPushNotificationToUser(userId: string, title: string, cont
     url: linkUrl || "/",
     image: imageUrl,
     type,
-    category: type as any
+    category: type as any,
+    tag: tag || undefined
   };
 
   try {
@@ -166,7 +167,7 @@ async function sendWebPushNotificationToUser(userId: string, title: string, cont
   }
 }
 
-async function createAndSendNotification(userId: string, title: string, content: string, linkUrl?: string, imageUrl?: string) {
+async function createAndSendNotification(userId: string, title: string, content: string, linkUrl?: string, imageUrl?: string, tag?: string) {
   let userEmail: string | undefined;
   let userName: string | undefined = "Valued Customer";
   let userPhone: string | undefined;
@@ -212,11 +213,12 @@ async function createAndSendNotification(userId: string, title: string, content:
     message: content,
     linkUrl,
     imageUrl,
+    tag,
     channels: ["website", "push"]
   }, dbClient, sendRealtimeNotification, sendWebPushNotificationToUser);
 
   const notif = {
-    id: "notif_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
+    id: tag || "notif_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
     userId,
     title: formattedTitle,
     content,
@@ -1115,7 +1117,10 @@ async function startServer() {
       await createAndSendNotification(
         newOrder.userId,
         "Order Placed Successfully",
-        `Hi ${newOrder.userName}, your order ${newOrder.orderId} has been placed successfully! Your delivery verification OTP is [${deliveryOTP}]. Total amount: ₹${total.toFixed(2)}. We will notify you when it's dispatched.`
+        `Hi ${newOrder.userName}, your order ${newOrder.orderId} has been placed successfully! Your delivery verification OTP is [${deliveryOTP}]. Total amount: ₹${total.toFixed(2)}. We will notify you when it's dispatched.`,
+        "/orders",
+        undefined,
+        newOrder.id
       );
 
       res.status(201).json({
@@ -1232,7 +1237,9 @@ async function startServer() {
         updatedOrder.userId,
         `Order Status Update: ${status}`,
         note || `Hi ${updatedOrder.userName}, your corporate purchase status has been updated to "${status}" for order ${updatedOrder.orderId}.`,
-        "/orders"
+        "/orders",
+        undefined,
+        updatedOrder.id
       );
 
       const normalizedStatus = status.toLowerCase();
@@ -1309,7 +1316,10 @@ async function startServer() {
       await createAndSendNotification(
         updatedOrder.userId,
         "Order Cancelled",
-        `Hi ${updatedOrder.userName}, your order ${updatedOrder.orderId} was successfully cancelled.`
+        `Hi ${updatedOrder.userName}, your order ${updatedOrder.orderId} was successfully cancelled.`,
+        "/orders",
+        undefined,
+        updatedOrder.id
       );
 
       // Cleanly terminate tracking session upon order cancellation
@@ -1358,7 +1368,9 @@ async function startServer() {
         updatedOrder.userId,
         `Delivery Dispatch: ${status}`,
         `Your order ${updatedOrder.orderId} is now updated to: ${status}. Note: ${note || ""}`,
-        "/orders"
+        "/orders",
+        undefined,
+        updatedOrder.id
       );
       res.json({ message: "Delivery stage updated", order: updatedOrder });
     } catch (e) {

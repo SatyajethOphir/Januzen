@@ -6,11 +6,11 @@ import { ProductCardSkeleton } from "./SkeletonLoader";
 import ImageWithLoader from "./ImageWithLoader";
 
 interface ShopViewProps {
-  division: "medicals" | "stationery";
+  division: "medicals" | "stationery" | "zenora";
   onNavigate: (view: string, params?: Record<string, any>) => void;
   onAddToBag: (product: Product) => void;
   wishlistProductIds?: string[];
-  onToggleWishlist?: (productId: string, productType: 'medicals' | 'stationery') => void;
+  onToggleWishlist?: (productId: string, productType: 'medicals' | 'stationery' | 'zenora') => void;
 }
 
 export default function ShopView({ 
@@ -23,14 +23,44 @@ export default function ShopView({
   // Styles based on Division
   const themeTeal = "teal";
   const isMed = division === "medicals";
+  const isStat = division === "stationery";
+  const isZen = division === "zenora";
   
-  const accentColor = isMed ? "text-teal-600" : "text-amber-600";
-  const btnColor = isMed ? "bg-[#0F9B8E] hover:bg-[#0c7f74]" : "bg-[#D4820A] hover:bg-[#b56e07]";
-  const borderFocus = isMed ? "focus:border-teal-500" : "focus:border-amber-500";
+  const accentColor = isMed 
+    ? "text-teal-600" 
+    : isStat 
+      ? "text-amber-600" 
+      : "text-indigo-600";
+      
+  const btnColor = isMed 
+    ? "bg-[#0F9B8E] hover:bg-[#0c7f74]" 
+    : isStat 
+      ? "bg-[#D4820A] hover:bg-[#b56e07]" 
+      : "bg-[#6366F1] hover:bg-[#4F46E5]";
+      
+  const borderFocus = isMed 
+    ? "focus:border-teal-500" 
+    : isStat 
+      ? "focus:border-amber-500" 
+      : "focus:border-indigo-500";
+      
   const badgeStyle = isMed 
     ? "bg-slate-900/95 text-teal-300 border-teal-800/60" 
-    : "bg-slate-900/95 text-amber-300 border-amber-800/60";
-  const primaryLightBg = isMed ? "bg-teal-50/50" : "bg-amber-50/50";
+    : isStat 
+      ? "bg-slate-900/95 text-amber-300 border-amber-800/60" 
+      : "bg-slate-900/95 text-indigo-300 border-indigo-800/60";
+      
+  const primaryLightBg = isMed 
+    ? "bg-teal-50/50" 
+    : isStat 
+      ? "bg-amber-50/50" 
+      : "bg-indigo-50/50";
+
+  const textHoverColor = isMed 
+    ? "hover:text-teal-600" 
+    : isStat 
+      ? "hover:text-amber-600" 
+      : "hover:text-indigo-600";
 
   // Premium GSAP product card hover handlers
   const handleProductCardEnter = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -41,7 +71,11 @@ export default function ShopView({
     
     gsap.to(card, { 
       y: -8, 
-      borderColor: isMed ? "rgba(15, 155, 142, 0.4)" : "rgba(212, 130, 10, 0.4)",
+      borderColor: isMed 
+        ? "rgba(15, 155, 142, 0.4)" 
+        : isStat 
+          ? "rgba(212, 130, 10, 0.4)" 
+          : "rgba(99, 102, 241, 0.4)",
       boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.04)", 
       duration: 0.35, 
       ease: "power2.out" 
@@ -171,15 +205,25 @@ export default function ShopView({
       <div className={`p-8 rounded-2xl mb-10 text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-6 ${
         isMed 
           ? "bg-gradient-to-r from-[#0F9B8E] to-[#12B3A4]" 
-          : "bg-gradient-to-r from-[#D4820A] to-[#F19C1D]"
+          : isStat
+            ? "bg-gradient-to-r from-[#D4820A] to-[#F19C1D]"
+            : "bg-gradient-to-r from-[#6366F1] to-[#4F46E5]"
       }`}>
         <div className="space-y-1">
           <span className="text-xs uppercase tracking-[#0.25em] font-bold font-mono text-white/80">JANUZEN division portal</span>
-          <h1 className="font-serif text-3xl sm:text-4xl font-black">{isMed ? "Nuthan Medicals Shop" : "JA Stationery Shop"}</h1>
+          <h1 className="font-serif text-3xl sm:text-4xl font-black">
+            {isMed 
+              ? "Nuthan Medicals Shop" 
+              : isStat 
+                ? "JA Stationery Shop" 
+                : "Zenora Essentials Shop"}
+          </h1>
           <p className="text-sm font-light text-white/95">
             {isMed 
               ? "Dispensing certified ethical drugs, diagnostic tools and sterile health aid accessories." 
-              : "Source professional writing equipment, notebooks, binders and creative paint materials."}
+              : isStat
+                ? "Source professional writing equipment, notebooks, binders and creative paint materials."
+                : "Everyday and household essentials curated for long-term comfort, cleanliness, and convenience."}
           </p>
         </div>
         <div className="bg-white/15 px-4 py-2 rounded-xl border border-white/10 text-xs font-mono shrink-0">
@@ -425,7 +469,7 @@ export default function ShopView({
                       <div>
                         <h3
                           onClick={() => onNavigate("product-detail", { productId: p.id })}
-                          className="font-serif text-sm font-bold text-gray-900 hover:text-teal-600 cursor-pointer line-clamp-1"
+                          className={`font-serif text-sm font-bold text-gray-900 cursor-pointer line-clamp-1 ${textHoverColor}`}
                           title={p.name}
                         >
                           {p.name}

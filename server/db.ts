@@ -282,6 +282,71 @@ const INITIAL_PRODUCTS: Product[] = [
     tags: ["Artist Grade", "Watercolors", "Travel Paint Case"],
     featured: true,
     isActive: true
+  },
+  {
+    id: "z1",
+    name: "Zenora Premium Microfiber Cleaning Cloths (6-Pack)",
+    description: "Ultra-soft, highly absorbent microfiber cloths perfect for household dust-busting, surface polishing, and screen cleaning without scratching.",
+    price: 349.00,
+    category: "Cleaning Supplies",
+    shop: "zenora",
+    stock: 150,
+    image: "https://images.unsplash.com/photo-1583947215259-38e31be8751f?w=600&auto=format&fit=crop",
+    tags: ["Microfiber", "Scratch-Free", "Dusting Essentials"],
+    featured: true,
+    isActive: true
+  },
+  {
+    id: "z2",
+    name: "Zenora Eco-Friendly Bamboo Kitchen Cutting Board Set",
+    description: "3-piece organic bamboo cutting boards with juice grooves. Highly durable, knife-friendly surfaces for hygienic food prep.",
+    price: 899.00,
+    category: "Kitchen Essentials",
+    shop: "zenora",
+    stock: 65,
+    image: "https://images.unsplash.com/photo-1594385208974-2e75f9d8a84a?w=600&auto=format&fit=crop",
+    tags: ["Eco-friendly", "Bamboo", "Kitchen Tools"],
+    featured: true,
+    isActive: true
+  },
+  {
+    id: "z3",
+    name: "Zenora Natural Lavender Air Purifying Gel",
+    description: "Long-lasting solid gel odor eliminator infused with organic lavender essential oils. Keeps living rooms, kitchens, and closets smelling fresh.",
+    price: 180.00,
+    category: "Home Essentials",
+    shop: "zenora",
+    stock: 200,
+    image: "https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?w=600&auto=format&fit=crop",
+    tags: ["Air Freshener", "Lavender Oil", "Odor Eliminator"],
+    featured: false,
+    isActive: true
+  },
+  {
+    id: "z4",
+    name: "Zenora Ergonomic Memory Foam Seat Cushion",
+    description: "Premium memory foam seat support contoured to relieve hip and back fatigue. Ideal for office chairs, home workspace, and car seats.",
+    price: 1499.00,
+    category: "Home Essentials",
+    shop: "zenora",
+    stock: 45,
+    image: "https://images.unsplash.com/photo-1584100936595-c0654b55a2e2?w=600&auto=format&fit=crop",
+    tags: ["Memory Foam", "Posture Support", "Ergonomic Comfort"],
+    featured: true,
+    isActive: true
+  },
+  {
+    id: "z5",
+    name: "Zenora Organic Aloe Vera Hydrating Hand Wash",
+    description: "Gentle daily hand cleanser enriched with real aloe vera extracts and chamomile. Keeps hands clean, hydrated, and soft.",
+    price: 120.00,
+    category: "Personal Daily-use Items",
+    shop: "zenora",
+    stock: 300,
+    image: "https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?w=600&auto=format&fit=crop",
+    tags: ["Aloe Vera", "Gentle Cleanse", "Moisturizing Wash"],
+    featured: false,
+    isActive: true
   }
 ];
 
@@ -1445,6 +1510,14 @@ export const dbClient = {
     validateModelData("Notification", notif);
 
     if (isMongo) {
+      const existing = await MongoNotification.findOne({ id: notif.id });
+      if (existing) {
+        Object.assign(existing, notif);
+        existing.expiresAt = expiry;
+        await existing.save();
+        return existing.toObject() as any;
+      }
+
       const doc = await MongoNotification.create({
         ...notif,
         expiresAt: expiry // convert to real Date object for Mongoose TTL index
@@ -1466,7 +1539,12 @@ export const dbClient = {
     } else {
       const db = loadLocalDB();
       if (!db.notifications) db.notifications = [];
-      db.notifications.unshift(notif);
+      const idx = db.notifications.findIndex(n => n.id === notif.id);
+      if (idx !== -1) {
+        db.notifications[idx] = { ...db.notifications[idx], ...notif };
+      } else {
+        db.notifications.unshift(notif);
+      }
 
       // Optimize storage: Keep only the 4 most recent notifications for this specific customer
       if (notif.userId !== "all") {

@@ -5,7 +5,7 @@ import {
   Activity, BookOpen, Quote, HelpCircle, Star, ArrowUpRight, Heart, Share2, Check
 } from "lucide-react";
 import { Product } from "../types";
-import { JanuzenLogo, NuthanMedicalsLogo, JaStationeryLogo } from "./Logos";
+import { JanuzenLogo, NuthanMedicalsLogo, JaStationeryLogo, ZenoraLogo } from "./Logos";
 import { ProductCardSkeleton, TestimonialSkeleton } from "./SkeletonLoader";
 import ImageWithLoader from "./ImageWithLoader";
 
@@ -14,7 +14,7 @@ interface HomeViewProps {
   featuredProducts: Product[];
   onAddToBag: (product: Product) => void;
   wishlistProductIds?: string[];
-  onToggleWishlist?: (productId: string, productType: 'medicals' | 'stationery') => void;
+  onToggleWishlist?: (productId: string, productType: 'medicals' | 'stationery' | 'zenora') => void;
 }
 
 export default function HomeView({ 
@@ -29,6 +29,65 @@ export default function HomeView({
   const [errorMsg, setErrorMsg] = React.useState("");
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
   const [testimonialsLoading, setTestimonialsLoading] = React.useState(true);
+
+  const communityVoices = [
+    {
+      text: "The seamless transition to the Zenora sector for household and home essentials is exceptional. We get top-tier cleaning agents and kitchen essentials delivered on one clean corporate account.",
+      author: "Nikhil",
+      role: "Operations Director",
+      avatar: "NK",
+      color: "bg-indigo-50 dark:bg-indigo-950/45 border-indigo-200 dark:border-indigo-900/60 text-indigo-800 dark:text-indigo-300"
+    },
+    {
+      text: "Nuthan Medicals continues to be our premier source for WHO-GMP medical diagnostics. The transparency and rapid dispatch keep our clinical teams operating at highest standards.",
+      author: "Neel Akash",
+      role: "Clinical Quality Lead",
+      avatar: "NA",
+      color: "bg-teal-50 dark:bg-teal-950/45 border-teal-200 dark:border-teal-900/60 text-teal-800 dark:text-teal-300"
+    },
+    {
+      text: "I am deeply impressed by JA Stationery's premium drawing books and customized organizers. Their attention to paper quality and high-GSM feel is unmatched for professional design work.",
+      author: "Manasa",
+      role: "Lead Architect & Creative",
+      avatar: "MS",
+      color: "bg-amber-50 dark:bg-amber-950/45 border-amber-200 dark:border-amber-900/60 text-amber-800 dark:text-amber-300"
+    },
+    {
+      text: "Everyday home essentials from Zenora have streamlined our office pantry and hygiene supplies. From bio-friendly dishwashers to everyday utilities, the delivery is consistently flawless.",
+      author: "Riya",
+      role: "Procurement Manager",
+      avatar: "RY",
+      color: "bg-purple-50 dark:bg-purple-950/45 border-purple-200 dark:border-purple-900/60 text-purple-800 dark:text-purple-300"
+    },
+    {
+      text: "Consolidated invoicing across Nuthan Medicals and JA Stationery simplifies our multi-department bookkeeping. One verified platform for diagnostics and workstation files is a marvel.",
+      author: "Akhil",
+      role: "Corporate Finance Controller",
+      avatar: "AK",
+      color: "bg-slate-100 dark:bg-slate-900/45 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-300"
+    },
+    {
+      text: "The sheer quality of the brass-fitted writing tools and executive academic diaries from JA Stationery makes them the perfect corporate gifts. Refined aesthetic combined with pure utility.",
+      author: "Sunny",
+      role: "Brand Strategist",
+      avatar: "SN",
+      color: "bg-yellow-50 dark:bg-yellow-950/45 border-yellow-200 dark:border-yellow-900/60 text-yellow-800 dark:text-yellow-300"
+    },
+    {
+      text: "Zenora's kitchen and daily household items have outstanding durability. Combining this new sector with healthcare formulations makes Januzen Global our true single-source enterprise partner.",
+      author: "Deepak",
+      role: "Facilities Management Head",
+      avatar: "DP",
+      color: "bg-sky-50 dark:bg-sky-950/45 border-sky-200 dark:border-sky-900/60 text-sky-800 dark:text-sky-300"
+    },
+    {
+      text: "As a medical practitioner, I rely heavily on rapid diagnostics. Nuthan Medicals' sterile trauma kits and diagnostics devices are of uncompromising international quality.",
+      author: "Abhishek",
+      role: "Chief Medical Director",
+      avatar: "AB",
+      color: "bg-emerald-50 dark:bg-emerald-950/45 border-emerald-200 dark:border-emerald-900/60 text-emerald-800 dark:text-emerald-300"
+    }
+  ];
 
   // Elite GSAP interactive handlers for smooth micro-animations and section hovers
   const handleCard1Enter = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -98,6 +157,44 @@ export default function HomeView({
       y: 0, 
       scale: 1, 
       borderColor: "rgba(245, 158, 11, 0.2)", 
+      boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)", 
+      duration: 0.4, 
+      ease: "power2.out" 
+    });
+    if (logo) gsap.to(logo, { scale: 1, rotation: 0, duration: 0.4, ease: "power2.out" });
+    if (arrow) gsap.to(arrow, { x: 0, duration: 0.3, ease: "power2.out" });
+    if (tag) gsap.to(tag, { scale: 1, duration: 0.3, ease: "power2.out" });
+  };
+
+  const handleCard3Enter = (e: React.MouseEvent<HTMLDivElement>) => {
+    const card = e.currentTarget;
+    const logo = card.querySelector(".gsap-division-logo");
+    const arrow = card.querySelector(".gsap-division-arrow");
+    const tag = card.querySelector(".gsap-division-tag");
+    
+    gsap.to(card, { 
+      y: -10, 
+      scale: 1.01, 
+      borderColor: "rgba(99, 102, 241, 0.5)", 
+      boxShadow: "0 25px 40px -15px rgba(99, 102, 241, 0.18)", 
+      duration: 0.4, 
+      ease: "power2.out" 
+    });
+    if (logo) gsap.to(logo, { scale: 1.14, rotation: -10, duration: 0.45, ease: "back.out(1.8)" });
+    if (arrow) gsap.to(arrow, { x: 6, duration: 0.3, ease: "power2.out" });
+    if (tag) gsap.to(tag, { scale: 1.05, duration: 0.3, ease: "back.out(1.5)" });
+  };
+
+  const handleCard3Leave = (e: React.MouseEvent<HTMLDivElement>) => {
+    const card = e.currentTarget;
+    const logo = card.querySelector(".gsap-division-logo");
+    const arrow = card.querySelector(".gsap-division-arrow");
+    const tag = card.querySelector(".gsap-division-tag");
+    
+    gsap.to(card, { 
+      y: 0, 
+      scale: 1, 
+      borderColor: "rgba(99, 102, 241, 0.2)", 
       boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)", 
       duration: 0.4, 
       ease: "power2.out" 
@@ -277,16 +374,16 @@ export default function HomeView({
           <div className="lg:w-7/12 space-y-8 text-left">
             <div className="gsap-hero-badge inline-flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 text-amber-200 rounded-full text-[10px] font-mono tracking-[0.2em] uppercase">
               <Sparkles className="h-3 w-3 text-amber-400 animate-pulse" />
-              Twin Pillars of Public Excellence
+              Trusted Healthcare & Enterprise Essentials
             </div>
             
             <h1 className="gsap-hero-title font-serif text-5xl sm:text-6xl lg:text-7xl font-extralight leading-[1.08] tracking-tight">
-              A Legacy of <span className="italic font-normal">Sovereign Care</span> <br/>
-              & <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 via-amber-300 to-amber-500 font-bold">Archival Integrity</span>
+              Building Trust Through <br/>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 via-amber-300 to-amber-500 font-bold">Healthcare & Essential Services</span>
             </h1>
             
             <p className="gsap-hero-desc text-gray-300 text-lg sm:text-xl font-light leading-relaxed max-w-2xl font-serif">
-              JANUZEN coordinates premium, refined services under an elite parent standard. From clinical, life-preserving healthcare supplies to beautiful drafting and workstation papers, we deliver verified trust.
+              JANUZEN Global LLP is the parent organization behind trusted healthcare and stationery brands. Through Nuthan Medicals and JA Stationery, we deliver certified medical supplies, quality stationery products, and dependable enterprise solutions with integrity, precision, and long-term reliability.
             </p>
 
             <div className="gsap-hero-btns flex flex-wrap gap-4 pt-4">
@@ -294,17 +391,28 @@ export default function HomeView({
                 onClick={() => onNavigate("medicals")}
                 className="group flex items-center gap-2.5 bg-[#0F9B8E] hover:bg-[#0c7f74] text-white font-mono font-bold uppercase tracking-wider px-7 py-4 rounded-lg shadow-lg hover:shadow-[#0F9B8E]/20 transition-all text-xs cursor-pointer"
               >
-                Nuthan Medicals
+                Explore Nuthan Medicals
                 <ArrowRight className="h-4 w-4 transform group-hover:translate-x-1.5 transition-transform" />
               </button>
               <button
                 onClick={() => onNavigate("stationery")}
                 className="group flex items-center gap-2.5 bg-transparent border border-white/20 hover:border-amber-400 hover:text-amber-400 text-white font-mono font-bold uppercase tracking-wider px-7 py-4 rounded-lg transition-all text-xs cursor-pointer"
               >
-                JA Stationery
+                Explore JA Stationery
+                <ArrowUpRight className="h-4 w-4 transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+              </button>
+              <button
+                onClick={() => onNavigate("zenora")}
+                className="group flex items-center gap-2.5 bg-transparent border border-white/20 hover:border-indigo-400 hover:text-indigo-400 text-white font-mono font-bold uppercase tracking-wider px-7 py-4 rounded-lg transition-all text-xs cursor-pointer"
+              >
+                Explore Zenora
                 <ArrowUpRight className="h-4 w-4 transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
               </button>
             </div>
+
+            <p className="text-xs text-gray-400 font-light tracking-wide italic pt-2">
+              Serving communities with quality, transparency, and professional excellence.
+            </p>
           </div>
 
           {/* Hero Graphic Frame (Interactive Brand Hub Preview) */}
@@ -373,6 +481,23 @@ export default function HomeView({
                     <p className="text-[11px] text-gray-300 mt-0.5 leading-relaxed font-serif">Fine premium writing instruments, archival planners & papers.</p>
                   </div>
                 </div>
+
+                {/* Division 3 Line */}
+                <div 
+                  onClick={() => onNavigate("zenora")}
+                  className="flex items-center gap-4 p-3 rounded-xl bg-white/5 border border-white/5 hover:border-indigo-500/30 hover:bg-indigo-950/20 transition-all group cursor-pointer"
+                >
+                  <div className="h-10 w-10 text-indigo-400 bg-indigo-950/40 border border-indigo-500/10 rounded-lg flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                    <ZenoraLogo size={28} />
+                  </div>
+                  <div className="flex-grow">
+                    <h4 className="text-sm font-bold text-white flex items-center gap-1.5 group-hover:text-indigo-300">
+                      Zenora Essentials
+                      <ArrowRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                    </h4>
+                    <p className="text-[11px] text-gray-300 mt-0.5 leading-relaxed font-serif">Everyday home, cleaning, kitchen & personal-use necessities.</p>
+                  </div>
+                </div>
               </div>
 
               <div className="border-t border-white/5 pt-4 flex justify-between items-center text-[9px] font-mono text-gray-400 tracking-wide">
@@ -392,7 +517,7 @@ export default function HomeView({
             {[
               { val: "21+", desc: "Years Audit Integrity", color: "text-teal-600" },
               { val: "10k+", desc: "Vetted Corporate Orders", color: "text-amber-600" },
-              { val: "2", desc: "Specialist Corporate Divisions", color: "text-teal-600" },
+              { val: "3", desc: "Specialist Corporate Divisions", color: "text-teal-600" },
               { val: "100%", desc: "Authorized Distribute Guarantee", color: "text-amber-600" },
             ].map((stat, i) => (
               <div 
@@ -409,20 +534,20 @@ export default function HomeView({
         </div>
       </section>
 
-      {/* 🏥 TWIN PILLARS: DIVISION SELECTORS */}
+      {/* 🏥 TRIPLE PILLARS: DIVISION SELECTORS */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <div className="text-center max-w-2xl mx-auto mb-16 space-y-4">
           <span className="text-xs font-mono font-bold tracking-[0.25em] text-[#D4820A] block uppercase">Exclusive Operations</span>
           <h2 className="font-serif text-4xl sm:text-5xl font-light text-current leading-tight">
-            Our Two <span className="italic font-normal">Specialist Houses</span>
+            Our Three <span className="italic font-normal">Specialist Houses</span>
           </h2>
           <div className="w-12 h-[2px] bg-amber-500 mx-auto"></div>
           <p className="text-gray-500 text-sm max-w-lg mx-auto">
-            Governing healthcare distribution services and fine-bound workstation inventories with strict standards of original delivery.
+            Governing healthcare distribution, fine-bound workstation inventories, and quality home essentials with strict standards of original delivery.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-10">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Card 1: Nuthan Medicals */}
           <div 
             className="gsap-division-card bg-card-theme border-2 border-teal-500/20 rounded-2xl overflow-hidden shadow-md transition-all duration-300 flex flex-col justify-between group relative"
@@ -431,7 +556,7 @@ export default function HomeView({
           >
             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-teal-400 to-[#0F9B8E]"></div>
             
-            <div className="p-8 lg:p-12 space-y-6">
+            <div className="p-8 space-y-6">
               <div className="flex justify-between items-start">
                 <div className="gsap-division-logo inline-flex h-16 w-16 text-teal-600 bg-teal-50 rounded-2xl items-center justify-center p-2.5 border border-teal-100 shadow-sm transition-all duration-300">
                   <NuthanMedicalsLogo size={56} />
@@ -443,7 +568,7 @@ export default function HomeView({
               
               <div className="space-y-2">
                 <span className="text-[10px] font-mono tracking-widest text-teal-600 uppercase font-black block">Pharmacological Dispensary</span>
-                <h3 className="font-serif text-3xl font-regular tracking-tight text-slate-900 transition-colors">Nuthan Medicals</h3>
+                <h3 className="font-serif text-2xl font-regular tracking-tight text-slate-900 transition-colors">Nuthan Medicals</h3>
               </div>
 
               <p className="text-gray-500 text-sm leading-relaxed font-serif">
@@ -459,7 +584,7 @@ export default function HomeView({
               </div>
             </div>
             
-            <div className="px-8 lg:px-12 pb-8 lg:pb-12">
+            <div className="px-8 pb-8">
               <button
                 onClick={() => onNavigate("medicals")}
                 className="w-full py-4 px-6 bg-[#0F9B8E] hover:bg-[#0c7f74] text-white font-mono text-xs font-bold uppercase tracking-wider rounded-lg flex items-center justify-center gap-3 transition-colors cursor-pointer shadow-md hover:shadow-teal-500/25 active:scale-98"
@@ -478,7 +603,7 @@ export default function HomeView({
           >
             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-amber-400 to-[#D4820A]"></div>
             
-            <div className="p-8 lg:p-12 space-y-6">
+            <div className="p-8 space-y-6">
               <div className="flex justify-between items-start">
                 <div className="gsap-division-logo inline-flex h-16 w-16 text-amber-600 bg-amber-50 rounded-2xl items-center justify-center p-2.5 border border-amber-100 shadow-sm transition-all duration-300">
                   <JaStationeryLogo size={56} />
@@ -490,7 +615,7 @@ export default function HomeView({
 
               <div className="space-y-2">
                 <span className="text-[10px] font-mono tracking-widest text-amber-600 uppercase font-black block">Fine Writing & Archives</span>
-                <h3 className="font-serif text-3xl font-regular tracking-tight text-slate-900 transition-colors">JA Stationery</h3>
+                <h3 className="font-serif text-2xl font-regular tracking-tight text-slate-900 transition-colors">JA Stationery</h3>
               </div>
 
               <p className="text-gray-500 text-sm leading-relaxed font-serif">
@@ -506,12 +631,59 @@ export default function HomeView({
               </div>
             </div>
 
-            <div className="px-8 lg:px-12 pb-8 lg:pb-12">
+            <div className="px-8 pb-8">
               <button
                 onClick={() => onNavigate("stationery")}
                 className="w-full py-4 px-6 bg-[#D4820A] hover:bg-[#b56e07] text-white font-mono text-xs font-bold uppercase tracking-wider rounded-lg flex items-center justify-center gap-3 transition-colors cursor-pointer shadow-md hover:shadow-amber-500/25 active:scale-98"
               >
                 Enter Stationery Division
+                <ArrowRight className="gsap-division-arrow h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Card 3: Zenora */}
+          <div 
+            className="gsap-division-card bg-card-theme border-2 border-indigo-500/20 rounded-2xl overflow-hidden shadow-md transition-all duration-300 flex flex-col justify-between group relative"
+            onMouseEnter={handleCard3Enter}
+            onMouseLeave={handleCard3Leave}
+          >
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-purple-400 to-[#6366F1]"></div>
+            
+            <div className="p-8 space-y-6">
+              <div className="flex justify-between items-start">
+                <div className="gsap-division-logo inline-flex h-16 w-16 text-indigo-600 bg-indigo-50 rounded-2xl items-center justify-center p-2.5 border border-indigo-100 shadow-sm transition-all duration-300">
+                  <ZenoraLogo size={56} />
+                </div>
+                <span className="gsap-division-tag text-[9px] font-mono font-bold uppercase tracking-widest text-[#6366F1] bg-[#6366F1]/10 border border-[#6366F1]/20 px-2.5 py-1 rounded-full">
+                  Everyday Quality
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                <span className="text-[10px] font-mono tracking-widest text-indigo-600 uppercase font-black block">Home & Household Essentials</span>
+                <h3 className="font-serif text-2xl font-regular tracking-tight text-slate-900 transition-colors">Zenora</h3>
+              </div>
+
+              <p className="text-gray-500 text-sm leading-relaxed font-serif">
+                Offering high-caliber everyday items, bio-friendly cleaning agents, kitchen tools, and refined personal daily necessities. Designed to streamline your household chores and enhance modern living spaces.
+              </p>
+
+              <div className="flex flex-wrap gap-2 pt-2">
+                {["Home Essentials", "Cleaning Supplies", "Kitchen Essentials", "Personal Care"].map((tag) => (
+                  <span key={tag} className="text-[10px] font-sans font-bold border border-indigo-100 bg-indigo-50/50 text-indigo-800 px-3 py-1 rounded-full">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="px-8 pb-8">
+              <button
+                onClick={() => onNavigate("zenora")}
+                className="w-full py-4 px-6 bg-[#6366F1] hover:bg-[#4F46E5] text-white font-mono text-xs font-bold uppercase tracking-wider rounded-lg flex items-center justify-center gap-3 transition-colors cursor-pointer shadow-md hover:shadow-indigo-500/25 active:scale-98"
+              >
+                Enter Zenora Division
                 <ArrowRight className="gsap-division-arrow h-4 w-4" />
               </button>
             </div>
@@ -660,18 +832,14 @@ export default function HomeView({
       <section className="bg-gradient-to-b from-transparent to-black/5 py-24 border-y border-gray-200 overflow-hidden relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-16">
           <div className="text-center max-w-2xl mx-auto space-y-3">
-            <span className="text-xs font-mono font-bold tracking-[0.25em] text-[#D4820A] block uppercase">Client Testimonials</span>
-            <h2 className="font-serif text-4xl font-light">The Voice of <span className="italic font-normal">Our Community</span></h2>
-            <p className="text-gray-500 text-sm">Vouched for by doctors, clinic staff, corporate planners, and creative studios.</p>
+            <span className="text-xs font-mono font-bold tracking-[0.25em] text-[#D4820A] block uppercase">Our Voice Community</span>
+            <h2 className="font-serif text-4xl font-light">Vouched for by <span className="italic font-normal">Our Members</span></h2>
+            <p className="text-gray-500 text-sm">Real experiences shared by corporate partners and community members across our medical, stationery, and everyday divisions.</p>
           </div>
         </div>
 
         {/* Seamless Infinite Scrolling Track */}
         <div className="relative w-full overflow-hidden select-none py-4">
-          {/* Edge fades for smooth visual blending matching the exact page backgrounds (#FAFAF9 in Light, #0A0E1A in Dark) */}
-          <div className="absolute left-0 top-0 bottom-0 w-6 sm:w-12 bg-gradient-to-r from-[#FAFAF9] to-transparent dark:from-[#0A0E1A] to-transparent z-10 pointer-events-none"></div>
-          <div className="absolute right-0 top-0 bottom-0 w-6 sm:w-12 bg-gradient-to-l from-[#FAFAF9] to-transparent dark:from-[#0A0E1A] to-transparent z-10 pointer-events-none"></div>
-
           {testimonialsLoading ? (
             <div className="max-w-7xl mx-auto px-4 grid md:grid-cols-3 gap-6 animate-pulse">
               {[...Array(3)].map((_, i) => (
@@ -682,148 +850,62 @@ export default function HomeView({
             <div className="flex w-max gap-8 animate-fade-in-up">
               {/* Track 1 */}
               <div className="animate-testimonial-marquee flex gap-8 whitespace-normal shrink-0">
-              {[
-                {
-                  text: "Nuthan Medicals is incredibly reliable. As a professional builder coordination lead, finding a portal where I can order authenticated workplace sanitization items and diagnostic safety indicators with a single invoice is marvelous.",
-                  author: "Nageshwar Reddy",
-                  role: "Builder Coordination Lead",
-                  avatar: "NR",
-                  color: "bg-teal-50 dark:bg-teal-950/45 border-teal-200 dark:border-teal-900/60 text-teal-800 dark:text-teal-300"
-                },
-                {
-                  text: "Our campus departments order heavyweight A4 drawing reams, archival files, and fine writing sets constantly. JA Stationery has always delivered crisp fine archival inventories with pristine packaging and extreme care.",
-                  author: "Bikshapathy Peruka",
-                  role: "University Department Head",
-                  avatar: "BP",
-                  color: "bg-amber-50 dark:bg-amber-950/45 border-amber-200 dark:border-amber-900/60 text-amber-800 dark:text-amber-300"
-                },
-                {
-                  text: "Consolidated partnership billing saves our high-end construction programs countless steps. I buy certified medical supplies for corporate sites and executive stationery portfolios in a single, clean checkout portal.",
-                  author: "Jagadeeshwar Reddy",
-                  role: "Infrastructure Consultant",
-                  avatar: "JR",
-                  color: "bg-slate-100 dark:bg-slate-900/45 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-300"
-                },
-                {
-                  text: "The delivery of specialized diagnostics tools and healthcare kits is ultra-fast. The single invoice framework has saved our accountancy team dozens of working hours this quarter.",
-                  author: "Dr. Kavitha Sharma",
-                  role: "Chief Medical Officer",
-                  avatar: "KS",
-                  color: "bg-emerald-50 dark:bg-emerald-950/45 border-emerald-200 dark:border-emerald-900/60 text-emerald-800 dark:text-emerald-300"
-                },
-                {
-                  text: "Highly sophisticated ordering interface and excellent customer transparency. Authentic supplies, quick dispatch updates, and solid responsive support are hallmarks of their global enterprise model.",
-                  author: "Vikram Malhotra",
-                  role: "Director of Facilities",
-                  avatar: "VM",
-                  color: "bg-blue-50 dark:bg-blue-950/45 border-blue-200 dark:border-blue-900/60 text-blue-800 dark:text-blue-300"
-                },
-                {
-                  text: "Finding high-grade drawing papers, custom portfolios, and technical plotting instruments in one place is fantastic. JA Stationery delivers with exquisite care and professional execution.",
-                  author: "Ananya Sen",
-                  role: "Lead Creative Designer",
-                  avatar: "AS",
-                  color: "bg-rose-50 dark:bg-rose-950/45 border-rose-200 dark:border-rose-900/60 text-rose-800 dark:text-rose-300"
-                }
-              ].map((t, idx) => (
-                <div 
-                  key={`track1-${idx}`} 
-                  className="w-[360px] md:w-[400px] shrink-0 bg-card-theme p-8 rounded-xl border border-stone-200/80 dark:border-slate-800/80 shadow-md relative space-y-6 flex flex-col justify-between hover:border-amber-500/50 dark:hover:border-amber-500/50 hover:shadow-lg transition-all duration-300"
-                >
-                  <div className="space-y-4">
-                    <div className="text-[#D4820A] fill-current opacity-30">
-                      <Quote className="h-7 w-7 transform -scale-x-100" />
+                {communityVoices.map((t, idx) => (
+                  <div 
+                    key={`track1-${idx}`} 
+                    className="w-[360px] md:w-[400px] shrink-0 bg-card-theme p-8 rounded-xl border border-stone-200/80 dark:border-slate-800/80 shadow-md relative space-y-6 flex flex-col justify-between hover:border-amber-500/50 dark:hover:border-amber-500/50 hover:shadow-lg transition-all duration-300"
+                  >
+                    <div className="space-y-4">
+                      <div className="text-[#D4820A] fill-current opacity-30">
+                        <Quote className="h-7 w-7 transform -scale-x-100" />
+                      </div>
+                      <p className="text-gray-600 dark:text-gray-300 text-sm font-serif leading-relaxed italic">
+                        "{t.text}"
+                      </p>
                     </div>
-                    <p className="text-gray-600 dark:text-gray-300 text-sm font-serif leading-relaxed italic">
-                      "{t.text}"
-                    </p>
-                  </div>
 
-                  <div className="pt-6 border-t border-stone-100 dark:border-slate-800 flex items-center gap-4">
-                    <div className={`h-10 w-10 rounded-full flex items-center justify-center font-bold text-xs uppercase shrink-0 border ${t.color}`}>
-                      {t.avatar}
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-gray-950 dark:text-white">{t.author}</h4>
-                      <p className="text-[10px] text-gray-400 font-mono mt-0.5">{t.role}</p>
+                    <div className="pt-6 border-t border-stone-100 dark:border-slate-800 flex items-center gap-4">
+                      <div className={`h-10 w-10 rounded-full flex items-center justify-center font-bold text-xs uppercase shrink-0 border ${t.color}`}>
+                        {t.avatar}
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-gray-950 dark:text-white">{t.author}</h4>
+                        <p className="text-[10px] text-gray-400 font-mono mt-0.5">{t.role}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
+
+              {/* Track 2 (Identical Duplicate) */}
+              <div className="animate-testimonial-marquee flex gap-8 whitespace-normal shrink-0" aria-hidden="true">
+                {communityVoices.map((t, idx) => (
+                  <div 
+                    key={`track2-${idx}`} 
+                    className="w-[360px] md:w-[400px] shrink-0 bg-card-theme p-8 rounded-xl border border-stone-200/80 dark:border-slate-800/80 shadow-md relative space-y-6 flex flex-col justify-between hover:border-amber-500/50 dark:hover:border-amber-500/50 hover:shadow-lg transition-all duration-300"
+                  >
+                    <div className="space-y-4">
+                      <div className="text-[#D4820A] fill-current opacity-30">
+                        <Quote className="h-7 w-7 transform -scale-x-100" />
+                      </div>
+                      <p className="text-gray-600 dark:text-gray-300 text-sm font-serif leading-relaxed italic">
+                        "{t.text}"
+                      </p>
+                    </div>
+
+                    <div className="pt-6 border-t border-stone-100 dark:border-slate-800 flex items-center gap-4">
+                      <div className={`h-10 w-10 rounded-full flex items-center justify-center font-bold text-xs uppercase shrink-0 border ${t.color}`}>
+                        {t.avatar}
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-gray-950 dark:text-white">{t.author}</h4>
+                        <p className="text-[10px] text-gray-400 font-mono mt-0.5">{t.role}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-
-            {/* Track 2 (Identical Duplicate) */}
-            <div className="animate-testimonial-marquee flex gap-8 whitespace-normal shrink-0" aria-hidden="true">
-              {[
-                {
-                  text: "Nuthan Medicals is incredibly reliable. As a professional builder coordination lead, finding a portal where I can order authenticated workplace sanitization items and diagnostic safety indicators with a single invoice is marvelous.",
-                  author: "Nageshwar Reddy",
-                  role: "Builder Coordination Lead",
-                  avatar: "NR",
-                  color: "bg-teal-50 dark:bg-teal-950/45 border-teal-200 dark:border-teal-900/60 text-teal-800 dark:text-teal-300"
-                },
-                {
-                  text: "Our campus departments order heavyweight A4 drawing reams, archival files, and fine writing sets constantly. JA Stationery has always delivered crisp fine archival inventories with pristine packaging and extreme care.",
-                  author: "Bikshapathy Peruka",
-                  role: "University Department Head",
-                  avatar: "BP",
-                  color: "bg-amber-50 dark:bg-amber-950/45 border-amber-200 dark:border-amber-900/60 text-amber-800 dark:text-amber-300"
-                },
-                {
-                  text: "Consolidated partnership billing saves our high-end construction programs countless steps. I buy certified medical supplies for corporate sites and executive stationery portfolios in a single, clean checkout portal.",
-                  author: "Jagadeeshwar Reddy",
-                  role: "Infrastructure Consultant",
-                  avatar: "JR",
-                  color: "bg-slate-100 dark:bg-slate-900/45 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-300"
-                },
-                {
-                  text: "The delivery of specialized diagnostics tools and healthcare kits is ultra-fast. The single invoice framework has saved our accountancy team dozens of working hours this quarter.",
-                  author: "Dr. Kavitha Sharma",
-                  role: "Chief Medical Officer",
-                  avatar: "KS",
-                  color: "bg-emerald-50 dark:bg-emerald-950/45 border-emerald-200 dark:border-emerald-900/60 text-emerald-800 dark:text-emerald-300"
-                },
-                {
-                  text: "Highly sophisticated ordering interface and excellent customer transparency. Authentic supplies, quick dispatch updates, and solid responsive support are hallmarks of their global enterprise model.",
-                  author: "Vikram Malhotra",
-                  role: "Director of Facilities",
-                  avatar: "VM",
-                  color: "bg-blue-50 dark:bg-blue-950/45 border-blue-200 dark:border-blue-900/60 text-blue-800 dark:text-blue-300"
-                },
-                {
-                  text: "Finding high-grade drawing papers, custom portfolios, and technical plotting instruments in one place is fantastic. JA Stationery delivers with exquisite care and professional execution.",
-                  author: "Ananya Sen",
-                  role: "Lead Creative Designer",
-                  avatar: "AS",
-                  color: "bg-rose-50 dark:bg-rose-950/45 border-rose-200 dark:border-rose-900/60 text-rose-800 dark:text-rose-300"
-                }
-              ].map((t, idx) => (
-                <div 
-                  key={`track2-${idx}`} 
-                  className="w-[360px] md:w-[400px] shrink-0 bg-card-theme p-8 rounded-xl border border-stone-200/80 dark:border-slate-800/80 shadow-md relative space-y-6 flex flex-col justify-between hover:border-amber-500/50 dark:hover:border-amber-500/50 hover:shadow-lg transition-all duration-300"
-                >
-                  <div className="space-y-4">
-                    <div className="text-[#D4820A] fill-current opacity-30">
-                      <Quote className="h-7 w-7 transform -scale-x-100" />
-                    </div>
-                    <p className="text-gray-600 dark:text-gray-300 text-sm font-serif leading-relaxed italic">
-                      "{t.text}"
-                    </p>
-                  </div>
-
-                  <div className="pt-6 border-t border-stone-100 dark:border-slate-800 flex items-center gap-4">
-                    <div className={`h-10 w-10 rounded-full flex items-center justify-center font-bold text-xs uppercase shrink-0 border ${t.color}`}>
-                      {t.avatar}
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-gray-950 dark:text-white">{t.author}</h4>
-                      <p className="text-[10px] text-gray-400 font-mono mt-0.5">{t.role}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
           )}
         </div>
       </section>

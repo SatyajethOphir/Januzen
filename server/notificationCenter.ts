@@ -57,6 +57,7 @@ export interface UnifiedNotificationRequest {
   type: NotificationType;
   title: string;
   message: string;
+  tag?: string;
   channels?: NotificationChannel[];
   linkUrl?: string;
   imageUrl?: string;
@@ -214,7 +215,7 @@ export async function sendUnifiedNotification(
   req: UnifiedNotificationRequest,
   dbClient: any,
   sendRealtimeNotificationFn: (userId: string, notif: any) => void,
-  sendWebPushFn: (userId: string, title: string, content: string, linkUrl?: string, imageUrl?: string) => Promise<any>
+  sendWebPushFn: (userId: string, title: string, content: string, linkUrl?: string, imageUrl?: string, tag?: string) => Promise<any>
 ): Promise<{ success: boolean; channelsDispatched: string[]; error?: string }> {
   const channels = req.channels || ["email", "website", "push"];
   const channelsDispatched: string[] = [];
@@ -226,7 +227,7 @@ export async function sendUnifiedNotification(
   if (channels.includes("website") || channels.includes("push")) {
     try {
       const notifDoc = {
-        id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        id: req.tag || `notif_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
         userId: req.userId,
         title: req.title,
         content: req.message,
@@ -249,7 +250,7 @@ export async function sendUnifiedNotification(
 
       // Web Push dispatch
       if (channels.includes("push") && typeof sendWebPushFn === "function") {
-        await sendWebPushFn(req.userId, req.title, req.message, notifDoc.linkUrl, req.imageUrl);
+        await sendWebPushFn(req.userId, req.title, req.message, notifDoc.linkUrl, req.imageUrl, req.tag);
         channelsDispatched.push("push");
       }
     } catch (dbErr) {
